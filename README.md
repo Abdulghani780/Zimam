@@ -1,0 +1,95 @@
+# منظومة ASAAS Server Control & Resource Governor Enterprise v2.5
+
+منظومة الجيل الثاني المتطورة لمراقبة وإدارة خوادم **Windows Server 2025 / 2022** وجلسات سطح المكتب البعيد (**RDP / Terminal Services**)، وحصن النفاذ الموحد (**JumpServer PAM Bastion**)، وحاكم الموارد الذكي المتقدم بنمط **Clean Architecture & OOP**.
+
+---
+
+## 🏛️ المعمارية البرمجية (Clean Architecture & OOP)
+
+تم بناء النسخة بالكامل من الصفر دون أي ديون معمارية قديمة وبفصل كامل للمسؤوليات:
+
+```text
+ASAAS-Server-Control-v2/
+├── backend/
+│   ├── app/
+│   │   ├── core/                  # التهيئة المركزية ومفاتيح الأمان
+│   │   │   └── config.py
+│   │   ├── domain/                # نماذج النطاق ومطابقة العقود (Data Classes)
+│   │   │   └── models.py
+│   │   ├── infrastructure/        # الربط المباشر مع Win32 Ctypes
+│   │   │   ├── win32_wts.py       # وساطة wtsapi32.dll & netapi32.dll
+│   │   │   └── silent_subprocess.py # مشغل الأوامر الصامت المانع لوميض CMD
+│   │   ├── services/              # طبقة الخدمات الكائنية (Domain Services)
+│   │   │   ├── telemetry_service.py      # مراقبة الأنوية والذاكرة والتذبذب
+│   │   │   ├── user_service.py           # حوكمة مستخدمي ويندوز وصلاحيات RDP
+│   │   │   ├── storage_service.py        # فحص القرص C:\ ومجلدات المستخدمين
+│   │   │   ├── governor_service.py       # تفريغ خمول الرام (Working Set Trim)
+│   │   │   ├── port_isolation_service.py # درع عزل وحجز المنافذ الآلي
+│   │   │   ├── bastion_service.py        # حصن النفاذ الموحد وفلتر الأوامر ACL
+│   │   │   └── stitch_service.py         # فهرسة وربط شاشات Google Stitch الـ 20
+│   │   └── api/
+│   │       └── router.py          # موزع الـ REST API وبث SSE وملفات الـ SPA
+│   └── main.py                    # خادم التشغيل المتعدد الخيوط (Port 8765)
+│
+├── frontend/                      # واجهة React 19 + TypeScript + Vite
+│   ├── src/
+│   │   ├── asaas-ui/              # مكتبة ورموز وهوية أساس الملكية وخطوط ثمانية
+│   │   ├── components/            # مكونات الواجهة ومخطط الأنوية التموجي
+│   │   ├── pages/                 # صفحات المنظومة (Overview, Bastion, Stitch Gallery...)
+│   │   └── lib/                   # عميل API الآمن ومطابقة الأنواع
+│   └── public/                    # خطوط ثمانية الأصلية وشعارات أساس
+│
+├── stitch_asaas_server_control_v2.5/ # تصاميم Google Stitch السيادية (20 شاشة بدقة كاملة)
+├── launcher/
+│   └── launch.vbs                 # المشغل المباشر لسطح المكتب بدون نوافذ سوداء
+└── start-server.bat               # مشغل كونسول المطورين
+```
+
+---
+
+## 💎 أبرز المزايا المحققة في v2
+
+1. **معرض تصاميم Google Stitch السيادية (20 شاشة كاملة)**:
+   * تصفح ومعاينة حية تفاعلية لكافة الشاشات المصممة من قبل Google Stitch مباشرة عبر مسار `/stitch`.
+   * إمكانية فتح أي شاشة في نافذة مستقلة بدقة كاملة مع تصميم الفخامة السيبرانية الزجاجية (Cyber Dark Luxury Glassmorphism).
+
+2. **حصن الوصول الموحد JumpServer PAM Bastion (`/bastion`)**:
+   * دعم 8 بروتوكولات سيادية للوصول عن بُعد: `RDP`, `SSH`, `SFTP`, `VNC`, `Telnet`, `WinRM`, `Database SQL Web Client`, `Kubernetes Pods`.
+   * فلتر اعتراض الأوامر التدميرية بالتعابير النمطية (Command Risk ACL Regex Firewall) لمنع `rm -rf /` أو `format c:` قبل التنفيذ.
+
+3. **راسم الذبذبات التزامني لأنوية المعالج (GNOME System Monitor / Laptop view)**:
+   * رسم بياني زمني حي لآخر 60 ثانية لمصفوفة الأنوية الـ 8 بمنحنيات بيزيه فائقة النعومة وتحديث لحظي 1s عبر SSE.
+   * مصفوفة دليل الأنوية ومؤشرات الاستهلاك اللحظية.
+
+4. **تصفير استدعاءات النوافذ السوداء (Zero CMD / Zero Terminal Popups)**:
+   * استبدال كامل لأوامر `tasklist` و `quser` بـ Native Win32 Ctypes في الذاكرة.
+   * عدم ظهور أو وميض أي نافذة كونسول على الإطلاق أثناء عمل السيرفر.
+
+5. **حل مشكلة الصلاحيات ورفض الوصول `Access Denied Error 5`**:
+   * التحقق الآلي من الصلاحيات وطلب الترقية كمسؤول بسلاسة عبر اختصار سطح المكتب `ASAAS Server Control v2.lnk`.
+   * زر ترقية فوري `/api/system/elevate` يرفع السيرفر دون إيقاف الخدمات.
+
+6. **خوارزمية عزل وحجز المنافذ الآلية (Port Isolation Engine)**:
+   * فحص آلي للمنافذ المشغولة وربط المنفذ بجلسة المستخدم المحددة.
+   * منع تداخل المشاريع بين المستخدمين المختلفين وتعيين منافذ بديلة تلقائياً.
+
+---
+
+## 🚀 طريقة التشغيل
+
+### تشغيل سطح المكتب (موصى به للمستخدم النهائي):
+* النقر المزدوج على اختصار سطح المكتب: **`ASAAS Server Control v2.lnk`**.
+* يفتح التطبيق مباشرة في نافذة مخصصة بحجم كامل دون شريط عناوين المتصفح.
+
+### تشغيل المطورين (Developer Console):
+```cmd
+start-server.bat
+```
+أو عبر بايثون:
+```bash
+cd backend
+python main.py
+```
+ثم فتح المتصفح على: `http://127.0.0.1:8765/`
+ومعرض تصاميم Stitch على: `http://127.0.0.1:8765/stitch`
+وحصن الوصول على: `http://127.0.0.1:8765/bastion`

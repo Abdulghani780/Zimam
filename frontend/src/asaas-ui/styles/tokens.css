@@ -1,0 +1,76 @@
+/* ───────── Import Unified 3-Layer Design Tokens ───────── */
+@import '../../tokens/design-tokens.css';
+
+/* ───────── Brand: ASAAS — ink, gold & sand (Backward Compatibility Mapping) ───────── */
+:root {
+  --brand-ink: var(--primitive-color-carbon-900);
+  --brand-gold: var(--primitive-color-gold-600);
+  --brand-sand: var(--primitive-color-carbon-200);
+  --brand-clay: #c3ad8d;
+  --brand-cream: #ede7da;
+  --brand-paper: #fcf9f5;
+
+  --font: var(--primitive-font-sans);
+  --font-display: var(--primitive-font-display);
+  --font-text: var(--primitive-font-sans);
+  --font-mono: var(--primitive-font-mono);
+
+  --radius-xl: var(--primitive-radius-xl);
+  --radius-lg: var(--primitive-radius-lg);
+  --radius-md: var(--primitive-radius-md);
+  --radius-sm: var(--primitive-radius-sm);
+  --radius-pill: var(--primitive-radius-full);
+
+  --ease-out: var(--primitive-ease-out);
+  --ease-spring: var(--primitive-ease-spring);
+  --gutter: var(--frame-gutter);
+
+  --page-max: var(--frame-page-max);
+  --page-pad: clamp(16px, 4vw, 32px);
+  --header-h: var(--frame-header-height);
+  --tap: 44px;
+
+  /* Default theme aliases (Dark first) */
+  --bg: var(--surface-canvas);
+  --text: var(--text-title);
+  --text-2: var(--text-body);
+  --text-3: var(--text-muted);
+  --hairline: var(--border-hairline);
+
+  --glass-tint: var(--surface-glass-tint);
+  --glass-tint-strong: var(--surface-glass-tint-strong);
+  --glass-rim: var(--border-gold-rim);
+  --glass-rim-low: rgba(255, 255, 255, 0.08);
+  --glass-rim-high: var(--border-gold-rim-strong);
+  --glass-sheen: var(--surface-glass-sheen);
+  --glass-shadow: var(--card-shadow);
+  --glass-inset: rgba(255, 255, 255, 0.04);
+  --overlay: var(--modal-backdrop);
+
+  --accent: var(--action-primary);
+  --accent-fill: var(--primitive-color-gold-400);
+  --accent-glow: var(--primitive-glow-gold);
+  --on-accent: var(--action-primary-fg);
+
+  --paid: var(--status-safe);
+  --paid-bg: var(--status-safe-surface);
+  --partial: var(--status-warning);
+  --partial-bg: var(--status-warning-surface);
+  --unpaid: var(--status-danger);
+  --unpaid-bg: var(--status-danger-surface);
+
+  --chart-in: var(--primitive-color-gold-600);
+  --chart-out: var(--primitive-color-sky-400);
+  --chart-grid: var(--border-hairline);
+}
+
+:root[data-theme='light'] {
+  --bg: var(--surface-canvas);
+  --text: var(--text-title);
+  --text-2: var(--text-body);
+  --text-3: var(--text-muted);
+  --hairline: var(--border-hairline);
+  --accent: var(--action-primary);
+  --accent-fill: var(--action-primary-hover);
+  --on-accent: var(--action-primary-fg);
+}

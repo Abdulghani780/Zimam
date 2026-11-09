@@ -1,0 +1,706 @@
+/**
+ * ASAAS Server Control - Typed API Client & Real-time Live Telemetry.
+ */
+
+export interface SystemHost {
+  host: string;
+  os: string;
+  platform?: string;
+  cpuCores: number;
+  cpuPerCore: number[];
+  totalRam: number;
+  usedRam: number;
+  ram: number;
+  cpu: number;
+  disk: {
+    total: number;
+    used: number;
+    percent: number;
+  };
+  uptime: string;
+  updated?: string;
+}
+
+export interface UserSession {
+  id: number;
+  user: string;
+  role?: string;
+  status: string;
+  state?: string;
+  idle?: number | string | null;
+  idle_time?: string;
+  idle_formatted?: string;
+  login?: string;
+  login_time?: string;
+  cpu?: number;
+  ram?: number;
+  ram_mb?: number;
+  ram_formatted?: string;
+  procs?: number;
+  processes_count?: number;
+  station?: string;
+  is_current?: boolean;
+}
+
+export interface ProcessItem {
+  pid: number;
+  name: string;
+  user: string;
+  session: number;
+  cpu: number;
+  ram: number;
+  ram_mb?: number;
+}
+
+export interface ServiceItem {
+  name: string;
+  display: string;
+  status: 'Running' | 'Stopped' | string;
+  startup: string;
+  category: string;
+  critical: boolean;
+}
+
+export interface TelemetrySnapshot {
+  host: SystemHost;
+  sessions: UserSession[];
+  processes: ProcessItem[];
+  services: ServiceItem[];
+}
+
+export interface GovernorStatus {
+  enabled: boolean;
+  auto_trim: boolean;
+  idle_threshold_mins: number;
+  auto_disconnect_enabled: boolean;
+  auto_disconnect_mins: number;
+  auto_logoff_enabled: boolean;
+  auto_logoff_hours: number;
+  reclaimed_mb: number;
+  trimmed_sessions: number;
+  throttled_pids: number;
+  active_sessions: number;
+}
+
+export interface PortItem {
+  local_port: number;
+  proto: string;
+  pid: number;
+  process_name: string;
+  service?: string;
+  service_name?: string;
+  remote_ip: string;
+  remote_port: number;
+  state?: string;
+  status?: string;
+  is_listening: boolean;
+  is_system?: boolean;
+  is_external?: boolean;
+  risk: string;
+  owner_user?: string;
+  owner_session?: number;
+  is_isolated?: boolean;
+  is_dev_port?: boolean;
+  project_hint?: string;
+}
+
+export interface SecurityStats {
+  blocked_ips_count: number;
+  failed_attempts_count: number;
+  attacks_intercepted: number;
+  auto_ban_enabled: boolean;
+  fail_threshold: number;
+  ban_duration_hours: number;
+}
+
+export interface SecurityEvent {
+  event_id: number;
+  time: string;
+  user: string;
+  ip: string;
+  action: string;
+  severity: 'info' | 'warning' | 'danger';
+}
+
+export interface AssetItem {
+  id: string;
+  name: string;
+  host: string;
+  type: string;
+  port: number;
+  status: string;
+  latency_ms: number;
+  last_check: string;
+}
+
+export interface VaultAccount {
+  id: string;
+  asset_id: string;
+  asset_name: string;
+  username: string;
+  protocol: string;
+  updated_at: string;
+}
+
+export interface LocalUser {
+  username: string;
+  full_name: string;
+  is_admin: boolean;
+  is_rdp: boolean;
+  enabled: boolean;
+  password_age_days: number;
+  description?: string;
+  last_logon?: string;
+  is_current?: boolean;
+  is_protected?: boolean;
+  name?: string;
+  fullName?: string;
+  isRdp?: boolean;
+  isAdmin?: boolean;
+}
+
+export interface AuditLog {
+  id: number;
+  timestamp: string;
+  user: string;
+  role: string;
+  action: string;
+  target: string;
+  ip: string;
+  status: string;
+  details: Record<string, any>;
+}
+
+export interface HealthInfo {
+  ok: boolean;
+  is_windows: boolean;
+  os_kind: string;
+  os_display: string;
+  is_admin: boolean;
+  actions_enabled: boolean;
+  session_token: string;
+  version: string;
+  authenticated?: boolean;
+  current_user?: string;
+  current_role?: string;
+}
+
+export interface AppUser {
+  id: number;
+  username: string;
+  role: 'admin' | 'operator' | 'viewer';
+  full_name: string;
+  is_active: boolean;
+  created_at: string;
+  last_login?: string;
+}
+
+export interface DomainProfile {
+  is_domain_joined: boolean;
+  is_domain_controller: boolean;
+  domain_role: number;
+  domain_name: string;
+  workgroup: string;
+  role_display: string;
+  can_manage_domain: boolean;
+  can_modify_users_locally: boolean;
+}
+
+export interface HistoricalPoint {
+  timestamp: string;
+  cpu: number;
+  ram: number;
+  ram_used_gb: number;
+  disk_used_gb: number;
+  active_sessions: number;
+}
+
+let sessionToken = typeof localStorage !== 'undefined' ? (localStorage.getItem('asaas_session_token') || '') : '';
+
+export function setSessionToken(token: string) {
+  sessionToken = token;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('asaas_session_token', token);
+  }
+}
+
+async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
+  if (!sessionToken && typeof localStorage !== 'undefined') {
+    sessionToken = localStorage.getItem('asaas_session_token') || '';
+  }
+  if (!sessionToken && path !== '/api/health') {
+    try {
+      const hRes = await fetch('/api/health');
+      if (hRes.ok) {
+        const hJson = await hRes.json();
+        if (hJson && hJson.session_token) {
+          setSessionToken(hJson.session_token);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set('Accept', 'application/json');
+  if (options.body && typeof options.body === 'string') {
+    headers.set('Content-Type', 'application/json');
+  }
+  if (sessionToken) {
+    headers.set('X-Asaas-Token', sessionToken);
+    headers.set('X-Session-Token', sessionToken);
+    headers.set('Authorization', `Bearer ${sessionToken}`);
+  }
+
+  const res = await fetch(path, { ...options, headers });
+  if (!res.ok) {
+    // If 401 Unauthorized, token in localStorage is likely stale from previous server run.
+    // Fetch fresh token from /api/health and retry once automatically!
+    if (res.status === 401 && !isRetry && path !== '/api/health' && path !== '/api/auth/login') {
+      try {
+        const hRes = await fetch('/api/health');
+        if (hRes.ok) {
+          const hJson = await hRes.json();
+          if (hJson && hJson.session_token) {
+            setSessionToken(hJson.session_token);
+            return request<T>(path, options, true);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    let errMessage = `HTTP error ${res.status}`;
+    try {
+      const errJson = await res.json();
+      if (errJson && errJson.error) {
+        errMessage = errJson.error;
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(errMessage);
+  }
+  return res.json() as Promise<T>;
+}
+
+export const api = {
+  // Health
+  getHealth: async (): Promise<HealthInfo> => {
+    const data = await request<HealthInfo>('/api/health');
+    if (data.session_token) {
+      setSessionToken(data.session_token);
+    }
+    return data;
+  },
+
+  // Telemetry & Snapshot
+  getSnapshot: () => request<TelemetrySnapshot>('/api/snapshot'),
+
+  // Governor
+  getGovernorStatus: () => request<GovernorStatus>('/api/governor/status'),
+  trimGovernor: (sessionId?: number, name?: string, pid?: number) =>
+    request<{ ok: boolean; reclaimed_mb?: number; result?: any; message?: string; error?: string }>('/api/governor/trim', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...(sessionId !== undefined ? { session_id: sessionId } : {}),
+        ...(name ? { name } : {}),
+        ...(pid ? { pid } : {}),
+      }),
+    }),
+  updateGovernor: (params: Partial<GovernorStatus>) =>
+    request<GovernorStatus>('/api/governor/toggle', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  // Services
+  getServices: async (): Promise<ServiceItem[]> => {
+    const res = await request<any>('/api/services');
+    return Array.isArray(res) ? res : (res?.services || []);
+  },
+  controlService: (name: string, action: 'start' | 'stop' | 'restart') =>
+    request<{ ok: boolean; error?: string }>('/api/services/control', {
+      method: 'POST',
+      body: JSON.stringify({ name, action }),
+    }),
+
+  // Ports & Isolation Guard
+  getPorts: (force: boolean = false) =>
+    request<{ ok: boolean; summary: any; ports: PortItem[]; guard?: any }>(`/api/ports${force ? '?force=1' : ''}`),
+  checkPortConflict: (port: number, username?: string, session_id?: number) =>
+    request<{
+      available: boolean;
+      status: string;
+      message: string;
+      owner_user?: string;
+      owner_session?: number;
+      suggested_port?: number;
+      alternatives?: number[];
+    }>('/api/ports/guard/check', {
+      method: 'POST',
+      body: JSON.stringify({ port, username, session_id }),
+    }),
+  getGuardStatus: () =>
+    request<{ ok: boolean; guard_active: boolean; total_listening: number; isolated_user_ports_count: number; isolated_ports: any[]; user_reservations: Record<string, number[]>; db_reservations?: any[] }>('/api/ports/guard/status'),
+  claimPort: (params: { requested_port: number; username?: string; session_id?: number; project_name?: string }) =>
+    request<{
+      ok: boolean;
+      assigned_port: number;
+      requested_port: number;
+      was_redirected: boolean;
+      owner_user: string;
+      session_id: number;
+      project_name: string;
+      message: string;
+      command_hint?: string;
+    }>('/api/ports/guard/claim', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  releasePort: (port: number, username?: string) =>
+    request<{ ok: boolean; port: number; message: string }>('/api/ports/guard/release', {
+      method: 'POST',
+      body: JSON.stringify({ port, username }),
+    }),
+  closePortProcess: (pid: number) =>
+    request<{ ok: boolean; error?: string }>('/api/ports/close-process', {
+      method: 'POST',
+      body: JSON.stringify({ pid }),
+    }),
+  blockIp: (ip: string) =>
+    request<{ ok: boolean; error?: string }>('/api/ports/block-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip }),
+    }),
+  diagnosePort: (host: string, port: number) =>
+    request<any>('/api/ports/diagnose', {
+      method: 'POST',
+      body: JSON.stringify({ host, port }),
+    }),
+
+  // Security Defense Shield
+  getSecurityStats: () => request<SecurityStats>('/api/security/stats'),
+  getSecurityEvents: async (): Promise<SecurityEvent[]> => {
+    const res = await request<any>('/api/security/events');
+    return Array.isArray(res) ? res : (res?.events || []);
+  },
+  getBlockedIps: async (): Promise<string[]> => {
+    const res = await request<any>('/api/security/events');
+    return Array.isArray(res?.blocked_ips) ? res.blocked_ips : (Array.isArray(res) ? res : []);
+  },
+  blockSecurityIp: (ip: string, reason: string) =>
+    request<{ ok: boolean; error?: string }>('/api/security/block', {
+      method: 'POST',
+      body: JSON.stringify({ ip, reason }),
+    }),
+  unblockSecurityIp: (ip: string) =>
+    request<{ ok: boolean; error?: string }>('/api/security/unblock', {
+      method: 'POST',
+      body: JSON.stringify({ ip }),
+    }),
+  checkCommandRisk: (command: string) =>
+    request<{ safe: boolean; reason: string; risk_level: string }>('/api/security/command-check', {
+      method: 'POST',
+      body: JSON.stringify({ command }),
+    }),
+
+  // Assets
+  getAssets: async (): Promise<AssetItem[]> => {
+    const res = await request<any>('/api/assets');
+    const list = Array.isArray(res) ? res : (res?.assets || []);
+    return list.map((a: any) => ({
+      id: a.id || String(a.port || Math.random()),
+      name: a.name || 'خادم غير مسمى',
+      host: a.host || a.address || '127.0.0.1',
+      type: a.type || a.platform_display || a.platform || 'Windows Server',
+      port: Number(a.port || 3389),
+      status: String(a.status || 'online').toLowerCase(),
+      latency_ms: a.latency_ms ?? (String(a.status || '').toLowerCase() === 'online' ? 1.2 : 0),
+      last_check: a.last_check || new Date().toLocaleTimeString('ar-SA'),
+    }));
+  },
+  addAsset: (asset: { name: string; host: string; type: string; port: number }) =>
+    request<any>('/api/assets/add', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: asset.name,
+        address: asset.host,
+        platform: asset.type?.toLowerCase().includes('linux') ? 'ubuntu' : 'windows',
+        platform_display: asset.type,
+        port: Number(asset.port),
+        protocol: Number(asset.port) === 22 ? 'SSH' : 'RDP',
+      }),
+    }),
+  deleteAsset: (id: string) =>
+    request<any>('/api/assets/remove', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+  testAsset: (id: string, address?: string, port?: number) =>
+    request<any>('/api/assets/test', {
+      method: 'POST',
+      body: JSON.stringify({
+        asset_id: id,
+        address: address || '127.0.0.1',
+        port: port || 3389,
+        protocol: port === 22 ? 'SSH' : 'TCP',
+      }),
+    }),
+
+  // Vault (PAM)
+  getVaultAccounts: async (): Promise<VaultAccount[]> => {
+    const res = await request<any>('/api/vault/accounts');
+    return Array.isArray(res) ? res : (res?.accounts || []);
+  },
+  addVaultAccount: (acc: { asset_id: string; username: string; password: string; protocol: string; notes?: string }) =>
+    request<any>('/api/vault/accounts/add', {
+      method: 'POST',
+      body: JSON.stringify(acc),
+    }),
+  deleteVaultAccount: (id: string) =>
+    request<any>('/api/vault/accounts/delete', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+  revealPassword: (id: string, master_key: string) =>
+    request<{ ok: boolean; password?: string; error?: string }>('/api/vault/reveal', {
+      method: 'POST',
+      body: JSON.stringify({ id, master_key }),
+    }),
+
+  // Storage
+  getStorageBreakdown: async (drive: string = 'C'): Promise<any> => {
+    const res = await request<any>(`/api/storage/breakdown?drive=${drive}`);
+    return {
+      ok: res?.ok ?? true,
+      drive: res?.drive || drive,
+      total: res?.total_gb ?? res?.total ?? 0,
+      used: res?.used_gb ?? res?.used ?? 0,
+      free: res?.free_gb ?? res?.free ?? 0,
+      percent: res?.percent_used ?? res?.percent ?? 0,
+      cleanable_mb: res?.cleanable_mb ?? 0,
+      cleanable_gb: res?.cleanable_gb ?? 0,
+      categories: res?.categories || [],
+      heavy_items: res?.heavy_items || [],
+    };
+  },
+  getStorageUsers: async (): Promise<any[]> => {
+    const res = await request<any>('/api/storage/users');
+    const list = res?.profiles || res?.users || (Array.isArray(res) ? res : []);
+    return list.map((u: any) => ({
+      username: u.username || 'مستخدم',
+      path: u.path || `C:\\Users\\${u.username}`,
+      size_mb: u.total_mb ?? u.size_mb ?? 0,
+      temp_size_mb: u.temp_mb ?? u.temp_size_mb ?? 0,
+      downloads_mb: u.downloads_mb ?? 0,
+      documents_mb: u.documents_mb ?? 0,
+      desktop_mb: u.desktop_mb ?? 0,
+    }));
+  },
+  cleanSystemJunk: () =>
+    request<{ ok: boolean; reclaimed_mb: number; cleaned_items: any }>('/api/storage/clean-junk', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+  cleanUserTemp: (username: string) =>
+    request<{ ok: boolean; reclaimed_mb: number }>('/api/storage/clean-user-temp', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    }),
+
+  // Local Users
+  getUsers: async (): Promise<LocalUser[]> => {
+    const res = await request<any>('/api/users');
+    const rawList = Array.isArray(res) ? res : (res?.users || []);
+    return rawList.map((u: any) => ({
+      username: u.username || u.name || '',
+      full_name: u.full_name || u.fullName || u.name || '',
+      enabled: Boolean(u.enabled ?? true),
+      is_rdp: Boolean(u.is_rdp ?? u.isRdp ?? false),
+      is_admin: Boolean(u.is_admin ?? u.isAdmin ?? false),
+      password_age_days: Number(u.password_age_days ?? 0),
+      description: u.description || '',
+      last_logon: u.last_logon || u.lastLogon,
+      is_current: Boolean(u.is_current),
+      is_protected: Boolean(u.is_protected),
+    }));
+  },
+  createUser: (user: { username: string; password: string; full_name?: string; is_rdp?: boolean; is_admin?: boolean }) =>
+    request<any>('/api/users/create', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    }),
+  deleteUser: (username: string) =>
+    request<any>('/api/users/delete', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    }),
+  toggleUserState: (username: string, enabled: boolean) =>
+    request<any>('/api/users/toggle-state', {
+      method: 'POST',
+      body: JSON.stringify({ username, enabled }),
+    }),
+  resetUserPassword: (username: string, password: string) =>
+    request<{ ok: boolean; username?: string; message?: string; error?: string }>('/api/users/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+
+  // Audit Logs
+  getAuditLogs: async (limit: number = 100): Promise<AuditLog[]> => {
+    const res = await request<any>(`/api/audit/logs?limit=${limit}`);
+    return Array.isArray(res) ? res : (res?.logs || []);
+  },
+
+  logAuditEvent: (eventType: string, details: string) =>
+    request<{ ok: boolean }>('/api/security/events', {
+      method: 'POST',
+      body: JSON.stringify({ event_type: eventType, details }),
+    }),
+
+  // Telegram Alert Config
+  getAlertsConfig: () => request<{ ok: boolean; config: any }>('/api/alerts/config'),
+  saveAlertsConfig: (cfg: { telegram_enabled: boolean; bot_token: string; chat_id: string }) =>
+    request<any>('/api/alerts/config', {
+      method: 'POST',
+      body: JSON.stringify(cfg),
+    }),
+  testAlert: (message: string) =>
+    request<any>('/api/alerts/test', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
+  // Session Management & Shadowing
+  sendMessage: (sessionId: number, title: string, message: string, broadcast: boolean = false) =>
+    request<any>('/api/messages/send', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId, title, message, broadcast }),
+    }),
+  disconnectSession: (sessionId: number) =>
+    request<any>('/api/sessions/disconnect', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId }),
+    }),
+  logoffSession: (sessionId: number) =>
+    request<any>('/api/sessions/logoff', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId }),
+    }),
+  shadowSession: (sessionId: number, mode: 'view' | 'control') =>
+    request<any>('/api/sessions/shadow', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: sessionId, mode, no_consent: true }),
+    }),
+  enableShadowPolicy: () =>
+    request<{ ok: boolean; message?: string; error?: string }>('/api/sessions/shadow/enable-policy', {
+      method: 'POST',
+    }),
+  getBastionConnectUrl: (host: string, port: number = 3389, name?: string) =>
+    `/api/bastion/connect?host=${encodeURIComponent(host)}&port=${port}&name=${encodeURIComponent(name || host)}`,
+
+  // Process termination
+  terminateProcess: (pid: number) =>
+    request<any>('/api/processes/terminate', {
+      method: 'POST',
+      body: JSON.stringify({ pid }),
+    }),
+
+  // AI Diagnostic Ops
+  getAiDiagnosis: () => request<any>('/api/ai/diagnose'),
+
+  // Elevation
+  requestElevation: () =>
+    request<{ ok: boolean; message: string; already_admin?: boolean }>('/api/system/elevate', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+
+  // Multi-User RBAC & Auth (Story 1)
+  login: async (username: string, password: string) => {
+    const res = await request<{ ok: boolean; token: string; user: AppUser; message: string }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+    if (res.ok && res.token) {
+      setSessionToken(res.token);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('asaas_user_profile', JSON.stringify(res.user));
+      }
+    }
+    return res;
+  },
+  logout: async () => {
+    try {
+      await request('/api/auth/logout', { method: 'POST' });
+    } finally {
+      setSessionToken('');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('asaas_user_profile');
+      }
+    }
+  },
+  getCurrentUser: () => request<{ ok: boolean; user: AppUser }>('/api/auth/me'),
+  getAppUsers: () => request<{ ok: boolean; users: AppUser[]; count: number }>('/api/auth/users'),
+  createAppUser: (user: { username: string; password: string; role: string; full_name?: string }) =>
+    request<{ ok: boolean; message?: string; error?: string }>('/api/auth/users/create', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    }),
+  deleteAppUser: (username: string) =>
+    request<{ ok: boolean; message?: string; error?: string }>('/api/auth/users/delete', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    }),
+  changePassword: (username: string, new_password: string) =>
+    request<{ ok: boolean; message?: string; error?: string }>('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ username, new_password }),
+    }),
+  updateAppUserRole: (username: string, role: string) =>
+    request<{ ok: boolean; message?: string; error?: string }>('/api/auth/users/update-role', {
+      method: 'POST',
+      body: JSON.stringify({ username, role }),
+    }),
+
+  // Domain & Active Directory (Story 7)
+  getDomainProfile: () => request<{ ok: boolean; domain: DomainProfile }>('/api/domain/profile'),
+  getDomainUsers: () => request<{ ok: boolean; domain_users: any[]; count: number }>('/api/domain/users'),
+
+  // Historical Telemetry (Story 5)
+  getHistoricalMetrics: (range: '24h' | '7d' = '24h') =>
+    request<{ ok: boolean; range: string; points_count: number; history: HistoricalPoint[] }>(`/api/metrics/history?range=${range}`),
+
+  // CPU Cores Rolling History
+  getCpuHistory: () =>
+    request<{ ok: boolean; history: { timestamps: string[]; cores: Record<string, number[]>; core_count: number } }>('/api/metrics/cpu-history'),
+
+  // Storage Locked Files Diagnostic (Story 9)
+  getLockedFiles: () => request<{ ok: boolean; locked_files: any[] }>('/api/storage/locked-files'),
+  checkFileLock: (path: string) =>
+    request<{ ok: boolean; path: string; is_locked: boolean; lockers: any[]; lockers_count: number }>('/api/storage/check-file-lock', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    }),
+
+  // JIT Zero-Trust Elevation (Story 1 / JumpServer PAM)
+  getJitGrants: () =>
+    request<{ ok: boolean; grants: any[]; count: number }>('/api/jit/grants'),
+  requestJitElevation: (params: { role: string; reason: string; duration_mins: number; user?: string }) =>
+    request<{ ok: boolean; id: string; message: string; grant?: any }>('/api/jit/request', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  revokeJitElevation: (id: string) =>
+    request<{ ok: boolean; id: string; user?: string; message: string }>('/api/jit/revoke', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+
+  // Audit Cryptographic Chain Verification
+  verifyAuditChain: () =>
+    request<{ ok: boolean; records_checked: number; chain_intact: boolean; root_hash: string; full_digest?: string; message: string }>('/api/audit/verify-chain'),
+};
