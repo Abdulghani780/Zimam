@@ -103,7 +103,7 @@ class Win32WtsService:
                 cls._wts.WTSFreeMemory(p_info)
                 if counts:
                     cls._SESSION_PROC_CACHE.update(counts)
-                return counts
+                return cls._SESSION_PROC_CACHE.copy()
         except Exception:
             pass
         return cls._SESSION_PROC_CACHE.copy()
@@ -122,7 +122,7 @@ class Win32WtsService:
         try:
             r_task = subprocess.run(
                 ['tasklist.exe', '/FO', 'CSV'],
-                capture_output=True, text=True, timeout=3, creationflags=0x08000000
+                capture_output=True, text=True, timeout=8, creationflags=0x08000000
             )
             if r_task.returncode == 0 and r_task.stdout:
                 reader = csv.reader(io.StringIO(r_task.stdout))
@@ -289,8 +289,10 @@ class Win32WtsService:
                     else:
                         idle_fmt = f'{idle_raw} دقيقة'
 
-                    ram_mb = round(proc_ram_mb.get(sid, 0.0), 1)
-                    procs_cnt = proc_counts.get(sid, 0)
+                    ram_mb = round(proc_ram_mb.get(sid, cls._SESSION_RAM_CACHE.get(sid, 0.0)), 1)
+                    procs_cnt = proc_counts.get(sid, cls._SESSION_PROC_CACHE.get(sid, 1))
+                    if procs_cnt <= 0:
+                        procs_cnt = max(1, cls._SESSION_PROC_CACHE.get(sid, 1))
                     is_act = 'act' in state_str.lower()
                     state_clean = 'Active' if is_act else 'Disconnected'
 

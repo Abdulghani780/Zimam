@@ -118,7 +118,7 @@ export function StitchGalleryPage() {
       </div>
 
       {/* Category Pills */}
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', overflowX: 'auto', paddingBottom: 4 }}>
         {categories.map((cat) => (
           <button
             key={cat}

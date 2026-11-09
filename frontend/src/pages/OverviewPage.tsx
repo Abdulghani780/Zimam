@@ -19,7 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export function OverviewPage() {
-  const { snapshot, governor, refresh } = useTelemetry();
+  const { snapshot, governor, health, refresh } = useTelemetry();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -363,12 +363,21 @@ export function OverviewPage() {
       {/* Drawers and Dialogs */}
       <SessionDrawer
         session={selectedSession}
+        isAdmin={health?.is_admin ?? false}
         onClose={() => setSelectedSession(null)}
         onSendMessage={(sid, user) => {
           setSelectedSession(null);
           setDirectMsgSession({ id: sid, user });
         }}
         onRefresh={refresh}
+        onRequestElevation={async () => {
+          try {
+            const res = await api.requestElevation();
+            toast(res.message || 'تم إرسال طلب الترقية كمسؤول.', 'success');
+          } catch (e: any) {
+            toast(e.message || 'فشل الترقية', 'error');
+          }
+        }}
       />
 
       <GovernorSettingsModal open={governorModalOpen} onClose={() => setGovernorModalOpen(false)} onSaved={refresh} />

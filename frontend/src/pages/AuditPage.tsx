@@ -147,7 +147,7 @@ export function AuditPage() {
             >
               <ShieldCheck size={14} color="var(--accent)" />
               <span style={{ fontSize: 12, color: 'var(--text-3)' }}>بصمة السلسلة الحالية:</span>
-              <span style={{ fontSize: 12, fontFamily: 'var(--font)', color: 'var(--accent)', fontWeight: 700 }}>
+              <span dir="ltr" style={{ fontSize: 12, fontFamily: 'Consolas, monospace', color: 'var(--accent)', fontWeight: 700 }}>
                 {activeChainHash}
               </span>
               <button
@@ -203,7 +203,7 @@ export function AuditPage() {
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               ضمان عدم التلاعب (Tamper Resistance)
             </h4>
-            <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>100% سليم</span>
+            <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}><bdi dir="ltr">100%</bdi> سليم</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
             يتم ترقيم وتشفير كل سجل ببصمة الكتلة السابقة (SHA-256 Merkle Chain). أي تعديل يدوي في قاعدة البيانات يكشف الخرق فوراً.
@@ -219,9 +219,9 @@ export function AuditPage() {
             <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>3 فئات معتمدة</span>
           </div>
           <div style={{ display: 'flex', gap: 10, fontSize: 11, marginTop: 4 }}>
-            <span style={{ color: '#ef4444' }}>● عمليات عالية الخطورة (12%)</span>
-            <span style={{ color: 'var(--accent)' }}>● تعديل سياسات (38%)</span>
-            <span style={{ color: '#22c55e' }}>● استعلام اعتيادي (50%)</span>
+            <span style={{ color: '#ef4444' }}>● عمليات عالية الخطورة <bdi dir="ltr">(12%)</bdi></span>
+            <span style={{ color: 'var(--accent)' }}>● تعديل سياسات <bdi dir="ltr">(38%)</bdi></span>
+            <span style={{ color: '#22c55e' }}>● استعلام اعتيادي <bdi dir="ltr">(50%)</bdi></span>
           </div>
         </Glass>
 

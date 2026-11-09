@@ -267,15 +267,15 @@ export function UsersPage() {
         }
       >
         <TableContainer>
-          <Table>
+          <Table style={{ width: "100%", tableLayout: "fixed" }}>
             <TableHeader>
               <TableRow>
-                <TableHead>اسم الحساب (Username)</TableHead>
-                <TableHead>الاسم الكامل والوصف</TableHead>
-                <TableHead>حالة الحساب</TableHead>
-                <TableHead>صلاحية RDP</TableHead>
-                <TableHead>دور الحساب</TableHead>
-                <TableHead style={{ textAlign: 'end' }}>إجراءات الحوكمة</TableHead>
+                <TableHead style={{ width: '17%', textAlign: 'start' }}>اسم الحساب (Username)</TableHead>
+                <TableHead style={{ width: '20%', textAlign: 'start' }}>الاسم الكامل والوصف</TableHead>
+                <TableHead style={{ width: '12%', textAlign: 'start' }}>حالة الحساب</TableHead>
+                <TableHead style={{ width: '14%', textAlign: 'start' }}>صلاحية RDP</TableHead>
+                <TableHead style={{ width: '13%', textAlign: 'start' }}>دور الحساب</TableHead>
+                <TableHead style={{ width: '24%', textAlign: 'end' }}>إجراءات الحوكمة</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -284,49 +284,54 @@ export function UsersPage() {
               ) : (
                 users.map((u) => (
                   <TableRow key={u.username}>
-                    <TableCell className="font-bold text-title">
+                    <TableCell style={{ width: '17%' }} className="font-bold text-title">
                       <div className="flex items-center gap-2">
                         <Users size={15} className="text-primary" />
-                        <span>{u.username}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.username}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted">
-                      {u.full_name || u.description || 'حساب مستخدم محلي'}
+                    <TableCell style={{ width: '20%' }} className="text-xs text-muted">
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                        {u.full_name || u.description || 'حساب مستخدم محلي'}
+                      </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell style={{ width: '12%' }}>
                       <span
                         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold ${
                           u.enabled
                             ? 'bg-status-safe-surface text-status-safe'
                             : 'bg-status-danger-surface text-status-danger'
                         }`}
+                        style={{ whiteSpace: 'nowrap' }}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${u.enabled ? 'bg-status-safe' : 'bg-status-danger'}`} />
                         {u.enabled ? 'نشط Active' : 'معطّل Disabled'}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell style={{ width: '14%' }}>
                       <span
                         className={`text-xs font-bold ${
                           u.is_rdp ? 'text-primary' : 'text-muted'
                         }`}
+                        style={{ whiteSpace: 'nowrap' }}
                       >
-                        {u.is_rdp ? 'مفعّل (Remote Desktop)' : 'معطّل'}
+                        {u.is_rdp ? 'مفعّل (RDP)' : 'معطّل'}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell style={{ width: '13%' }}>
                       <span
                         className={`text-xs px-2 py-0.5 rounded font-bold ${
                           u.is_admin
                             ? 'bg-primary/20 text-primary border border-border-gold-rim'
                             : 'bg-surface-glass-tint text-muted'
                         }`}
+                        style={{ whiteSpace: 'nowrap' }}
                       >
                         {u.is_admin ? 'مدير نظام (Admin)' : 'مستخدم قياسي (User)'}
                       </span>
                     </TableCell>
-                    <TableCell style={{ textAlign: 'end' }}>
-                      <div className="flex justify-end gap-1.5">
+                    <TableCell style={{ width: '24%', textAlign: 'end' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -335,9 +340,10 @@ export function UsersPage() {
                             setNewPassword('');
                             setPasswordModalOpen(true);
                           }}
-                          className="text-xs px-2 text-primary"
+                          style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
+                          className="text-primary"
                         >
-                          <KeyRound size={13} className="ml-1" />
+                          <KeyRound size={12} style={{ marginInlineEnd: 4 }} />
                           كلمة المرور
                         </Button>
                         <Button
@@ -345,7 +351,7 @@ export function UsersPage() {
                           variant="ghost"
                           loading={actionUser === u.username}
                           onClick={() => handleToggleState(u)}
-                          className="text-xs px-2"
+                          style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
                         >
                           {u.enabled ? 'تعطيل' : 'تفعيل'}
                         </Button>
@@ -353,7 +359,7 @@ export function UsersPage() {
                           size="sm"
                           variant="danger"
                           onClick={() => handleDelete(u.username)}
-                          className="text-xs px-2"
+                          style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
                         >
                           حذف
                         </Button>

@@ -25,7 +25,7 @@ export const TableContainer = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivE
           border: '1px solid rgba(255, 255, 255, 0.08)',
           backgroundColor: '#141312',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
-          contain: 'paint',
+          scrollbarWidth: 'thin',
           ...style,
         }}
         {...props}

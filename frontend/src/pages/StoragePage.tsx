@@ -203,7 +203,7 @@ export function StoragePage() {
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font)' }}>
-              {usedGb} GB من {totalGb} GB
+              <span dir="ltr">{usedGb} GB</span> من <span dir="ltr">{totalGb} GB</span>
             </span>
             <span
               style={{
@@ -215,7 +215,7 @@ export function StoragePage() {
                 fontWeight: 700,
               }}
             >
-              {usedPct}% مستخدم
+              <span dir="ltr">{usedPct}%</span> مستخدم
             </span>
           </div>
         }
@@ -265,7 +265,7 @@ export function StoragePage() {
               <span style={{ width: 10, height: 10, borderRadius: 2, background: '#3b82f6' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>Windows OS</span>
-                <span style={{ color: 'var(--text-3)', fontSize: 11 }}>48.2 GB</span>
+                <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">48.2 GB</span>
               </div>
             </div>
 
@@ -273,7 +273,7 @@ export function StoragePage() {
               <span style={{ width: 10, height: 10, borderRadius: 2, background: '#d4a017' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>مجلدات المستخدمين</span>
-                <span style={{ color: 'var(--text-3)', fontSize: 11 }}>142.6 GB</span>
+                <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">142.6 GB</span>
               </div>
             </div>
 
@@ -281,7 +281,7 @@ export function StoragePage() {
               <span style={{ width: 10, height: 10, borderRadius: 2, background: '#10b981' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>قواعد البيانات SQL</span>
-                <span style={{ color: 'var(--text-3)', fontSize: 11 }}>86.4 GB</span>
+                <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">86.4 GB</span>
               </div>
             </div>
 
@@ -289,7 +289,7 @@ export function StoragePage() {
               <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>المخلفات والملفات المؤقتة</span>
-                <span style={{ color: 'var(--text-3)', fontSize: 11 }}>18.6 GB</span>
+                <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">18.6 GB</span>
               </div>
             </div>
 
@@ -297,7 +297,7 @@ export function StoragePage() {
               <span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>المساحة الحرة</span>
-                <span style={{ color: '#22c55e', fontSize: 11, fontWeight: 700 }}>{freeGb} GB شاغر</span>
+                <span style={{ color: '#22c55e', fontSize: 11, fontWeight: 700 }} dir="ltr">{freeGb} GB شاغر</span>
               </div>
             </div>
           </div>
@@ -463,10 +463,10 @@ export function StoragePage() {
                       </div>
                     </td>
                     <td style={{ fontFamily: 'var(--font)', color: 'var(--text-3)', fontSize: 12 }}>
-                      {u.path || `C:\\Users\\${u.username}`}
+                      <span dir="ltr">{u.path || `C:\\Users\\${u.username}`}</span>
                     </td>
                     <td style={{ fontFamily: 'var(--font)', fontWeight: 800, color: 'var(--text-1)' }}>
-                      {u.total_mb ? `${(u.total_mb / 1024).toFixed(1)} GB` : `${u.size_gb || 24.2} GB`}
+                      <span dir="ltr">{u.total_mb ? `${(u.total_mb / 1024).toFixed(1)} GB` : `${u.size_gb || 24.2} GB`}</span>
                     </td>
                     <td style={{ fontFamily: 'var(--font)', color: 'var(--accent)', fontWeight: 700 }}>
                       {u.temp_mb ? `${u.temp_mb} MB` : '1,420 MB'}

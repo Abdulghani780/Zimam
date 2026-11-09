@@ -88,7 +88,12 @@ class UserSession:
 
     def to_dict(self) -> Dict[str, Any]:
         ram_gb = round(self.ram_mb / 1024, 2)
-        ram_disp = f"{ram_gb} GB" if ram_gb >= 1.0 else f"{int(self.ram_mb)} MB" if self.ram_mb > 0 else "—"
+        if ram_gb >= 1.0:
+            ram_disp = f"{ram_gb} GB"
+        elif self.ram_mb > 0:
+            ram_disp = f"{int(self.ram_mb)} MB"
+        else:
+            ram_disp = "أقل من 50 MB"
         return {
             'id': self.id,
             'session_id': self.id,
@@ -108,8 +113,8 @@ class UserSession:
             'idle': self.idle_time or 'نشط الآن',
             'login_time': self.login_time or 'الآن',
             'login': self.login_time or 'الآن',
-            'processes_count': self.processes_count,
-            'procs': self.processes_count,
+            'processes_count': max(1, self.processes_count),
+            'procs': max(1, self.processes_count),
             'is_current': self.is_current,
         }
 

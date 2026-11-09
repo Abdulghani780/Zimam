@@ -173,7 +173,7 @@ export function AssetsPage() {
                   alignItems: 'center',
                   gap: 6,
                   padding: '4px 12px',
-                  borderRadius: 9999,
+                  borderRadius: 9999, whiteSpace: 'nowrap',
                   background: 'rgba(34, 197, 94, 0.12)',
                   color: '#22c55e',
                   fontSize: 12,
@@ -186,7 +186,7 @@ export function AssetsPage() {
               <span
                 style={{
                   padding: '3px 10px',
-                  borderRadius: 9999,
+                  borderRadius: 9999, whiteSpace: 'nowrap',
                   background: 'rgba(212, 160, 23, 0.12)',
                   color: 'var(--accent)',
                   fontSize: 11,
@@ -244,7 +244,7 @@ export function AssetsPage() {
             onClick={() => setActiveTab(tab.key as any)}
             style={{
               padding: '6px 16px',
-              borderRadius: 9999,
+              borderRadius: 9999, whiteSpace: 'nowrap',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
@@ -310,11 +310,11 @@ export function AssetsPage() {
                   color: '#22c55e',
                   background: 'rgba(34, 197, 94, 0.12)',
                   padding: '3px 8px',
-                  borderRadius: 9999,
+                  borderRadius: 9999, whiteSpace: 'nowrap',
                 }}
               >
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
-                نشط (Pulse 1s)
+                <span dir="ltr">نشط (Pulse 1s)</span>
               </span>
             </div>
 
@@ -335,7 +335,7 @@ export function AssetsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
                   <span style={{ color: 'var(--text-3)' }}>الذاكرة المستخدمة RAM:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }}>49% (31.5 GB)</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }}><span dir="ltr">49% (31.5 GB)</span></span>
                 </div>
                 <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
                   <div style={{ width: '49%', height: '100%', background: '#38bdf8' }} />
@@ -346,7 +346,7 @@ export function AssetsPage() {
             {/* System Info */}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)' }}>
               <span>النظام: <strong style={{ color: 'var(--text-2)' }}>{a.type}</strong></span>
-              <span>الاستجابة: <strong style={{ color: '#22c55e', fontFamily: 'var(--font)' }}>{a.latency_ms || 1.1} ms</strong></span>
+              <span>الاستجابة: <strong style={{ color: '#22c55e', fontFamily: 'var(--font)' }}><span dir="ltr">{a.latency_ms || 1.1} ms</span></strong></span>
             </div>
 
             {/* Action buttons (Stitch _11) */}

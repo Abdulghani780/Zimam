@@ -551,7 +551,7 @@ export function ControlPage() {
                       fontWeight: 700,
                     }}
                   >
-                    8,420 MB
+                    <span dir="ltr">8,420 MB</span>
                   </span>
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
@@ -596,7 +596,7 @@ export function ControlPage() {
                       fontWeight: 700,
                     }}
                   >
-                    2,840 MB
+                    <span dir="ltr">2,840 MB</span>
                   </span>
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
@@ -641,7 +641,7 @@ export function ControlPage() {
                       fontWeight: 700,
                     }}
                   >
-                    1,180 MB
+                    <span dir="ltr">1,180 MB</span>
                   </span>
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
@@ -686,7 +686,7 @@ export function ControlPage() {
                       fontWeight: 700,
                     }}
                   >
-                    690 MB
+                    <span dir="ltr">690 MB</span>
                   </span>
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
@@ -734,7 +734,7 @@ export function ControlPage() {
                   fontFamily: 'var(--font)',
                 }}
               >
-                {governor?.reclaimed_mb || 23868} MB
+                <span dir="ltr">{governor?.reclaimed_mb ? Number(governor.reclaimed_mb).toLocaleString(undefined, { maximumFractionDigits: 1 }) : '23,868'} MB</span>
               </span>
             </div>
           </Glass>
