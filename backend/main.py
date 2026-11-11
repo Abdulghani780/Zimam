@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import socket
 import ssl
 import sys
 import time
@@ -37,6 +38,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from app.api.router import AsaasApiHandler
 from app.core.config import SERVER_HOST, SERVER_PORT, DATA_DIR
 from app.infrastructure.win32_wts import Win32WtsService
+
+
+class DualStackServer(ThreadingHTTPServer):
+    """Dual-stack HTTP server supporting both IPv4 and IPv6 simultaneously."""
+    address_family = socket.AF_INET6
+
+    def server_bind(self):
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (AttributeError, OSError):
+            pass
+        super().server_bind()
 
 
 def generate_self_signed_cert(cert_path: Path, key_path: Path) -> bool:
@@ -91,8 +104,25 @@ def main() -> None:
     print(f" Address:   {protocol}://{args.host}:{args.port}")
     print("=" * 65)
 
-    ThreadingHTTPServer.allow_reuse_address = True
-    server = ThreadingHTTPServer((args.host, args.port), AsaasApiHandler)
+    server_cls = ThreadingHTTPServer
+    bind_addr = (args.host, args.port)
+
+    # Use dual-stack server when binding to all interfaces or default host
+    if args.host in ('0.0.0.0', '::', ''):
+        try:
+            server_cls = DualStackServer
+            bind_addr = ('::', args.port)
+        except Exception:
+            server_cls = ThreadingHTTPServer
+            bind_addr = ('0.0.0.0', args.port)
+
+    server_cls.allow_reuse_address = True
+    try:
+        server = server_cls(bind_addr, AsaasApiHandler)
+    except Exception as exc:
+        # Fallback to standard IPv4 if dual-stack fails on older environments
+        print(f"[!] Dual-stack bind notice ({exc}), falling back to IPv4...")
+        server = ThreadingHTTPServer(('0.0.0.0', args.port), AsaasApiHandler)
 
     if use_ssl:
         ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

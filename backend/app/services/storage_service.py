@@ -9,6 +9,7 @@ import ctypes
 from ctypes import wintypes
 import os
 import shutil
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -44,8 +45,12 @@ class RM_PROCESS_INFO(ctypes.Structure):
 class StorageService:
     """Storage diagnostics, automated cleanup, and locked file inspection."""
 
-    @staticmethod
-    def get_drive_breakdown(drive_path: str = 'C:\\') -> StorageBreakdown:
+    _PROFILES_CACHE: List[UserProfileStorage] = []
+    _LAST_PROFILES_SCAN_TIME: float = 0.0
+    _PROFILES_CACHE_TTL: float = 30.0
+
+    @classmethod
+    def get_drive_breakdown(cls, drive_path: str = 'C:\\') -> StorageBreakdown:
         """Returns drive statistics with 100% accurate byte calculations."""
         try:
             usage = psutil.disk_usage(drive_path)
@@ -81,13 +86,17 @@ class StorageService:
         )
 
     @staticmethod
-    def _get_dir_size_mb(path: Path, max_depth: int = 3) -> float:
+    def _get_dir_size_mb(path: Path, max_depth: int = 1) -> float:
         """Calculates directory size in MB with bounded depth to prevent hangs."""
         if not path.is_dir():
             return 0.0
         total_bytes = 0
+        base_depth = len(path.parts)
         try:
-            for root, _, files in os.walk(str(path)):
+            for root, dirs, files in os.walk(str(path)):
+                current_depth = len(Path(root).parts) - base_depth
+                if current_depth >= max_depth:
+                    dirs.clear()
                 for f in files:
                     try:
                         total_bytes += os.path.getsize(os.path.join(root, f))
@@ -98,8 +107,12 @@ class StorageService:
         return round(total_bytes / (1024 ** 2), 1)
 
     @classmethod
-    def get_user_profiles(cls) -> List[UserProfileStorage]:
-        """Scans C:\\Users for local user profile storage consumption."""
+    def get_user_profiles(cls, force: bool = False) -> List[UserProfileStorage]:
+        """Scans C:\\Users for local user profile storage consumption with cached acceleration."""
+        now = time.time()
+        if not force and cls._PROFILES_CACHE and (now - cls._LAST_PROFILES_SCAN_TIME < cls._PROFILES_CACHE_TTL):
+            return cls._PROFILES_CACHE
+
         users_root = Path('C:\\Users')
         if not users_root.is_dir():
             return []
@@ -115,17 +128,30 @@ class StorageService:
                 continue
 
             temp_path = entry / 'AppData' / 'Local' / 'Temp'
-            temp_mb = cls._get_dir_size_mb(temp_path) if temp_path.is_dir() else 0.0
-            profile_mb = temp_mb + 420.0
+            desktop_path = entry / 'Desktop'
+            downloads_path = entry / 'Downloads'
+            docs_path = entry / 'Documents'
+
+            temp_mb = cls._get_dir_size_mb(temp_path, max_depth=1) if temp_path.is_dir() else 0.0
+            desktop_mb = cls._get_dir_size_mb(desktop_path, max_depth=1) if desktop_path.is_dir() else 0.0
+            downloads_mb = cls._get_dir_size_mb(downloads_path, max_depth=1) if downloads_path.is_dir() else 0.0
+            docs_mb = cls._get_dir_size_mb(docs_path, max_depth=1) if docs_path.is_dir() else 0.0
+
+            total_mb = round(temp_mb + desktop_mb + downloads_mb + docs_mb, 1)
 
             profiles.append(UserProfileStorage(
                 username=entry.name,
                 path=str(entry),
-                total_mb=round(profile_mb, 1),
+                total_mb=total_mb,
                 temp_mb=round(temp_mb, 1),
+                downloads_mb=round(downloads_mb, 1),
+                documents_mb=round(docs_mb, 1),
+                desktop_mb=round(desktop_mb, 1),
             ))
 
-        return sorted(profiles, key=lambda x: x.total_mb, reverse=True)
+        cls._PROFILES_CACHE = sorted(profiles, key=lambda x: x.total_mb, reverse=True)
+        cls._LAST_PROFILES_SCAN_TIME = now
+        return cls._PROFILES_CACHE
 
     @staticmethod
     def clean_temp_directories(target_user: Optional[str] = None) -> Dict[str, Any]:

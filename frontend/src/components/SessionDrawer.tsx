@@ -193,26 +193,26 @@ export function SessionDrawer({
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                background: 'rgba(212, 160, 23, 0.12)',
-                border: '1.5px solid rgba(212, 160, 23, 0.4)',
+                background: 'var(--accent-soft)',
+                border: '1.5px solid var(--accent-soft)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 16px rgba(212, 160, 23, 0.2)',
+                boxShadow: '0 0 16px var(--accent-soft)',
               }}
             >
-              <User size={22} color="var(--accent, #d4a017)" />
+              <User size={22} color="var(--accent, var(--accent))" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 18, fontWeight: 800, color: '#fcfaf7' }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
                   جلسة المستخدم: {session.user}
                 </span>
                 {session.is_current && (
                   <span
                     style={{
-                      background: 'var(--accent, #d4a017)',
-                      color: '#000',
+                      background: 'var(--accent)',
+                      color: 'var(--on-accent)',
                       padding: '2px 8px',
                       borderRadius: 9999,
                       fontSize: 10,
@@ -223,7 +223,7 @@ export function SessionDrawer({
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-3, #8a8478)', marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-3, var(--text-3))', marginTop: 2 }}>
                 معرّف الجلسة: #{session.id} · {session.station || 'RDP-Tcp'}
               </div>
             </div>
@@ -239,8 +239,8 @@ export function SessionDrawer({
             style={{
               padding: 14,
               borderRadius: 'var(--radius-md, 12px)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(212, 160, 23, 0.16)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
             }}
           >
             <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>حالة الجلسة</div>
@@ -255,8 +255,8 @@ export function SessionDrawer({
             style={{
               padding: 14,
               borderRadius: 'var(--radius-md, 12px)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(212, 160, 23, 0.16)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
             }}
           >
             <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>وقت الخمول (Idle)</div>
@@ -285,8 +285,8 @@ export function SessionDrawer({
             style={{
               padding: 14,
               borderRadius: 'var(--radius-md, 12px)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(212, 160, 23, 0.16)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
             }}
           >
             <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>الذاكرة المستخدمة</div>
@@ -295,7 +295,7 @@ export function SessionDrawer({
                 fontSize: 17,
                 fontWeight: 800,
                 marginTop: 6,
-                color: 'var(--accent, #d4a017)',
+                color: 'var(--accent, var(--accent))',
               }}
             >
               <span dir="ltr" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -308,8 +308,8 @@ export function SessionDrawer({
             style={{
               padding: 14,
               borderRadius: 'var(--radius-md, 12px)',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(212, 160, 23, 0.16)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
             }}
           >
             <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>العمليات المفتوحة</div>
@@ -341,8 +341,8 @@ export function SessionDrawer({
             style={{
               padding: '12px 16px',
               borderRadius: 12,
-              background: 'linear-gradient(135deg, rgba(212, 160, 23, 0.12) 0%, rgba(30, 24, 18, 0.6) 100%)',
-              border: '1px solid rgba(212, 160, 23, 0.35)',
+              background: 'linear-gradient(135deg, var(--accent-soft) 0%, var(--glass-tint-strong) 100%)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -350,7 +350,7 @@ export function SessionDrawer({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <ShieldAlert size={20} color="var(--accent, #d4a017)" style={{ flexShrink: 0 }} />
+              <ShieldAlert size={20} color="var(--accent, var(--accent))" style={{ flexShrink: 0 }} />
               <div style={{ fontSize: 12, color: 'var(--text-1)', lineHeight: 1.5 }}>
                 يتطلب إنهاء أو فصل جلسات المستخدمين الآخرين تشغيل السيرفر بصلاحيات مسؤول (Run as Admin).
               </div>
@@ -373,18 +373,18 @@ export function SessionDrawer({
             style={{
               padding: '12px 16px',
               borderRadius: 12,
-              background: 'rgba(239, 68, 68, 0.12)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
+              background: 'var(--unpaid-bg)',
+              border: '1px solid var(--unpaid-bg)',
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ef4444', fontWeight: 700, fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--unpaid)', fontWeight: 700, fontSize: 13 }}>
               <AlertTriangle size={16} />
               <span>تم رفض الوصول من نظام ويندوز (Error 5 Access Denied)</span>
             </div>
-            <p style={{ margin: 0, fontSize: 12, color: '#fca5a5', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--unpaid)', lineHeight: 1.5 }}>
               رفض نظام Windows Server تنفيذ العملية لأن حساب العملية الحالية يفتقر إلى امتيازات إدارة الجلسات البعيدة (SeDebugPrivilege / SeShutdownPrivilege).
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
@@ -472,7 +472,7 @@ export function SessionDrawer({
               alignItems: 'center',
               justifyContent: 'flex-start',
               gap: 10,
-              color: 'var(--partial, #f59e0b)',
+              color: 'var(--partial, var(--partial))',
             }}
           >
             <Unplug size={16} />
@@ -488,7 +488,7 @@ export function SessionDrawer({
               alignItems: 'center',
               justifyContent: 'flex-start',
               gap: 10,
-              color: 'var(--unpaid, #ef4444)',
+              color: 'var(--unpaid, var(--unpaid))',
             }}
           >
             <LogOut size={16} />

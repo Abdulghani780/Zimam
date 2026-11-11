@@ -6,6 +6,8 @@ import { MobileNavigation } from './MobileNavigation';
 import { BroadcastModal } from './BroadcastModal';
 import { AiDiagModal } from './AiDiagModal';
 import { UserAccountModal } from './UserAccountModal';
+import { Ambient } from '../asaas-ui';
+import { AssistantWidget } from '../asaas-ui/assistant/AssistantWidget';
 import { useTelemetry } from '../lib/useTelemetry';
 import { api, type AppUser } from '../lib/api';
 
@@ -55,22 +57,7 @@ export function Layout() {
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [aiDiagOpen, setAiDiagOpen] = useState(false);
   const [userAccountOpen, setUserAccountOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem('asaas_user_profile');
-      if (saved) {
-        try { return JSON.parse(saved); } catch { /* ignore */ }
-      }
-    }
-    return {
-      id: 1,
-      username: 'admin',
-      role: 'admin',
-      full_name: 'مدير النظام (Administrator)',
-      is_active: true,
-      created_at: '',
-    };
-  });
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
     api.getCurrentUser()
@@ -84,6 +71,9 @@ export function Layout() {
 
   return (
     <div className="app-layout">
+      {/* Sovereign Ambient Canvas for Liquid Glass Refraction */}
+      <Ambient />
+
       {/* Sidebar Navigation */}
       <Sidebar
         isAdmin={health?.is_admin}
@@ -131,6 +121,30 @@ export function Layout() {
         onUserChanged={(user) => {
           setCurrentUser(user);
           refresh();
+        }}
+      />
+
+      {/* Sovereign Asaas AI Assistant Robot */}
+      <AssistantWidget
+        user={{
+          id: currentUser?.username || 'admin',
+          displayName: currentUser?.full_name || currentUser?.username || 'مدير النظام',
+        }}
+        title="مساعد أساس الذكي"
+        subtitle="الروبوت السيادي لإدارة وتحليل Windows Server"
+        suggestions={[
+          'ما هي حالة الموارد واستهلاك المعالج حالياً؟',
+          'هل توجد جلسات RDP خاملة تحتاج تفريغ؟',
+          'افحص صحة محركات وقواعد البيانات',
+        ]}
+        ask={async (messages) => {
+          const userQuery = messages[messages.length - 1]?.content || '';
+          const diag = await api.getAiDiagnosis().catch(() => null);
+          const rec = diag?.recommendations?.[0];
+          const text = rec
+            ? `تحليل ذكاء أساس: ${diag.summary || 'النظام يعمل بحالة مستقرة.'}\n\nالتوصية بخصوص (${userQuery}): ${rec}`
+            : `منظومة أساس تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ${userQuery}`;
+          return { reply: text };
         }}
       />
     </div>

@@ -75,12 +75,12 @@ export function HistoricalMetricsChart() {
       actions={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginInlineEnd: 10, fontSize: 12 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#facc15' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#facc15', display: 'inline-block' }} />
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--partial)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--partial)', display: 'inline-block' }} />
               متوسط المعالج: <strong dir="ltr">{avgCpu}%</strong>
             </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#38bdf8' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38bdf8', display: 'inline-block' }} />
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--chart-out)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--chart-out)', display: 'inline-block' }} />
               متوسط الرام: <strong dir="ltr">{avgRam}%</strong>
             </span>
           </div>
@@ -109,9 +109,9 @@ export function HistoricalMetricsChart() {
           style={{
             position: 'relative',
             width: '100%',
-            background: 'rgba(0, 0, 0, 0.45)',
+            background: 'var(--shadow-soft)',
             borderRadius: 'var(--radius-sm)',
-            border: '1px solid rgba(212, 160, 23, 0.18)',
+            border: '1px solid var(--accent-soft)',
             padding: '10px 14px',
             overflow: 'hidden',
           }}
@@ -128,12 +128,12 @@ export function HistoricalMetricsChart() {
             >
               <defs>
                 <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#facc15" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#facc15" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="var(--partial)" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="var(--partial)" stopOpacity="0.0" />
                 </linearGradient>
                 <linearGradient id="ramGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+                  <stop offset="0%" stopColor="var(--chart-out)" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="var(--chart-out)" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
 
@@ -147,13 +147,13 @@ export function HistoricalMetricsChart() {
                       y1={y}
                       x2={width - paddingR}
                       y2={y}
-                      stroke="rgba(255, 255, 255, 0.07)"
+                      stroke="var(--glass-rim-low)"
                       strokeDasharray={pct === 0 || pct === 100 ? undefined : '3,3'}
                     />
                     <text
                       x={paddingL - 6}
                       y={y + 3}
-                      fill="rgba(255, 255, 255, 0.4)"
+                      fill="var(--glass-rim-low)"
                       fontSize="9"
                       fontFamily="monospace"
                       textAnchor="end"
@@ -170,8 +170,8 @@ export function HistoricalMetricsChart() {
               <path d={cpuArea} fill="url(#cpuGrad)" />
 
               {/* Strokes */}
-              <path d={ramPath} fill="none" stroke="#38bdf8" strokeWidth="1.8" />
-              <path d={cpuPath} fill="none" stroke="#facc15" strokeWidth="2" />
+              <path d={ramPath} fill="none" stroke="var(--chart-out)" strokeWidth="1.8" />
+              <path d={cpuPath} fill="none" stroke="var(--partial)" strokeWidth="2" />
             </svg>
           )}
         </div>

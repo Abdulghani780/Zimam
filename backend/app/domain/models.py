@@ -257,3 +257,239 @@ class PortClaim:
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+@dataclass
+class ServerEntity:
+    id: str
+    name: str
+    ip: str
+    os: str
+    domain: str = 'WORKGROUP'
+    status: str = 'online'
+    roles_count: int = 0
+    cpu: float = 0.0
+    ram: float = 0.0
+    storage: float = 0.0
+    alerts_count: int = 0
+    is_local: bool = False
+    last_seen: Optional[str] = None
+    created_at: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class ServerGroup:
+    id: str
+    name: str
+    description: str
+    server_ids: List[str] = field(default_factory=list)
+    created_at: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class WindowsRole:
+    name: str
+    display_name: str
+    installed: bool
+    description: str = ''
+    role_services: List[str] = field(default_factory=list)
+    dependencies: List[str] = field(default_factory=list)
+    restart_needed: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class WindowsServiceItem:
+    name: str
+    display_name: str
+    status: str
+    startup_type: str
+    can_stop: bool = True
+    pid: Optional[int] = None
+    executable_path: str = ''
+    description: str = ''
+    is_critical: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class ProcessDetail:
+    pid: int
+    name: str
+    username: str
+    session_id: int
+    cpu_percent: float = 0.0
+    memory_mb: float = 0.0
+    private_bytes_mb: float = 0.0
+    threads: int = 1
+    handles: int = 0
+    start_time: Optional[str] = None
+    executable_path: str = ''
+    is_protected: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class StorageDisk:
+    number: int
+    friendly_name: str
+    model: str
+    serial_number: Optional[str]
+    size_gb: float
+    partition_style: str
+    health_status: str
+    operational_status: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class StorageVolume:
+    drive_letter: str
+    file_system_label: str
+    file_system: str
+    size_gb: float
+    free_gb: float
+    percent_used: float
+    health_status: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class SmbShare:
+    name: str
+    path: str
+    description: str = ''
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class NetworkAdapterItem:
+    name: str
+    description: str
+    status: str
+    link_speed: str
+    mac_address: str
+    ipv4: str
+    gateway: str
+    dns: str
+    dhcp_enabled: bool = True
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class FirewallRuleItem:
+    name: str
+    display_name: str
+    enabled: bool
+    direction: str
+    action: str
+    profile: str
+    local_port: str = ''
+    remote_ip: str = ''
+    protocol: str = ''
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class WindowsEventItem:
+    id: int
+    level: str
+    provider_name: str
+    time_created: str
+    message: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class WindowsUpdateItem:
+    title: str
+    kb: str
+    installed: bool
+    date: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class ScheduledTaskItem:
+    name: str
+    path: str
+    state: str
+    last_run_time: Optional[str] = None
+    last_result: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class CertificateItem:
+    subject: str
+    issuer: str
+    thumbprint: str
+    not_after: str
+    not_before: str
+    is_expired: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class DeveloperProject:
+    id: str
+    name: str
+    owner: str
+    runtime: str
+    source_path: str
+    port: int
+    status: str  # 'running', 'stopped', 'failed', 'configuring'
+    env_vars: Dict[str, str] = field(default_factory=dict)
+    published_route: str = ''
+    created_at: Optional[str] = None
+    last_started: Optional[str] = None
+    pid: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class DockerContainerItem:
+    id: str
+    names: str
+    image: str
+    state: str
+    status: str
+    ports: str
+    owner: str = 'system'
+    project_id: str = ''
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+@dataclass
+class ActionJobRecord:
+    id: str
+    action: str
+    target_server: str
+    actor: str
+    risk_level: str
+    status: str
+    input_params: Dict[str, Any] = field(default_factory=dict)
+    result: Dict[str, Any] = field(default_factory=dict)
+    error: Optional[str] = None
+    started_at: str = ''
+    completed_at: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)

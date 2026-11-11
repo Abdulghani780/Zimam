@@ -79,6 +79,8 @@ class Win32WtsService:
     _SESSION_RAM_CACHE: Dict[int, float] = {}
     _SESSION_PROC_CACHE: Dict[int, int] = {}
     _LAST_RAM_SCAN_TIME: float = 0.0
+    _SESSIONS_CACHE: List[UserSession] = []
+    _LAST_SESSIONS_SCAN_TIME: float = 0.0
 
     @classmethod
     def get_wts_process_counts(cls) -> Dict[int, int]:
@@ -116,8 +118,8 @@ class Win32WtsService:
         import csv
         import io
         now = time.time()
-        # Refresh cache at most once every 3 seconds to avoid CPU spin
-        if now - cls._LAST_RAM_SCAN_TIME < 3.0 and cls._SESSION_RAM_CACHE:
+        # Refresh cache at most once every 15 seconds to avoid CPU spin and subprocess latency
+        if now - cls._LAST_RAM_SCAN_TIME < 15.0 and cls._SESSION_RAM_CACHE:
             return cls._SESSION_RAM_CACHE.copy()
         try:
             r_task = subprocess.run(
@@ -245,6 +247,11 @@ class Win32WtsService:
         import subprocess
         import csv
         import io
+        import time
+
+        now = time.time()
+        if now - cls._LAST_SESSIONS_SCAN_TIME < 15.0 and cls._SESSIONS_CACHE:
+            return cls._SESSIONS_CACHE.copy()
 
         # 1. Instant native process counts via WTSEnumerateProcessesW + cached RAM scan
         proc_counts = cls.get_wts_process_counts()
@@ -345,6 +352,9 @@ class Win32WtsService:
             except Exception:
                 pass
 
+        if sessions:
+            cls._SESSIONS_CACHE = sessions
+            cls._LAST_SESSIONS_SCAN_TIME = now
         return sessions
 
     @classmethod

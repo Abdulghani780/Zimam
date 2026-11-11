@@ -7,7 +7,6 @@ and SQLite persistence.
 from __future__ import annotations
 
 import re
-import socket
 from typing import Dict, Any, List
 
 from ..domain.models import ManagedAsset
@@ -35,47 +34,7 @@ class BastionService:
         (re.compile(r'\b(shutdown\s+/[srt]|init\s+0|poweroff|halt)\b', re.IGNORECASE), 'محاولة إيقاف تشغيل السيرفر قسرياً (System Shutdown)'),
     ]
 
-    _assets_cache: List[ManagedAsset] = [
-        ManagedAsset(
-            id='asset-local',
-            name=f"{socket.gethostname()} (هذا السيرفر)",
-            host='127.0.0.1',
-            type='Windows Server 2025 Core',
-            port=3389,
-            protocol='RDP',
-            status='online',
-            latency_ms=0.2,
-            category='Windows Host',
-            is_local=True,
-            tags=['local', 'primary', 'rdp'],
-        ),
-        ManagedAsset(
-            id='asset-sql',
-            name='SQL Database Cluster',
-            host='127.0.0.1',
-            type='SQL Server Enterprise',
-            port=1433,
-            protocol='database',
-            status='online',
-            latency_ms=0.5,
-            category='Database',
-            is_local=False,
-            tags=['sql', 'database'],
-        ),
-        ManagedAsset(
-            id='asset-gw',
-            name='Ubuntu Web Gateway',
-            host='127.0.0.1',
-            type='Ubuntu 24.04 LTS',
-            port=22,
-            protocol='SSH',
-            status='online',
-            latency_ms=0.8,
-            category='Linux Gateway',
-            is_local=False,
-            tags=['ssh', 'gateway', 'linux'],
-        ),
-    ]
+    _assets_cache: List[ManagedAsset] = []
 
     @classmethod
     def list_assets(cls) -> List[ManagedAsset]:
@@ -100,7 +59,7 @@ class BastionService:
                 ]
         except Exception:
             pass
-        return cls._assets_cache
+        return list(cls._assets_cache)
 
     @classmethod
     def add_asset(cls, asset: ManagedAsset) -> Dict[str, Any]:
@@ -129,6 +88,7 @@ class BastionService:
             if pattern.search(clean_cmd):
                 return {
                     'safe': False,
+                    'allowed': False,
                     'risk_level': 'CRITICAL',
                     'reason': reason,
                     'command': clean_cmd,
@@ -136,6 +96,7 @@ class BastionService:
                 }
         return {
             'safe': True,
+            'allowed': True,
             'risk_level': 'LOW',
             'reason': 'الأمر آمن ومسموح بالتنفيذ.',
             'command': clean_cmd,

@@ -52,7 +52,7 @@ export function StitchGalleryPage() {
       {/* Header Banner */}
       <div
         style={{
-          background: 'linear-gradient(135deg, rgba(212, 160, 23, 0.12) 0%, rgba(20, 17, 17, 0.95) 100%)',
+          background: 'linear-gradient(135deg, var(--accent-soft) 0%, var(--surface-ground) 100%)',
           border: '1px solid var(--gold-rim)',
           borderRadius: 16,
           padding: '24px 28px',
@@ -61,7 +61,7 @@ export function StitchGalleryPage() {
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 16,
-          boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -71,7 +71,7 @@ export function StitchGalleryPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(212, 160, 23, 0.2)',
+                background: 'var(--accent-soft)',
                 color: 'var(--gold-glow)',
                 padding: '4px 12px',
                 borderRadius: 20,
@@ -99,7 +99,7 @@ export function StitchGalleryPage() {
           onClick={() => window.open(selectedScreen?.html_url || '/stitch/_2/code.html', '_blank')}
           style={{
             background: 'linear-gradient(135deg, var(--gold-glow) 0%, var(--primary-container) 100%)',
-            color: '#1a1400',
+            color: 'var(--on-accent)',
             border: 'none',
             padding: '12px 24px',
             borderRadius: 10,
@@ -109,7 +109,7 @@ export function StitchGalleryPage() {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            boxShadow: '0 4px 16px rgba(212, 160, 23, 0.35)',
+            boxShadow: '0 4px 16px var(--accent-soft)',
           }}
         >
           <ExternalLink size={16} />
@@ -124,9 +124,9 @@ export function StitchGalleryPage() {
             key={cat}
             onClick={() => setActiveCategory(cat)}
             style={{
-              background: activeCategory === cat ? 'var(--primary-container)' : 'rgba(255,255,255,0.04)',
+              background: activeCategory === cat ? 'var(--primary-container)' : 'var(--glass-rim-low)',
               color: activeCategory === cat ? '#000' : 'var(--text-2)',
-              border: `1px solid ${activeCategory === cat ? 'var(--primary)' : 'rgba(255,255,255,0.08)'}`,
+              border: `1px solid ${activeCategory === cat ? 'var(--primary)' : 'var(--glass-rim-low)'}`,
               padding: '8px 18px',
               borderRadius: 20,
               fontSize: 13,
@@ -145,21 +145,21 @@ export function StitchGalleryPage() {
       {selectedScreen && (
         <div
           style={{
-            background: 'var(--surface-container-low, #1b1b1d)',
+            background: 'var(--surface-container-low, var(--glass-tint))',
             border: '1px solid var(--gold-rim)',
             borderRadius: 16,
             overflow: 'hidden',
-            boxShadow: '0 20px 48px rgba(0,0,0,0.6)',
+            boxShadow: '0 20px 48px var(--shadow-soft)',
           }}
         >
           <div
             style={{
               padding: '14px 20px',
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              borderBottom: '1px solid var(--glass-rim-low)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'rgba(0,0,0,0.3)',
+              background: 'var(--shadow-soft)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -168,7 +168,7 @@ export function StitchGalleryPage() {
                   width: 32,
                   height: 32,
                   borderRadius: 8,
-                  background: 'rgba(212, 160, 23, 0.15)',
+                  background: 'var(--accent-soft)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -191,9 +191,9 @@ export function StitchGalleryPage() {
               <button
                 onClick={() => setPreviewModalUrl(selectedScreen.preview_url)}
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
+                  background: 'var(--glass-rim-low)',
                   color: 'var(--text-titles)',
-                  border: '1px solid rgba(255,255,255,0.12)',
+                  border: '1px solid var(--glass-rim-low)',
                   padding: '6px 14px',
                   borderRadius: 8,
                   fontSize: 12,
@@ -229,7 +229,7 @@ export function StitchGalleryPage() {
             </div>
           </div>
 
-          <div style={{ width: '100%', height: '780px', position: 'relative', background: '#0c0c0e' }}>
+          <div style={{ width: '100%', height: '780px', position: 'relative', background: 'var(--bg)' }}>
             <iframe
               src={selectedScreen.html_url}
               title={selectedScreen.title}
@@ -265,9 +265,9 @@ export function StitchGalleryPage() {
                 onClick={() => setSelectedScreen(screen)}
                 style={{
                   background: isSelected
-                    ? 'linear-gradient(180deg, rgba(212, 160, 23, 0.15) 0%, rgba(20, 17, 17, 0.85) 100%)'
-                    : 'var(--surface-container-low, #1b1b1d)',
-                  border: `1px solid ${isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.08)'}`,
+                    ? 'linear-gradient(180deg, var(--accent-soft) 0%, var(--surface-ground) 100%)'
+                    : 'var(--surface-container-low, var(--glass-tint))',
+                  border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--glass-rim-low)'}`,
                   borderRadius: 14,
                   padding: 16,
                   cursor: 'pointer',
@@ -275,7 +275,7 @@ export function StitchGalleryPage() {
                   flexDirection: 'column',
                   gap: 12,
                   transition: 'all 0.2s ease',
-                  boxShadow: isSelected ? '0 0 20px rgba(212, 160, 23, 0.25)' : 'none',
+                  boxShadow: isSelected ? '0 0 20px var(--accent-soft)' : 'none',
                 }}
               >
                 {/* Thumbnail */}
@@ -285,8 +285,8 @@ export function StitchGalleryPage() {
                     height: 180,
                     borderRadius: 10,
                     overflow: 'hidden',
-                    background: '#0c0c0e',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--bg)',
+                    border: '1px solid var(--glass-rim-low)',
                     position: 'relative',
                   }}
                 >
@@ -306,7 +306,7 @@ export function StitchGalleryPage() {
                       position: 'absolute',
                       top: 8,
                       right: 8,
-                      background: 'rgba(0,0,0,0.75)',
+                      background: 'var(--shadow-soft)',
                       backdropFilter: 'blur(8px)',
                       padding: '3px 8px',
                       borderRadius: 6,
@@ -350,14 +350,14 @@ export function StitchGalleryPage() {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     paddingTop: 10,
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    borderTop: '1px solid var(--glass-rim-low)',
                   }}
                 >
                   <span
                     style={{
                       fontSize: 11,
                       color: 'var(--text-3)',
-                      background: 'rgba(255,255,255,0.04)',
+                      background: 'var(--glass-rim-low)',
                       padding: '2px 8px',
                       borderRadius: 4,
                     }}
@@ -373,7 +373,7 @@ export function StitchGalleryPage() {
                       }}
                       style={{
                         background: 'transparent',
-                        border: '1px solid rgba(212, 160, 23, 0.4)',
+                        border: '1px solid var(--accent-soft)',
                         color: 'var(--primary)',
                         padding: '4px 10px',
                         borderRadius: 6,
@@ -402,7 +402,7 @@ export function StitchGalleryPage() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.88)',
+            background: 'var(--shadow-soft)',
             backdropFilter: 'blur(16px)',
             display: 'flex',
             alignItems: 'center',
@@ -417,11 +417,11 @@ export function StitchGalleryPage() {
               position: 'relative',
               maxWidth: '92vw',
               maxHeight: '92vh',
-              background: '#121214',
+              background: 'var(--surface-ground)',
               border: '1px solid var(--gold-rim)',
               borderRadius: 16,
               overflow: 'hidden',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.9)',
+              boxShadow: '0 25px 60px var(--shadow-soft)',
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -432,8 +432,8 @@ export function StitchGalleryPage() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'rgba(0,0,0,0.5)',
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--shadow-soft)',
+                borderBottom: '1px solid var(--glass-rim-low)',
               }}
             >
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-titles)' }}>

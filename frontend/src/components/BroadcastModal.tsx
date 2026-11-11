@@ -109,16 +109,16 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
             style={{
               padding: 14,
               borderRadius: 10,
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: 'var(--unpaid-bg)',
+              border: '1px solid var(--unpaid-bg)',
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={16} color="#ef4444" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>
+              <AlertTriangle size={16} color="var(--unpaid)" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--unpaid)' }}>
                 يتطلب إرسال التنبيهات بين الجلسات صلاحيات مسؤول (Elevated Administrator)
               </span>
             </div>

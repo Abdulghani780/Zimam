@@ -25,6 +25,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     children,
     disabled = false,
     type = 'button',
+    style,
     ...props
   },
   ref
@@ -33,98 +34,148 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const isIconOnly = size === 'icon' || (!children && Boolean(label));
   const isDisabled = disabled || loading;
 
-  // Base Tailwind utility classes (Accessible Focus Rings, Transitions, Layout)
-  const baseClasses =
-    'relative inline-flex items-center justify-center font-bold select-none cursor-pointer ' +
-    'transition-all duration-200 ease-out outline-none ' +
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface-canvas ' +
-    'disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed';
+  // Modern luxury tactile buttons matching Asaas Sovereign Brand
+  const getVariantStyle = () => {
+    switch (variant) {
+      case 'primary':
+        return {
+          background: 'linear-gradient(180deg, #d8b36f 0%, #ba9555 50%, #9e7836 100%)',
+          color: 'var(--action-primary-fg, var(--on-accent))',
+          border: '1px solid rgba(255, 255, 255, 0.4)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 4px 16px -2px rgba(186, 149, 85, 0.45)',
+        };
+      case 'danger':
+        return {
+          background: 'linear-gradient(180deg, #eb574b 0%, #c43227 50%, #9e231a 100%)',
+          color: '#ffffff',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 4px 16px -2px rgba(220, 50, 40, 0.45)',
+          textShadow: '0 1px 1px rgba(40, 10, 10, 0.3)',
+        };
+      case 'secondary':
+      case 'glass':
+        return {
+          background: 'var(--glass-tint-strong)',
+          color: 'var(--text)',
+          border: '1px solid var(--glass-rim)',
+          boxShadow: 'inset 0 1px 0 var(--glass-rim), 0 4px 14px -4px var(--shadow-soft)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+        };
+      case 'outline':
+        return {
+          background: 'transparent',
+          color: 'var(--text)',
+          border: '1px solid var(--accent)',
+          boxShadow: '0 2px 8px -2px var(--accent-glow)',
+        };
+      case 'ghost':
+      default:
+        return {
+          background: 'transparent',
+          color: 'var(--text-2)',
+          border: '1px solid transparent',
+        };
+    }
+  };
 
-  // Variant mappings driven by 3-Layer Design Tokens
-  const variantClasses = {
-    primary:
-      'bg-gradient-to-r from-primary via-[#f6be39] to-[#ffd700] text-primary-fg ' +
-      'shadow-[0_4px_18px_rgba(212,160,23,0.35)] hover:shadow-[0_4px_26px_rgba(246,190,57,0.55)] ' +
-      'hover:brightness-105 active:scale-[0.98] border-none',
-    secondary:
-      'bg-surface-container-high text-title hover:bg-surface-container-highest ' +
-      'border border-border-hairline hover:border-border-hairline-strong active:scale-[0.98]',
-    glass:
-      'bg-surface-glass-tint text-title hover:bg-primary/10 hover:text-primary ' +
-      'border border-border-gold-rim hover:border-border-gold-rim-strong ' +
-      'shadow-sm active:scale-[0.98] backdrop-blur-md',
-    ghost:
-      'bg-transparent text-muted hover:text-title hover:bg-surface-glass-tint ' +
-      'border-none active:scale-[0.98]',
-    danger:
-      'bg-status-danger-surface text-status-danger hover:bg-status-danger/25 ' +
-      'border border-status-danger-border shadow-[0_2px_12px_rgba(239,68,68,0.2)] ' +
-      'active:scale-[0.98]',
-    outline:
-      'bg-transparent text-title hover:bg-surface-glass-tint ' +
-      'border border-border-hairline hover:border-border-gold-rim active:scale-[0.98]',
-  }[variant];
-
-  // Size mappings
-  const sizeClasses = {
-    sm: isIconOnly ? 'w-8 h-8 p-0 rounded-sm' : 'h-8 px-3 text-xs gap-1.5 rounded-sm',
-    md: isIconOnly ? 'w-10 h-10 p-0 rounded-sm' : 'h-10 px-4 text-sm gap-2 rounded-sm',
-    lg: isIconOnly ? 'w-12 h-12 p-0 rounded-md' : 'h-12 px-6 text-base gap-2.5 rounded-md',
-    icon: 'w-10 h-10 p-0 rounded-sm',
-  }[size];
+  const getSizeStyle = () => {
+    switch (size) {
+      case 'sm':
+        return {
+          height: 32,
+          padding: isIconOnly ? '0' : '0 12px',
+          width: isIconOnly ? 32 : 'auto',
+          fontSize: 12,
+          gap: 6,
+          borderRadius: 999,
+        };
+      case 'lg':
+        return {
+          height: 46,
+          padding: isIconOnly ? '0' : '0 22px',
+          width: isIconOnly ? 46 : 'auto',
+          fontSize: 15,
+          gap: 10,
+          borderRadius: 999,
+        };
+      case 'icon':
+        return {
+          height: 38,
+          width: 38,
+          padding: 0,
+          fontSize: 14,
+          borderRadius: 999,
+        };
+      case 'md':
+      default:
+        return {
+          height: 38,
+          padding: isIconOnly ? '0' : '0 18px',
+          width: isIconOnly ? 38 : 'auto',
+          fontSize: 13,
+          gap: 8,
+          borderRadius: 999,
+        };
+    }
+  };
 
   return (
     <button
       ref={ref}
       type={type}
       disabled={isDisabled}
-      aria-busy={loading}
       aria-label={accessibleName}
       title={accessibleName}
-      className={cx('btn', `btn--${variant}`, baseClasses, variantClasses, sizeClasses, className)}
+      className={cx('btn', `btn--${variant}`, isIconOnly && 'btn--icon', className)}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 700,
+        fontFamily: 'var(--font)',
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
+        opacity: isDisabled ? 0.5 : 1,
+        transition: 'all 0.25s cubic-bezier(0.22, 1, 0.36, 1)',
+        whiteSpace: 'nowrap',
+        boxSizing: 'border-box',
+        ...getSizeStyle(),
+        ...getVariantStyle(),
+        ...style,
+      }}
       {...props}
     >
       {/* Loading Spinner */}
       {loading && (
-        <svg
-          className="animate-spin -ml-1 mr-2 h-4 w-4 text-current shrink-0"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
+        <span
+          className="inline-block animate-spin"
+          style={{
+            width: 14,
+            height: 14,
+            border: '2px solid currentColor',
+            borderTopColor: 'transparent',
+            borderRadius: '50%',
+            flexShrink: 0,
+          }}
+        />
       )}
 
       {/* Start Icon */}
       {!loading && iconPosition === 'start' && (
         <>
           {icon && <Icon name={icon} />}
-          {iconNode && <span className="inline-flex shrink-0">{iconNode}</span>}
+          {iconNode && <span style={{ display: 'inline-flex', flexShrink: 0 }}>{iconNode}</span>}
         </>
       )}
 
       {/* Button Content */}
-      {children}
+      {children && <span style={{ display: 'inline-flex', alignItems: 'center' }}>{children}</span>}
 
       {/* End Icon */}
       {!loading && iconPosition === 'end' && (
         <>
           {icon && <Icon name={icon} />}
-          {iconNode && <span className="inline-flex shrink-0">{iconNode}</span>}
+          {iconNode && <span style={{ display: 'inline-flex', flexShrink: 0 }}>{iconNode}</span>}
         </>
       )}
     </button>

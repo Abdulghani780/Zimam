@@ -28,36 +28,36 @@ class GlobalErrorBoundary extends Component<{ children: ReactNode }, { hasError:
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#0c0c0e',
-          color: '#f0ede6',
-          fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif",
+          backgroundColor: 'var(--bg)',
+          color: 'var(--text)',
+          fontFamily: 'var(--font)',
           direction: 'rtl',
           padding: 24,
         }}>
           <div style={{
             maxWidth: 520,
             width: '100%',
-            background: 'rgba(25, 23, 22, 0.95)',
-            border: '1px solid rgba(212, 160, 23, 0.3)',
-            borderRadius: 16,
+            background: 'var(--surface-glass)',
+            border: '1px solid var(--glass-rim)',
+            borderRadius: 'var(--radius-lg)',
             padding: 32,
-            boxShadow: '0 20px 40px rgba(0,0,0,0.8)',
+            boxShadow: 'var(--glass-shadow)',
             textAlign: 'center',
           }}>
             <div style={{ fontSize: 44, marginBottom: 12 }}>🛡️</div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 10px', color: '#ff5c5c' }}>
-              تم استرداد المنظومة وتفادي الشاشة السوداء
+            <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 10px', color: 'var(--status-danger)' }}>
+              تعذّر تحميل واجهة أساس
             </h2>
-            <p style={{ fontSize: 14, color: '#aaa396', lineHeight: 1.6, margin: '0 0 20px' }}>
-              حدث استثناء برمجي غير متوقع في معالجة واجهة السيرفر. درع الاستقرار منع انهيار التطبيق.
+            <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, margin: '0 0 20px' }}>
+              حدث خطأ غير متوقع أثناء تحميل لوحة التحكم. أعد المحاولة للعودة إلى مساحة العمل.
             </p>
             <div style={{
-              background: 'rgba(0,0,0,0.5)',
+              background: 'var(--glass-inset)',
               padding: 12,
               borderRadius: 8,
               fontSize: 12,
               fontFamily: 'monospace',
-              color: '#d4a017',
+              color: 'var(--accent)',
               textAlign: 'left',
               direction: 'ltr',
               marginBottom: 24,
@@ -68,22 +68,11 @@ class GlobalErrorBoundary extends Component<{ children: ReactNode }, { hasError:
             </div>
             <button
               onClick={() => {
-                localStorage.removeItem('asaas_session_token');
-                window.location.href = '/';
+                window.location.reload();
               }}
-              style={{
-                background: '#d4a017',
-                color: '#000',
-                border: 'none',
-                padding: '12px 28px',
-                borderRadius: 24,
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              className="btn btn--primary"
             >
-              إعادة تحميل المنظومة وتحديث الجلسة
+              إعادة المحاولة
             </button>
           </div>
         </div>

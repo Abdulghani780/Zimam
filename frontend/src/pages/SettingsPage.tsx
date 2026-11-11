@@ -28,10 +28,10 @@ export function SettingsPage() {
   const [testing, setTesting] = useState(false);
 
   // Stitch _12 Alert Rules Matrix Toggles
-  const [ruleBruteForce] = useState(true);
-  const [ruleCommandRisk] = useState(true);
-  const [rulePortFlood] = useState(true);
-  const [ruleServiceCrash] = useState(true);
+  const [ruleBruteForce, setRuleBruteForce] = useState(true);
+  const [ruleCommandRisk, setRuleCommandRisk] = useState(true);
+  const [rulePortFlood, setRulePortFlood] = useState(true);
+  const [ruleServiceCrash, setRuleServiceCrash] = useState(true);
   
   const fetchSettings = async () => {
     try {
@@ -44,6 +44,10 @@ export function SettingsPage() {
         setCpuThreshold(String(cfg.config.cpu_threshold || 85));
         setRamThreshold(String(cfg.config.ram_threshold || 90));
         setDiskThreshold(String(cfg.config.disk_threshold || 90));
+        setRuleBruteForce(cfg.config.rule_brute_force ?? true);
+        setRuleCommandRisk(cfg.config.rule_command_risk ?? true);
+        setRulePortFlood(cfg.config.rule_port_flood ?? true);
+        setRuleServiceCrash(cfg.config.rule_service_crash ?? true);
       }
     } catch {
       // ignore
@@ -66,6 +70,10 @@ export function SettingsPage() {
         cpu_threshold: parseFloat(cpuThreshold) || 85,
         ram_threshold: parseFloat(ramThreshold) || 90,
         disk_threshold: parseFloat(diskThreshold) || 90,
+        rule_brute_force: ruleBruteForce,
+        rule_command_risk: ruleCommandRisk,
+        rule_port_flood: rulePortFlood,
+        rule_service_crash: ruleServiceCrash,
       } as any);
       toast('تم حفظ وتطبيق إعدادات المنظومة ومصفوفة الإنذارات بنجاح.', 'success');
     } catch (err: any) {
@@ -92,16 +100,16 @@ export function SettingsPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Executive Header (Stitch _4 & _12) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -115,8 +123,8 @@ export function SettingsPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
@@ -128,7 +136,7 @@ export function SettingsPage() {
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -184,12 +192,12 @@ export function SettingsPage() {
                     width: 36,
                     height: 36,
                     borderRadius: 10,
-                    background: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    background: 'var(--status-info-surface)',
+                    border: '1px solid var(--status-info-surface)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#38bdf8',
+                    color: 'var(--chart-out)',
                   }}
                 >
                   <MessageSquare size={20} />
@@ -240,16 +248,16 @@ export function SettingsPage() {
 
               {/* Delivery Channels status */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 4 }}>
-                <div style={{ padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
-                  <span style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, display: 'block' }}>● Telegram Bot</span>
+                <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--status-info-surface)' }}>
+                  <span style={{ fontSize: 10, color: 'var(--chart-out)', fontWeight: 700, display: 'block' }}>● Telegram Bot</span>
                   <span style={{ fontSize: 11, color: 'var(--text-1)' }}>{telegramEnabled ? 'جاهز ومتصل' : 'معطّل'}</span>
                 </div>
-                <div style={{ padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--glass-rim-low)' }}>
                   <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700, display: 'block' }}>● Windows Event Log</span>
                   <span style={{ fontSize: 11, color: 'var(--text-1)' }}>قيد التوثيق الحتمي</span>
                 </div>
-                <div style={{ padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, display: 'block' }}>● Forensic Audit Ledger</span>
+                <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--glass-rim-low)' }}>
+                  <span style={{ fontSize: 10, color: 'var(--paid)', fontWeight: 700, display: 'block' }}>● Forensic Audit Ledger</span>
                   <span style={{ fontSize: 11, color: 'var(--text-1)' }}>SHA-256 موثق</span>
                 </div>
               </div>
@@ -266,8 +274,8 @@ export function SettingsPage() {
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  background: 'rgba(212, 160, 23, 0.15)',
-                  border: '1px solid rgba(212, 160, 23, 0.3)',
+                  background: 'var(--accent-soft)',
+                  border: '1px solid var(--accent-soft)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -301,7 +309,7 @@ export function SettingsPage() {
                     fontWeight: 700,
                     cursor: 'pointer',
                     border: cooldownMinutes === mins ? '1px solid var(--accent)' : '1px solid transparent',
-                    background: cooldownMinutes === mins ? 'rgba(212, 160, 23, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                    background: cooldownMinutes === mins ? 'var(--accent-soft)' : 'var(--glass-rim-low)',
                     color: cooldownMinutes === mins ? 'var(--accent)' : 'var(--text-3)',
                   }}
                 >
@@ -380,8 +388,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -399,7 +407,7 @@ export function SettingsPage() {
               <input
                 type="checkbox"
                 checked={ruleBruteForce}
-                readOnly
+                onChange={(e) => setRuleBruteForce(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>
@@ -410,8 +418,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -429,7 +437,7 @@ export function SettingsPage() {
               <input
                 type="checkbox"
                 checked={ruleCommandRisk}
-                readOnly
+                onChange={(e) => setRuleCommandRisk(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>
@@ -440,8 +448,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -459,7 +467,7 @@ export function SettingsPage() {
               <input
                 type="checkbox"
                 checked={rulePortFlood}
-                readOnly
+                onChange={(e) => setRulePortFlood(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>
@@ -470,8 +478,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -489,7 +497,7 @@ export function SettingsPage() {
               <input
                 type="checkbox"
                 checked={ruleServiceCrash}
-                readOnly
+                onChange={(e) => setRuleServiceCrash(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>

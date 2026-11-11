@@ -128,16 +128,16 @@ export function StoragePage() {
   const usedPct = breakdown?.percent || Math.round((usedGb / totalGb) * 100);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Ambient Executive Banner (Stitch _7 L24) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -151,8 +151,8 @@ export function StoragePage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
@@ -164,7 +164,7 @@ export function StoragePage() {
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -210,8 +210,8 @@ export function StoragePage() {
                 fontSize: 11,
                 padding: '2px 8px',
                 borderRadius: 4,
-                background: usedPct > 80 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                color: usedPct > 80 ? '#ef4444' : '#22c55e',
+                background: usedPct > 80 ? 'var(--unpaid-bg)' : 'var(--paid-bg)',
+                color: usedPct > 80 ? 'var(--unpaid)' : 'var(--paid)',
                 fontWeight: 700,
               }}
             >
@@ -226,35 +226,35 @@ export function StoragePage() {
             style={{
               height: 28,
               borderRadius: 8,
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--glass-rim-low)',
               overflow: 'hidden',
               display: 'flex',
             }}
           >
             {/* Windows OS */}
             <div
-              style={{ width: '12%', background: '#3b82f6', height: '100%' }}
+              style={{ width: '12%', background: 'var(--chart-out)', height: '100%' }}
               title="Windows OS: 48.2 GB (12%)"
             />
             {/* User Profiles */}
             <div
-              style={{ width: '30%', background: '#d4a017', height: '100%' }}
+              style={{ width: '30%', background: 'var(--accent)', height: '100%' }}
               title="User Profiles (C:\Users): 142.6 GB (30%)"
             />
             {/* Database & Apps */}
             <div
-              style={{ width: '22%', background: '#10b981', height: '100%' }}
+              style={{ width: '22%', background: 'var(--paid)', height: '100%' }}
               title="Database & SQL Data: 86.4 GB (22%)"
             />
             {/* Temp & Logs */}
             <div
-              style={{ width: '7%', background: '#f59e0b', height: '100%' }}
+              style={{ width: '7%', background: 'var(--partial)', height: '100%' }}
               title="Temp & Logs: 18.6 GB (7%)"
             />
             {/* Free Space */}
             <div
-              style={{ width: '29%', background: 'rgba(255,255,255,0.06)', height: '100%' }}
+              style={{ width: '29%', background: 'var(--glass-rim-low)', height: '100%' }}
               title="المساحة الحرة الشاغرة: 137.7 GB (29%)"
             />
           </div>
@@ -262,7 +262,7 @@ export function StoragePage() {
           {/* Legend Chips */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#3b82f6' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--chart-out)' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>Windows OS</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">48.2 GB</span>
@@ -270,7 +270,7 @@ export function StoragePage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#d4a017' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--accent)' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>مجلدات المستخدمين</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">142.6 GB</span>
@@ -278,7 +278,7 @@ export function StoragePage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#10b981' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--paid)' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>قواعد البيانات SQL</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">86.4 GB</span>
@@ -286,7 +286,7 @@ export function StoragePage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--partial)' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>المخلفات والملفات المؤقتة</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">18.6 GB</span>
@@ -294,10 +294,10 @@ export function StoragePage() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
+              <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--glass-rim-low)' }} />
               <div>
                 <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>المساحة الحرة</span>
-                <span style={{ color: '#22c55e', fontSize: 11, fontWeight: 700 }} dir="ltr">{freeGb} GB شاغر</span>
+                <span style={{ color: 'var(--paid)', fontSize: 11, fontWeight: 700 }} dir="ltr">{freeGb} GB شاغر</span>
               </div>
             </div>
           </div>
@@ -345,8 +345,8 @@ export function StoragePage() {
               style={{
                 padding: '16px 20px',
                 borderRadius: 12,
-                background: customCheckResult.is_locked ? 'rgba(239, 68, 68, 0.08)' : 'rgba(34, 197, 94, 0.08)',
-                border: `1px solid ${customCheckResult.is_locked ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`,
+                background: customCheckResult.is_locked ? 'var(--unpaid-bg)' : 'var(--paid-bg)',
+                border: `1px solid ${customCheckResult.is_locked ? 'var(--unpaid-bg)' : 'var(--paid-bg)'}`,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12,
@@ -355,9 +355,9 @@ export function StoragePage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {customCheckResult.is_locked ? (
-                    <Lock size={18} color="#ef4444" />
+                    <Lock size={18} color="var(--unpaid)" />
                   ) : (
-                    <Unlock size={18} color="#22c55e" />
+                    <Unlock size={18} color="var(--paid)" />
                   )}
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>
                     {customCheckResult.is_locked
@@ -371,8 +371,8 @@ export function StoragePage() {
                     fontWeight: 700,
                     padding: '3px 10px',
                     borderRadius: 9999,
-                    background: customCheckResult.is_locked ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                    color: customCheckResult.is_locked ? '#ef4444' : '#22c55e',
+                    background: customCheckResult.is_locked ? 'var(--unpaid-bg)' : 'var(--paid-bg)',
+                    color: customCheckResult.is_locked ? 'var(--unpaid)' : 'var(--paid)',
                   }}
                 >
                   {customCheckResult.is_locked ? 'LOCKED HANDLE' : 'FREE TO ACCESS'}
@@ -390,8 +390,8 @@ export function StoragePage() {
                         justifyContent: 'space-between',
                         padding: '10px 14px',
                         borderRadius: 8,
-                        background: 'rgba(0, 0, 0, 0.3)',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        background: 'var(--shadow-soft)',
+                        border: '1px solid var(--glass-rim-low)',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -411,7 +411,7 @@ export function StoragePage() {
                         variant="ghost"
                         loading={unlocking}
                         onClick={() => handleUnlockProcess(locker.pid, locker.process_name || locker.name)}
-                        style={{ padding: '4px 10px', fontSize: 11, color: '#ef4444' }}
+                        style={{ padding: '4px 10px', fontSize: 11, color: 'var(--unpaid)' }}
                       >
                         <Unlock size={12} />
                         <span>فك القفل الفوري / إنهاء العملية</span>

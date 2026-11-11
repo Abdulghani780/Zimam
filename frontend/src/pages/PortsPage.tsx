@@ -149,7 +149,7 @@ export function PortsPage() {
   const isolatedPortsCount = ports.filter((p) => p.is_isolated && p.owner_session && p.owner_session > 0).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="page">
       {/* 1. Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -215,7 +215,7 @@ export function PortsPage() {
                   cursor: 'pointer',
                   border: '1px solid var(--hairline)',
                   background: checkPortInput === String(p) ? 'var(--accent)' : 'var(--glass-inset)',
-                  color: checkPortInput === String(p) ? '#000' : 'var(--text-2)',
+                  color: checkPortInput === String(p) ? 'var(--on-accent)' : 'var(--text-2)',
                   fontWeight: 600,
                   fontSize: 12,
                   padding: '4px 10px'
@@ -341,7 +341,7 @@ export function PortsPage() {
                     </span>
                   )}
                   <div style={{ fontSize: 12, color: 'var(--paid)', fontWeight: 600 }}>
-                    💡 أمر التشغيل الموصى به: <code style={{ direction: 'ltr', display: 'inline-block', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: 4 }}>PORT={conflictResult.suggested_port} npm run dev</code>
+                    💡 أمر التشغيل الموصى به: <code style={{ direction: 'ltr', display: 'inline-block', background: 'var(--shadow-soft)', padding: '2px 6px', borderRadius: 4 }}>PORT={conflictResult.suggested_port} npm run dev</code>
                   </div>
                 </div>
               )}

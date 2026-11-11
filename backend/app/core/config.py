@@ -21,8 +21,29 @@ STITCH_DIR = PROJECT_ROOT / 'stitch_asaas_server_control_v2.5'
 # Ensure required directories exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# Server network settings
-SERVER_HOST: str = os.getenv('ASAAS_HOST', '127.0.0.1')
+
+def _load_dotenv(path: Path) -> None:
+    """Loads simple KEY=VALUE pairs without overriding real environment vars."""
+    if not path.is_file():
+        return
+    try:
+        for raw_line in path.read_text(encoding='utf-8').splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+    except Exception:
+        pass
+
+
+_load_dotenv(PROJECT_ROOT / '.env')
+
+# Server network settings (0.0.0.0 enables dual-stack IPv4/IPv6 & LAN access)
+SERVER_HOST: str = os.getenv('ASAAS_HOST', '0.0.0.0')
 SERVER_PORT: int = int(os.getenv('ASAAS_PORT', '8765'))
 
 # Security settings

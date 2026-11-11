@@ -4,7 +4,6 @@ import {
   Cpu,
   Server,
   KeyRound,
-  Radio,
   ShieldAlert,
   HardDrive,
   Users,
@@ -12,9 +11,15 @@ import {
   Settings,
   Shield,
   Film,
-  Sparkles,
-  Lock,
+  Code,
+  Boxes,
+  Layers,
+  Database,
+  Package,
+  Radio,
+  PieChart,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import type { AppUser } from '../lib/api';
 
@@ -25,7 +30,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProps) {
-  const roleColor = currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent)' : '#3b82f6';
+  const roleColor = currentUser?.role === 'admin' ? 'var(--status-safe)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--status-info)';
   const roleBadge = currentUser?.role ? currentUser.role.toUpperCase() : (isAdmin ? 'ROOT' : 'USER');
   const roleTitle = currentUser?.role === 'admin' ? 'مدير نظام كامل' : currentUser?.role === 'operator' ? 'مشغل عمليات' : 'قراءة وتدقيق فقط';
 
@@ -40,7 +45,7 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
           alignItems: 'center',
           gap: 10,
           padding: '10px 8px',
-          borderBottom: '1px solid rgba(212, 160, 23, 0.18)',
+          borderBottom: '1px solid var(--glass-rim-low)',
           textDecoration: 'none',
         }}
       >
@@ -49,14 +54,14 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
             width: 38,
             height: 38,
             borderRadius: 10,
-            background: 'linear-gradient(135deg, rgba(212, 160, 23, 0.25) 0%, rgba(143, 102, 38, 0.35) 100%)',
-            border: '1px solid rgba(212, 160, 23, 0.45)',
+            background: 'var(--glass-tint-strong)',
+            border: '1px solid var(--glass-rim)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
             flexShrink: 0,
-            boxShadow: '0 0 14px rgba(212, 160, 23, 0.25)',
+            boxShadow: 'var(--accent-glow)',
           }}
         >
           <img
@@ -71,7 +76,7 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
               if (p && !p.querySelector('.fallback-monogram')) {
                 const s = document.createElement('span');
                 s.className = 'fallback-monogram';
-                s.style.color = '#d4a017';
+                s.style.color = 'var(--accent)';
                 s.style.fontWeight = '900';
                 s.style.fontSize = '18px';
                 s.innerText = 'أ';
@@ -90,8 +95,8 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
                 width: 7,
                 height: 7,
                 borderRadius: '50%',
-                background: '#22c55e',
-                boxShadow: '0 0 8px #22c55e',
+                background: 'var(--status-safe)',
+                boxShadow: 'var(--primitive-glow-safe)',
                 display: 'inline-block',
                 flexShrink: 0,
               }}
@@ -107,7 +112,7 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
             }}
             dir="ltr"
           >
-            v2.5 Enterprise
+            v3.0 Enterprise
           </span>
         </div>
       </NavLink>
@@ -120,13 +125,13 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '5px 8px',
-            background: 'rgba(0,0,0,0.35)',
-            border: '1px solid rgba(212,160,23,0.18)',
+            background: 'var(--glass-tint)',
+            border: '1px solid var(--glass-rim-low)',
             borderRadius: 'var(--radius-sm)',
             fontSize: 11,
           }}
         >
-          <span style={{ color: 'var(--text-3)', fontSize: 10 }}>المضيف النشط</span>
+          <span style={{ color: 'var(--text-3)', fontSize: 10 }}>المضيف السيادي</span>
           <span
             style={{
               color: 'var(--accent)',
@@ -136,87 +141,108 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
             }}
             dir="ltr"
           >
-            WIN-2025-PROD
+            SRV-LOCAL (Win2025)
           </span>
         </div>
       </div>
 
       {/* Nav Sections */}
       <nav className="sidebar-nav">
-        <span className="sidebar-nav__label">لوحة القيادة والمراقبة</span>
+        <span className="sidebar-nav__label">القيادة والمراقبة والموارد</span>
         <NavLink to="/" end className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <div className="icon-wrap"><LayoutDashboard size={18} /></div>
           <span>نظرة عامة ورسم الأنوية</span>
         </NavLink>
+        <NavLink to="/servers" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Server size={18} /></div>
+          <span>إدارة الخوادم والمجموعات</span>
+        </NavLink>
+        <NavLink to="/users" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Users size={18} /></div>
+          <span>جلسات ومستخدمو RDP</span>
+        </NavLink>
         <NavLink to="/control" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <div className="icon-wrap"><Cpu size={18} /></div>
-          <span>مركز التحكم وحاكم الموارد</span>
+          <span>حاكم الموارد والعمليات</span>
+        </NavLink>
+        <NavLink to="/assets" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Package size={18} /></div>
+          <span>سجل الأصول والعتاد</span>
         </NavLink>
 
-        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>إدارة الأصول والخزنة</span>
-        <NavLink to="/assets" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><Server size={18} /></div>
-          <span>دليل الخوادم والأصول</span>
+        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>المطورون والافتراضية</span>
+        <NavLink to="/development" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Code size={18} /></div>
+          <span>بيئات المطورين والمشاريع</span>
         </NavLink>
+        <NavLink to="/containers" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Boxes size={18} /></div>
+          <span>Docker والافتراضية Hyper-V</span>
+        </NavLink>
+        {import.meta.env.DEV && (
+          <NavLink to="/stitch" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <div className="icon-wrap"><Sparkles size={18} /></div>
+            <span>معرض مكونات Stitch Design</span>
+          </NavLink>
+        )}
+
+        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>البنية التحتية والشبكات</span>
+        <NavLink to="/infrastructure" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Layers size={18} /></div>
+          <span>أدوار Windows والخدمات</span>
+        </NavLink>
+        <NavLink to="/network-storage" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><HardDrive size={18} /></div>
+          <span>التخزين والشبكات والجدار الناري</span>
+        </NavLink>
+        <NavLink to="/storage" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><PieChart size={18} /></div>
+          <span>تحليل وسائط التخزين والأقراص</span>
+        </NavLink>
+        <NavLink to="/ports" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Radio size={18} /></div>
+          <span>المنافذ والاتصالات النشطة</span>
+        </NavLink>
+        <NavLink to="/databases" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Database size={18} /></div>
+          <span>إدارة قواعد البيانات وSQL</span>
+        </NavLink>
+
+        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>الأمان والوصول المميز</span>
         <NavLink to="/vault" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <div className="icon-wrap"><KeyRound size={18} /></div>
           <span>خزنة الحسابات المشفرة</span>
-        </NavLink>
-
-        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>الشبكة ومركز الأمان</span>
-        <NavLink to="/ports" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><Radio size={18} /></div>
-          <span>درع المنافذ والعزل الذكي</span>
         </NavLink>
         <NavLink to="/security" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <div className="icon-wrap"><ShieldAlert size={18} /></div>
           <span>مركز الدفاع والأمان</span>
         </NavLink>
-
-        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>النظام والامتثال</span>
-        <NavLink to="/storage" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><HardDrive size={18} /></div>
-          <span>التخزين والملفات</span>
+        <NavLink to="/bastion" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><ShieldCheck size={18} /></div>
+          <span>بوابة الحماية السيادية Bastion PAM</span>
         </NavLink>
-        <NavLink to="/users" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><Users size={18} /></div>
-          <span>إدارة مستخدمي RDP</span>
-        </NavLink>
-        <NavLink to="/audit" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><ScrollText size={18} /></div>
-          <span>سجل التدقيق والامتثال</span>
-        </NavLink>
-        <NavLink to="/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><Settings size={18} /></div>
-          <span>الإعدادات والإنذارات</span>
-        </NavLink>
-
-        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>الامتيازات والتحقيق الجنائي</span>
         <NavLink to="/jit" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <div className="icon-wrap"><Shield size={18} /></div>
-          <span>ترقية الصلاحيات JIT v2.5</span>
+          <span>ترقية الصلاحيات المؤقتة JIT</span>
+        </NavLink>
+
+        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>التدقيق والتقارير</span>
+        <NavLink to="/audit" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><ScrollText size={18} /></div>
+          <span>سجل التدقيق وسلسلة Merkle</span>
         </NavLink>
         <NavLink to="/replay" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
           <div className="icon-wrap"><Film size={18} /></div>
-          <span>التحقيق واسترجاع الجلسات</span>
+          <span>تسجيلات الجلسات الزمنية</span>
         </NavLink>
-        <span className="sidebar-nav__label" style={{ marginTop: 6 }}>البوابات السيادية والمعرض</span>
-        <NavLink to="/login" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><Lock size={18} /></div>
-          <span>بوابة النفاذ Zero-Trust SSO</span>
-        </NavLink>
-        <NavLink to="/lockout" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><ShieldCheck size={18} /></div>
-          <span>درع المحيط Perimeter Lockout</span>
-        </NavLink>
-        <NavLink to="/gallery" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <div className="icon-wrap"><Sparkles size={18} /></div>
-          <span>معرض واجهات Stitch (20)</span>
+        <NavLink to="/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+          <div className="icon-wrap"><Settings size={18} /></div>
+          <span>إعدادات وسياسات المنظومة</span>
         </NavLink>
       </nav>
 
       {/* Footer Info */}
-      <div className="sidebar-footer" style={{ marginTop: 'auto', borderTop: '1px solid rgba(212,160,23,0.18)', paddingTop: 8 }}>
+      <div className="sidebar-footer" style={{ marginTop: 'auto', borderTop: '1px solid var(--accent-soft)', paddingTop: 8 }}>
         <button
           type="button"
           onClick={onOpenUserAccount}
@@ -226,8 +252,8 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '8px 10px',
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid rgba(212, 160, 23, 0.18)',
+            background: 'var(--glass-tint)',
+            border: '1px solid var(--glass-rim-low)',
             borderRadius: 'var(--radius-sm)',
             cursor: onOpenUserAccount ? 'pointer' : 'default',
             width: '100%',
@@ -251,7 +277,7 @@ export function Sidebar({ isAdmin, currentUser, onOpenUserAccount }: SidebarProp
               fontSize: 10,
               fontWeight: 700,
               background: roleColor,
-              color: '#000',
+              color: 'var(--on-accent)',
             }}
           >
             {roleBadge}

@@ -34,6 +34,8 @@ data/*.db-wal
 data/*.db-shm
 data/*.log
 data/.session_token
+data/.vault_master.key
+data/control-plane-vault.key
 data/browser_profile/
 !data/.gitkeep
 

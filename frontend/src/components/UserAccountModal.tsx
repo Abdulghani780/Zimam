@@ -12,20 +12,18 @@ interface UserAccountModalProps {
 
 export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: UserAccountModalProps) {
   const toast = useToast();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin@asaas2026');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
-  const handleLogin = async (e?: React.FormEvent, customUser?: string, customPass?: string) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const u = customUser || username;
-    const p = customPass || password;
 
     setLoading(true);
     try {
-      const res = await api.login(u, p);
+      const res = await api.login(username, password);
       if (res.ok) {
         toast(`تم تسجيل الدخول بنجاح كـ ${res.user.full_name} (${res.user.role}).`, 'success');
         onUserChanged(res.user);
@@ -38,15 +36,6 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickSwitch = (role: 'admin' | 'operator' | 'viewer') => {
-    const creds = {
-      admin: { u: 'admin', p: 'admin@asaas2026' },
-      operator: { u: 'operator', p: 'operator@asaas2026' },
-      viewer: { u: 'viewer', p: 'viewer@asaas2026' },
-    }[role];
-    handleLogin(undefined, creds.u, creds.p);
   };
 
   const handleLogout = async () => {
@@ -79,12 +68,12 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                background: currentUser?.role === 'admin' ? 'rgba(34, 197, 94, 0.15)' : currentUser?.role === 'operator' ? 'rgba(212, 160, 23, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                border: `1px solid ${currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent)' : '#3b82f6'}`,
+                background: currentUser?.role === 'admin' ? 'var(--paid-bg)' : currentUser?.role === 'operator' ? 'var(--accent-soft)' : 'var(--status-info-surface)',
+                border: `1px solid ${currentUser?.role === 'admin' ? 'var(--paid)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--chart-out)'}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent)' : '#3b82f6',
+                color: currentUser?.role === 'admin' ? 'var(--paid)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--chart-out)',
               }}
             >
               <User size={22} />
@@ -96,7 +85,7 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
               <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                 <span>اسم المستخدم: <strong style={{ color: 'var(--text-2)' }}>{currentUser?.username || '—'}</strong></span>
                 <span>•</span>
-                <span style={{ color: currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent)' : '#3b82f6', fontWeight: 600 }}>
+                <span style={{ color: currentUser?.role === 'admin' ? 'var(--paid)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--chart-out)', fontWeight: 600 }}>
                   {currentUser?.role === 'admin' ? 'مدير نظام كامل الصلاحيات' : currentUser?.role === 'operator' ? 'مشغل عمليات' : 'مراجع للقراءة فقط'}
                 </span>
               </div>
@@ -111,47 +100,6 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
           )}
         </div>
 
-        {/* Quick Role Switcher for Testing (Story 1 verification) */}
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8 }}>
-            التبديل السريع بين الأدوار لاختبار صلاحيات RBAC:
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <Button
-              size="sm"
-              variant={currentUser?.role === 'admin' ? 'primary' : 'ghost'}
-              onClick={() => handleQuickSwitch('admin')}
-              disabled={loading}
-              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 6px', height: 'auto' }}
-            >
-              <span style={{ fontWeight: 700 }}>Admin (مدير)</span>
-              <span style={{ fontSize: 10, opacity: 0.8 }}>صلاحيات كاملة</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant={currentUser?.role === 'operator' ? 'primary' : 'ghost'}
-              onClick={() => handleQuickSwitch('operator')}
-              disabled={loading}
-              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 6px', height: 'auto' }}
-            >
-              <span style={{ fontWeight: 700 }}>Operator (مشغل)</span>
-              <span style={{ fontSize: 10, opacity: 0.8 }}>تحكم تشغيلي</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant={currentUser?.role === 'viewer' ? 'primary' : 'ghost'}
-              onClick={() => handleQuickSwitch('viewer')}
-              disabled={loading}
-              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 6px', height: 'auto' }}
-            >
-              <span style={{ fontWeight: 700 }}>Viewer (مشاهدة)</span>
-              <span style={{ fontSize: 10, opacity: 0.8 }}>قراءة فقط (403)</span>
-            </Button>
-          </div>
-        </div>
-
         {/* Direct Login Form */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <Field label="اسم المستخدم">
@@ -160,7 +108,8 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
                 id={id}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin / operator / viewer"
+                placeholder="اسم المستخدم المسجل في المنصة"
+                autoComplete="username"
                 required
               />
             )}
@@ -173,6 +122,7 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
+                autoComplete="current-password"
                 required
               />
             )}

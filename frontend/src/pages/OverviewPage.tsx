@@ -61,7 +61,7 @@ export function OverviewPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="page">
       {/* 1. Main Stat Cards */}
       <div className="stat-grid">
         <Glass className="stat-card">
@@ -73,7 +73,7 @@ export function OverviewPage() {
             <span dir="ltr">{host?.cpu ?? 0}%</span>
           </div>
           <div className="stat-card__sub">
-            <span>{host?.cpuCores || 8} أنوية قياس لحظي</span>
+            <span>{host?.cpuCores ?? 0} أنوية مقروءة من Agent</span>
           </div>
         </Glass>
 
@@ -86,7 +86,7 @@ export function OverviewPage() {
             <span>{host?.usedRam ?? 0}</span> <span style={{ fontSize: 16, fontWeight: 500, marginInlineStart: 4 }}>GB</span>
           </div>
           <div className="stat-card__sub">
-            <span><span dir="ltr">{host?.ram ?? 0}%</span> من إجمالي <span dir="ltr">{host?.totalRam ?? 64} GB</span></span>
+            <span><span dir="ltr">{host?.ram ?? 0}%</span> من إجمالي <span dir="ltr">{host?.totalRam ?? 0} GB</span></span>
           </div>
         </Glass>
 
@@ -117,7 +117,7 @@ export function OverviewPage() {
         </Glass>
       </div>
 
-      {/* 2. Resource Governor & JumpServer PAM Banners */}
+      {/* 2. Resource Governor & Control Plane status */}
       <div className="hero-grid">
         <Glass className="hero-banner" style={{ background: 'var(--glass-tint-strong)' }}>
           <div className="hero-banner__content">
@@ -151,12 +151,12 @@ export function OverviewPage() {
           <div className="hero-banner__content">
             <div className="hero-banner__title">
               <ShieldCheck size={20} color="var(--accent)" />
-              <span>حصن إدارة الوصول المميز</span>
-              <bdi dir="ltr" style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600 }}>(JumpServer PAM)</bdi>
-              <span className="badge badge--accent">Zero-Trust</span>
+              <span>حالة طبقة التحكم والوصول</span>
+              <bdi dir="ltr" style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600 }}>(Control Plane)</bdi>
+              <span className="badge badge--accent">Policy Ready</span>
             </div>
             <div className="hero-banner__desc">
-              خزنة بيانات اعتماد مشفرة عتادياً ورادار رصد محاولات الاختراق التلقائي وتدقيق الامتثال.
+              تظهر هنا حالة الأصول والسياسات والتدقيق الحقيقي. جلسات RDP/SSH لا تُفتح حتى تُربط بوابة البروتوكول.
             </div>
           </div>
 
@@ -230,12 +230,12 @@ export function OverviewPage() {
                     </TableCell>
                     <TableCell style={{ minWidth: 200 }}>
                       <div className="flex items-center gap-2.5">
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid rgba(212, 160, 23, 0.4)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(212, 160, 23, 0.1)', color: '#d4a017', flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--accent-soft)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-soft)', color: 'var(--accent)', flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
                           {s.user.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-title" style={{ color: '#f0ede6' }}>{s.user}</span>
+                            <span className="font-bold text-title" style={{ color: 'var(--text)' }}>{s.user}</span>
                             {s.is_current && (
                               <span
                                 style={{
@@ -246,15 +246,15 @@ export function OverviewPage() {
                                   borderRadius: 9999,
                                   fontSize: 10,
                                   fontWeight: 800,
-                                  backgroundColor: 'var(--accent, #d4a017)',
-                                  color: '#000',
+                                  backgroundColor: 'var(--accent)',
+                                  color: 'var(--on-accent)',
                                 }}
                               >
                                 أنت هنا
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-muted" style={{ color: '#8a8478' }}>{s.station || 'RDP'}</div>
+                          <div className="text-xs text-muted" style={{ color: 'var(--text-3)' }}>{s.station || 'RDP'}</div>
                         </div>
                       </div>
                     </TableCell>
@@ -322,13 +322,13 @@ export function OverviewPage() {
                       <span style={{ fontVariantNumeric: 'tabular-nums' }}>{p.pid}</span>
                     </TableCell>
                     <TableCell style={{ minWidth: 200, textAlign: 'start' }} className="font-bold text-title">
-                      <span style={{ color: '#f0ede6', fontWeight: 700 }}>{p.name}</span>
+                      <span style={{ color: 'var(--text)', fontWeight: 700 }}>{p.name}</span>
                     </TableCell>
                     <TableCell style={{ minWidth: 160, textAlign: 'start' }} className="text-muted text-xs">
-                      <span style={{ color: '#8a8478' }}>{p.user} (جلسة #{p.session})</span>
+                      <span style={{ color: 'var(--text-3)' }}>{p.user} (جلسة #{p.session})</span>
                     </TableCell>
                     <TableCell style={{ width: 140, textAlign: 'end' }} className="font-telemetry font-bold text-primary">
-                      <span dir="ltr" style={{ fontVariantNumeric: 'tabular-nums', color: '#d4a017' }}>
+                      <span dir="ltr" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--accent)' }}>
                         {(p as any).ram_mb ? (
                           (p as any).ram_mb >= 1024
                             ? `${((p as any).ram_mb / 1024).toFixed(1)} GB`

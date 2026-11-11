@@ -35,60 +35,13 @@ export function AssetsPage() {
   const [port, setPort] = useState(3389);
   const [submitting, setSubmitting] = useState(false);
 
-  const defaultMockServers: AssetItem[] = [
-    {
-      id: 'srv-01',
-      name: 'SRV-PROD-ASAAS-01',
-      host: '10.0.1.10',
-      type: 'Windows Server 2025',
-      port: 3389,
-      status: 'online',
-      latency_ms: 0.8,
-      last_check: 'الآن',
-    },
-    {
-      id: 'srv-02',
-      name: 'SRV-APP-LINUX-02',
-      host: '10.0.1.15',
-      type: 'Ubuntu Linux 24.04',
-      port: 22,
-      status: 'online',
-      latency_ms: 1.4,
-      last_check: 'الآن',
-    },
-    {
-      id: 'srv-03',
-      name: 'SRV-DB-POSTGRES-01',
-      host: '10.0.1.20',
-      type: 'Debian 12 (PostgreSQL)',
-      port: 5432,
-      status: 'online',
-      latency_ms: 1.1,
-      last_check: 'الآن',
-    },
-    {
-      id: 'srv-04',
-      name: 'SRV-BACKUP-COLD-01',
-      host: '10.0.1.99',
-      type: 'Windows Server 2022',
-      port: 3389,
-      status: 'online',
-      latency_ms: 2.1,
-      last_check: 'الآن',
-    },
-  ];
-
   const fetchAssets = async () => {
     try {
       const list = await api.getAssets();
       const raw = Array.isArray(list) ? list : (list as any)?.assets || [];
-      if (raw.length === 0) {
-        setAssets(defaultMockServers);
-      } else {
-        setAssets(raw);
-      }
+      setAssets(raw);
     } catch {
-      setAssets(defaultMockServers);
+      setAssets([]);
     }
   };
 
@@ -97,8 +50,11 @@ export function AssetsPage() {
   }, []);
 
   const handleConnectBastion = (a: AssetItem) => {
-    toast(`جاري فتح جلسة اتصال مشفرة عبر بوابة PAM Bastion للخادم [${a.name}]...`, 'success');
-    window.open(`/api/bastion/connect?host=${encodeURIComponent(a.host)}&port=${a.port}&name=${encodeURIComponent(a.name)}`, '_blank');
+    const protocol = (a.protocol || 'RDP').toUpperCase();
+    const port = a.port || (protocol === 'RDP' ? 3389 : 22);
+    const url = `/api/bastion/connect?host=${encodeURIComponent(a.host)}&port=${encodeURIComponent(String(port))}&name=${encodeURIComponent(a.name)}&username=Administrator&protocol=${encodeURIComponent(protocol)}`;
+    window.open(url, '_blank');
+    toast(`تم إرسال طلب جلسة ${protocol} للأصل [${a.name}] عبر بوابة الحصن.`, 'success');
   };
 
   const handleTrimServer = async (a: AssetItem) => {
@@ -141,26 +97,28 @@ export function AssetsPage() {
     }
   };
 
-  const filteredAssets = assets.filter((a) => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'windows') return a.type.toLowerCase().includes('windows');
-    if (activeTab === 'linux') return a.type.toLowerCase().includes('ubuntu') || a.type.toLowerCase().includes('debian') || a.type.toLowerCase().includes('linux');
-    if (activeTab === 'db') return a.type.toLowerCase().includes('postgres') || a.type.toLowerCase().includes('sql') || a.port === 5432 || a.port === 1433;
-    if (activeTab === 'k8s') return a.type.toLowerCase().includes('k8s') || a.type.toLowerCase().includes('container');
+  const matchesTab = (a: AssetItem, tab: 'all' | 'windows' | 'linux' | 'db' | 'k8s') => {
+    if (tab === 'all') return true;
+    if (tab === 'windows') return a.type.toLowerCase().includes('windows');
+    if (tab === 'linux') return a.type.toLowerCase().includes('ubuntu') || a.type.toLowerCase().includes('debian') || a.type.toLowerCase().includes('linux');
+    if (tab === 'db') return a.type.toLowerCase().includes('postgres') || a.type.toLowerCase().includes('sql') || a.port === 5432 || a.port === 1433;
+    if (tab === 'k8s') return a.type.toLowerCase().includes('k8s') || a.type.toLowerCase().includes('container');
     return true;
-  });
+  };
+
+  const filteredAssets = assets.filter((a) => matchesTab(a, activeTab));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Sovereign Infrastructure Header (Stitch _11 Top) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -174,26 +132,26 @@ export function AssetsPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999, whiteSpace: 'nowrap',
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
               >
                 <CheckCircle2 size={13} />
-                كافة العقد تعمل بكفاءة 99.98% Uptime
+                {assets.length ? `${assets.length} أصل مسجل من Control Plane` : 'لا توجد أصول مسجلة بعد'}
               </span>
               <span
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999, whiteSpace: 'nowrap',
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
                 }}
               >
-                PAM JumpServer Sovereign Mesh
+                Control Plane / Agent heartbeat
               </span>
             </div>
 
@@ -201,8 +159,7 @@ export function AssetsPage() {
               دليل وإدارة قائمة الخوادم ومؤشرات النبض (Servers &amp; Assets Directory)
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              مراقبة حية للبنية التحتية، فحص مؤشرات النبض (Heartbeat Telemetry)، والاتصال الفوري المباشر عبر بوابات PAM
-              المؤمنة دون كشف كلمات السر لشبكة الإنترنت.
+              مراقبة حالة الأصول المسجلة عبر Agent heartbeat، مع تجهيز الاتصال لرموز جلسات قصيرة العمر دون كشف كلمات السر للمتصفح.
             </p>
           </div>
 
@@ -230,13 +187,13 @@ export function AssetsPage() {
       </div>
 
       {/* 2. Filter Tabs (Stitch _11 L10-L15) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(212, 160, 23, 0.18)', paddingBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--accent-soft)', paddingBottom: 12 }}>
         {[
           { key: 'all', label: `الكل (${assets.length})` },
-          { key: 'windows', label: 'خوادم ويندوز (3)' },
-          { key: 'linux', label: 'خوادم لينكس (4)' },
-          { key: 'db', label: 'قواعد البيانات (1)' },
-          { key: 'k8s', label: 'حاويات K8s (2)' },
+          { key: 'windows', label: `خوادم ويندوز (${assets.filter((a) => matchesTab(a, 'windows')).length})` },
+          { key: 'linux', label: `خوادم لينكس (${assets.filter((a) => matchesTab(a, 'linux')).length})` },
+          { key: 'db', label: `قواعد البيانات (${assets.filter((a) => matchesTab(a, 'db')).length})` },
+          { key: 'k8s', label: `حاويات K8s (${assets.filter((a) => matchesTab(a, 'k8s')).length})` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -249,7 +206,7 @@ export function AssetsPage() {
               fontWeight: 700,
               cursor: 'pointer',
               border: activeTab === tab.key ? '1px solid var(--accent)' : '1px solid transparent',
-              background: activeTab === tab.key ? 'rgba(212, 160, 23, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+              background: activeTab === tab.key ? 'var(--accent-soft)' : 'var(--glass-rim-low)',
               color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-3)',
               transition: 'all 0.2s',
             }}
@@ -269,7 +226,7 @@ export function AssetsPage() {
               display: 'flex',
               flexDirection: 'column',
               gap: 14,
-              border: '1px solid rgba(212, 160, 23, 0.2)',
+              border: '1px solid var(--accent-soft)',
             }}
           >
             {/* Header row */}
@@ -280,8 +237,8 @@ export function AssetsPage() {
                     width: 38,
                     height: 38,
                     borderRadius: 10,
-                    background: 'rgba(212, 160, 23, 0.15)',
-                    border: '1px solid rgba(212, 160, 23, 0.3)',
+                    background: 'var(--accent-soft)',
+                    border: '1px solid var(--accent-soft)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -307,50 +264,37 @@ export function AssetsPage() {
                   gap: 5,
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#22c55e',
-                  background: 'rgba(34, 197, 94, 0.12)',
+                  color: a.status === 'online' ? 'var(--paid)' : 'var(--unpaid)',
+                  background: a.status === 'online' ? 'var(--paid-bg)' : 'var(--unpaid-bg)',
                   padding: '3px 8px',
                   borderRadius: 9999, whiteSpace: 'nowrap',
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
-                <span dir="ltr">نشط (Pulse 1s)</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: a.status === 'online' ? 'var(--paid)' : 'var(--unpaid)' }} />
+                <span dir="ltr">{a.status || 'unknown'}</span>
               </span>
             </div>
 
-            {/* Telemetry Metrics */}
+            {/* Real asset state reported by the backend */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* CPU load */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span style={{ color: 'var(--text-3)' }}>حمل المعالج CPU:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }}>32%</span>
-                </div>
-                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                  <div style={{ width: '32%', height: '100%', background: 'var(--accent)' }} />
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                <span style={{ color: 'var(--text-3)' }}>حالة الأصل:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }} dir="ltr">{a.status || 'unknown'}</span>
               </div>
-
-              {/* RAM load */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span style={{ color: 'var(--text-3)' }}>الذاكرة المستخدمة RAM:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }}><span dir="ltr">49% (31.5 GB)</span></span>
-                </div>
-                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                  <div style={{ width: '49%', height: '100%', background: '#38bdf8' }} />
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                <span style={{ color: 'var(--text-3)' }}>آخر فحص مسجل:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }} dir="ltr">{a.last_check || '—'}</span>
               </div>
             </div>
 
             {/* System Info */}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)' }}>
               <span>النظام: <strong style={{ color: 'var(--text-2)' }}>{a.type}</strong></span>
-              <span>الاستجابة: <strong style={{ color: '#22c55e', fontFamily: 'var(--font)' }}><span dir="ltr">{a.latency_ms || 1.1} ms</span></strong></span>
+              <span>الاستجابة: <strong style={{ color: 'var(--paid)', fontFamily: 'var(--font)' }}><span dir="ltr">{a.latency_ms > 0 ? `${a.latency_ms} ms` : 'غير متاح'}</span></strong></span>
             </div>
 
             {/* Action buttons (Stitch _11) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--glass-rim-low)' }}>
               <Button
                 size="sm"
                 variant="primary"
@@ -389,7 +333,7 @@ export function AssetsPage() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
+            background: 'var(--shadow-soft)',
             backdropFilter: 'blur(8px)',
             zIndex: 1000,
             display: 'flex',
@@ -402,7 +346,7 @@ export function AssetsPage() {
               width: '100%',
               maxHeight: '85vh',
               overflowY: 'auto',
-              background: '#131315',
+              background: 'var(--surface-ground)',
               borderTop: '2px solid var(--accent)',
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
@@ -410,7 +354,7 @@ export function AssetsPage() {
               display: 'flex',
               flexDirection: 'column',
               gap: 20,
-              boxShadow: '0 -10px 40px rgba(0,0,0,0.8)',
+              boxShadow: '0 -10px 40px var(--shadow-soft)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -429,7 +373,7 @@ export function AssetsPage() {
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
+                  background: 'var(--glass-rim-low)',
                   border: 'none',
                   borderRadius: '50%',
                   width: 36,
@@ -447,25 +391,25 @@ export function AssetsPage() {
 
             {/* Telemetry Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
+              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>المعالج والأنوية</span>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>8 أنوية حقيقية</div>
-                <span style={{ fontSize: 11, color: '#22c55e' }}>الحمل الإجمالي: 32.1%</span>
+                <span style={{ fontSize: 11, color: 'var(--paid)' }}>الحمل الإجمالي: 32.1%</span>
               </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
+              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>الذاكرة المادية RAM</span>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>31.5 / 63.8 GB</div>
-                <span style={{ fontSize: 11, color: '#38bdf8' }}>49.5% مستخدم</span>
+                <span style={{ fontSize: 11, color: 'var(--chart-out)' }}>49.5% مستخدم</span>
               </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
+              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>التخزين NVMe C:\</span>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>338 / 475 GB</div>
                 <span style={{ fontSize: 11, color: 'var(--accent)' }}>71.1% مستخدم</span>
               </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
+              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>حركة الشبكة والكمون</span>
                 <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>0.8 ms</div>
-                <span style={{ fontSize: 11, color: '#22c55e' }}>10 Gbps Sovereign Mesh</span>
+                <span style={{ fontSize: 11, color: 'var(--paid)' }}>10 Gbps Sovereign Mesh</span>
               </div>
             </div>
 
@@ -481,14 +425,14 @@ export function AssetsPage() {
                     style={{
                       padding: '10px 14px',
                       borderRadius: 8,
-                      background: 'rgba(0,0,0,0.3)',
-                      border: '1px solid rgba(34, 197, 94, 0.25)',
+                      background: 'var(--shadow-soft)',
+                      border: '1px solid var(--paid-bg)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
                     }}
                   >
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--paid)' }} />
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>{s}</span>
                   </div>
                 ))}
@@ -504,7 +448,7 @@ export function AssetsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Zap size={14} />
-                <span>فتح جلسة اتصال Bastion PAM</span>
+                <span>طلب جلسة عبر السياسة</span>
               </Button>
               <Button
                 size="sm"

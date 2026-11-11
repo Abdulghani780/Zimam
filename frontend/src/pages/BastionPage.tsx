@@ -2,12 +2,9 @@ import { useState, useEffect } from 'react';
 import { api, type AssetItem } from '../lib/api';
 
 const PROTOCOLS = [
-  { id: 'rdp', name: 'RDP', full: 'Remote Desktop', port: 3389, icon: 'desktop_windows', color: '#38bdf8' },
-  { id: 'ssh', name: 'SSH', full: 'Secure Shell', port: 22, icon: 'terminal', color: '#22c55e' },
-  { id: 'sftp', name: 'SFTP', full: 'File Transfer', port: 22, icon: 'folder_shared', color: '#f59e0b' },
-  { id: 'vnc', name: 'VNC', full: 'Virtual Network', port: 5900, icon: 'monitor', color: '#818cf8' },
-  { id: 'winrm', name: 'WinRM', full: 'Windows Remote', port: 5985, icon: 'settings_remote', color: '#4ade80' },
-  { id: 'database', name: 'Database', full: 'SQL Client', port: 1433, icon: 'database', color: '#facc15' },
+  { id: 'rdp', name: 'RDP', full: 'Remote Desktop', port: 3389, icon: 'desktop_windows', color: 'var(--chart-out)' },
+  { id: 'ssh', name: 'SSH', full: 'Secure Shell', port: 22, icon: 'terminal', color: 'var(--paid)' },
+  { id: 'sftp', name: 'SFTP', full: 'File Transfer', port: 22, icon: 'folder_shared', color: 'var(--partial)' },
 ];
 
 export function BastionPage() {
@@ -16,6 +13,7 @@ export function BastionPage() {
   const [testCommand, setTestCommand] = useState<string>('netstat -ano');
   const [aclResult, setAclResult] = useState<any>(null);
   const [evaluating, setEvaluating] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState<string | null>(null);
 
   // Quick connect input
   const [quickHost, setQuickHost] = useState('');
@@ -51,10 +49,21 @@ export function BastionPage() {
     }
   };
 
+  const sessionMessage = (proto: string, name: string, host: string, port: number) => {
+    const upper = proto.toUpperCase();
+    if (upper.startsWith('RDP')) {
+      return `تم توليد ملف اتصال RDP (.rdp) للأصل [${name}] على ${host}:${port}. افتح الملف لتشغيل mstsc.`;
+    }
+    return `تم فتح صفحة مشغل ${upper} للأصل [${name}] مع رابط ${upper.toLowerCase()}://${host}:${port}.`;
+  };
+
   const handleQuickLaunch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickHost) return;
-    alert(`إطلاق اتصال ${quickProto} فوري بالسيرفر: ${quickHost} بمستخدم ${quickUser}`);
+    const quickPort = quickProto === 'RDP' ? 3389 : 22;
+    const url = `/api/bastion/connect?host=${encodeURIComponent(quickHost)}&username=${encodeURIComponent(quickUser)}&name=${encodeURIComponent(quickHost)}&protocol=${encodeURIComponent(quickProto)}&port=${encodeURIComponent(String(quickPort))}`;
+    window.open(url, '_blank');
+    setConnectionMessage(sessionMessage(quickProto, quickHost, quickHost, quickPort));
   };
 
   const filteredAssets =
@@ -74,18 +83,18 @@ export function BastionPage() {
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
           <div className="space-y-1 max-w-2xl">
             <div className="flex items-center gap-space-xs">
-              <span className="w-2.5 h-2.5 rounded-full bg-status-safe shadow-[0_0_10px_#22c55e]"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-status-safe shadow-[0_0_10px_var(--paid)]"></span>
               <span className="font-telemetry-mono-sm text-telemetry-mono-sm text-primary uppercase tracking-widest">
-                ZERO-TRUST JUMPSERVER BASTION
+                ASAAS CONTROL PLANE / ACCESS CONSOLE
               </span>
               <span className="text-text-muted text-caption">/</span>
               <span className="font-caption text-caption text-text-muted">بوابة الوصول المتميز الموحدة</span>
             </div>
             <h1 className="font-headline-lg text-headline-lg text-text-titles font-bold tracking-tight">
-              حصن الوصول السريع والتحكم الموحد (JumpServer PAM)
+              إدارة الأصول وبوابات الوصول المتميز
             </h1>
             <p className="font-body-base text-body-base text-text-muted">
-              اتصال آمن ببروتوكولات RDP و SSH و SFTP و VNC و Database دون الحاجة لفتح منافذ خارجية في الجدار الناري، مع تشفير الجلسة وتسجيل فيديو التدقيق بالكامل.
+              إدارة الأصول والحسابات والسياسات من مكان واحد. لا تُفتح جلسة إلا بعد مصادقة المستخدم وتحقق السياسة وتكوين بوابة البروتوكول.
             </p>
           </div>
 
@@ -94,7 +103,7 @@ export function BastionPage() {
               <span className="font-caption text-caption text-text-muted block">حالة درع الحصن</span>
               <span className="font-telemetry-mono text-telemetry-mono text-status-safe font-bold flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-status-safe animate-pulse"></span>
-                ACTIVE SECURE ENCLAVE
+                CONTROL PLANE FOUNDATION
               </span>
             </div>
           </div>
@@ -107,7 +116,7 @@ export function BastionPage() {
           onClick={() => setSelectedProtocol('all')}
           className={`p-space-sm rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 text-center ${
             selectedProtocol === 'all'
-              ? 'bg-primary-container/20 border-primary shadow-[0_0_16px_rgba(240,190,56,0.3)]'
+              ? 'bg-primary-container/20 border-primary shadow-[0_0_16px_var(--accent-glow)]'
               : 'bg-surface-glass backdrop-blur-2xl border-gold-rim/20 hover:border-gold-rim/40'
           }`}
         >
@@ -128,7 +137,7 @@ export function BastionPage() {
               onClick={() => setSelectedProtocol(proto.id)}
               className={`p-space-sm rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 text-center ${
                 isSelected
-                  ? 'bg-primary-container/20 border-primary shadow-[0_0_16px_rgba(240,190,56,0.3)]'
+                  ? 'bg-primary-container/20 border-primary shadow-[0_0_16px_var(--accent-glow)]'
                   : 'bg-surface-glass backdrop-blur-2xl border-gold-rim/20 hover:border-gold-rim/40'
               }`}
             >
@@ -155,7 +164,7 @@ export function BastionPage() {
                   الأصول والخوادم المدارة في الحصن ({filteredAssets.length})
                 </h2>
                 <span className="font-caption text-caption text-text-muted">
-                  اتصال موحد مشفر بدون الحاجة لبرامج وسيطة
+                  الأصول الحقيقية المسجلة في Control Plane فقط
                 </span>
               </div>
             </div>
@@ -166,7 +175,11 @@ export function BastionPage() {
                   لا توجد خوادم مسجلة لهذا البروتوكول
                 </div>
               ) : (
-                filteredAssets.map((asset) => (
+                filteredAssets.map((asset) => {
+                  const isOnline = String(asset.status || '').toLowerCase() === 'online';
+                  const assetProtocol = (asset.protocol || (asset.type?.toLowerCase().includes('linux') ? 'SSH' : 'RDP')).toUpperCase();
+                  const assetPort = asset.port || (assetProtocol === 'RDP' ? 3389 : 22);
+                  return (
                   <div
                     key={asset.id}
                     className="p-space-sm rounded-lg bg-surface-container-lowest border border-gold-rim/20 flex items-center justify-between hover:border-primary/50 transition-all"
@@ -180,26 +193,31 @@ export function BastionPage() {
                           {asset.name}
                         </h3>
                         <span className="font-telemetry-mono-sm text-telemetry-mono-sm text-text-muted dir-ltr">
-                          {asset.host}:{asset.port || 3389}
+                          {asset.host}:{assetPort}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-xs font-semibold bg-status-safe-surface text-status-safe">
-                        Online
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isOnline ? 'bg-status-safe-surface text-status-safe' : 'bg-status-danger-surface text-status-danger'}`}>
+                        {String(asset.status || 'unknown')}
                       </span>
                       <button
                         type="button"
-                        onClick={() => alert(`بدء جلسة JumpServer PAM مشفرة مع ${asset.name}`)}
-                        className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-bold text-xs hover:shadow-[0_0_12px_rgba(240,190,56,0.4)] transition-all cursor-pointer flex items-center gap-1"
+                        onClick={() => {
+                          const url = `/api/bastion/connect?host=${encodeURIComponent(asset.host)}&username=${encodeURIComponent(quickUser)}&name=${encodeURIComponent(asset.name)}&protocol=${encodeURIComponent(assetProtocol)}&port=${encodeURIComponent(String(assetPort))}`;
+                          window.open(url, '_blank');
+                          setConnectionMessage(sessionMessage(assetProtocol, asset.name, asset.host, assetPort));
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-bold text-xs hover:shadow-[0_0_12px_var(--accent-glow)] transition-all cursor-pointer flex items-center gap-1"
                       >
                         <span className="material-symbols-outlined text-[15px]">play_arrow</span>
-                        <span>اتصال آمن</span>
+                        <span>طلب جلسة عبر السياسة</span>
                       </button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -255,19 +273,23 @@ export function BastionPage() {
                     <option value="RDP">RDP (3389)</option>
                     <option value="SSH">SSH (22)</option>
                     <option value="SFTP">SFTP (22)</option>
-                    <option value="VNC">VNC (5900)</option>
                   </select>
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2 rounded-lg bg-primary text-on-primary font-bold text-xs hover:shadow-[0_0_16px_rgba(240,190,56,0.4)] transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-2 rounded-lg bg-primary text-on-primary font-bold text-xs hover:shadow-[0_0_16px_var(--accent-glow)] transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[16px]">launch</span>
                 <span>فتح جلسة اتصال فورية عبر الحصن</span>
               </button>
             </form>
+            {connectionMessage && (
+              <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 p-2 text-xs text-amber-200" role="status">
+                {connectionMessage}
+              </div>
+            )}
           </div>
 
           {/* Command Risk ACL Evaluator */}
@@ -302,16 +324,16 @@ export function BastionPage() {
               {aclResult && (
                 <div
                   className={`p-2.5 rounded-lg border text-xs ${
-                    aclResult.allowed
+                    (aclResult.allowed ?? aclResult.safe)
                       ? 'bg-status-safe-surface border-status-safe/40 text-status-safe'
                       : 'bg-status-danger-surface border-status-danger/40 text-status-danger'
                   }`}
                 >
                   <div className="font-bold flex items-center gap-1 mb-1">
                     <span className="material-symbols-outlined text-[16px]">
-                      {aclResult.allowed ? 'check_circle' : 'block'}
+                      {(aclResult.allowed ?? aclResult.safe) ? 'check_circle' : 'block'}
                     </span>
-                    <span>{aclResult.allowed ? 'الأمر مصرح به (Safe Command)' : 'الأمر محظور ومرفوض أمنياً!'}</span>
+                    <span>{(aclResult.allowed ?? aclResult.safe) ? 'الأمر مصرح به (Safe Command)' : 'الأمر محظور ومرفوض أمنياً!'}</span>
                   </div>
                   <p className="text-text-muted">{aclResult.reason || 'اجتاز فحص السياسات الأمنية'}</p>
                 </div>

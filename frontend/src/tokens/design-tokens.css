@@ -192,7 +192,7 @@
    LAYER 2 (B): LIGHT THEME SEMANTIC OVERRIDES
    Optional High-Contrast Light Workspace
    ========================================================================== */
-[data-theme='light'] {
+:root[data-theme='light'] {
   color-scheme: light;
 
   /* Light Surfaces */
@@ -227,7 +227,7 @@
   /* Light Actions */
   --action-primary:            #ba9555;
   --action-primary-hover:      #a88243;
-  --action-primary-fg:         #ffffff;
+  --action-primary-fg:         #141111;
   --action-secondary:          #e5ded0;
   --action-secondary-hover:    #d9d0c0;
   --action-secondary-fg:       #221f1f;

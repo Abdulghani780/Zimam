@@ -22,8 +22,11 @@ import {
   User,
   Shield,
   Film,
+  Code,
+  Boxes,
+  Layers,
+  Database,
   Sparkles,
-  Lock,
 } from 'lucide-react';
 
 interface MobileNavigationProps {
@@ -150,7 +153,7 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
 
             {/* User Status Bar */}
             <div className="mobile-drawer__user">
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-fill)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-accent)' }}>
                 <User size={18} />
               </div>
               <div style={{ flex: 1 }}>
@@ -163,64 +166,90 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
 
             {/* Links Grid */}
             <div className="mobile-drawer__nav">
-              <span className="mobile-drawer__section-title">إدارة الأصول والخوادم</span>
-              <NavLink to="/assets" onClick={closeDrawer} className="mobile-drawer__link">
+              <span className="mobile-drawer__section-title">القيادة والمراقبة والموارد</span>
+              <NavLink to="/servers" onClick={closeDrawer} className="mobile-drawer__link">
                 <Server size={18} />
-                <span>دليل الأصول والخوادم</span>
+                <span>إدارة الخوادم والمجموعات</span>
               </NavLink>
+              <NavLink to="/users" onClick={closeDrawer} className="mobile-drawer__link">
+                <Users size={18} />
+                <span>جلسات ومستخدمو RDP</span>
+              </NavLink>
+              <NavLink to="/control" onClick={closeDrawer} className="mobile-drawer__link">
+                <Cpu size={18} />
+                <span>حاكم الموارد والعمليات</span>
+              </NavLink>
+              <NavLink to="/assets" onClick={closeDrawer} className="mobile-drawer__link">
+                <HardDrive size={18} />
+                <span>سجل الأصول والعتاد</span>
+              </NavLink>
+
+              <span className="mobile-drawer__section-title">المطورون والافتراضية</span>
+              <NavLink to="/development" onClick={closeDrawer} className="mobile-drawer__link">
+                <Code size={18} />
+                <span>بيئات المطورين والمشاريع</span>
+              </NavLink>
+              <NavLink to="/containers" onClick={closeDrawer} className="mobile-drawer__link">
+                <Boxes size={18} />
+                <span>Docker والافتراضية Hyper-V</span>
+              </NavLink>
+              <NavLink to="/stitch" onClick={closeDrawer} className="mobile-drawer__link">
+                <Sparkles size={18} />
+                <span>معرض مكونات Stitch Design</span>
+              </NavLink>
+
+              <span className="mobile-drawer__section-title">البنية التحتية والشبكات</span>
+              <NavLink to="/infrastructure" onClick={closeDrawer} className="mobile-drawer__link">
+                <Layers size={18} />
+                <span>أدوار Windows والخدمات</span>
+              </NavLink>
+              <NavLink to="/network-storage" onClick={closeDrawer} className="mobile-drawer__link">
+                <HardDrive size={18} />
+                <span>التخزين والشبكات والجدار الناري</span>
+              </NavLink>
+              <NavLink to="/storage" onClick={closeDrawer} className="mobile-drawer__link">
+                <HardDrive size={18} />
+                <span>تحليل وسائط التخزين والأقراص</span>
+              </NavLink>
+              <NavLink to="/ports" onClick={closeDrawer} className="mobile-drawer__link">
+                <Radio size={18} />
+                <span>المنافذ والاتصالات النشطة</span>
+              </NavLink>
+              <NavLink to="/databases" onClick={closeDrawer} className="mobile-drawer__link">
+                <Database size={18} />
+                <span>إدارة قواعد البيانات وSQL</span>
+              </NavLink>
+
+              <span className="mobile-drawer__section-title">الأمان والوصول المميز</span>
               <NavLink to="/vault" onClick={closeDrawer} className="mobile-drawer__link">
                 <KeyRound size={18} />
                 <span>خزنة الحسابات المشفرة</span>
               </NavLink>
-
-              <span className="mobile-drawer__section-title">الأمان والشبكة</span>
               <NavLink to="/security" onClick={closeDrawer} className="mobile-drawer__link">
                 <ShieldAlert size={18} />
                 <span>مركز الدفاع والأمان (Fail2Ban)</span>
               </NavLink>
-              <NavLink to="/ports" onClick={closeDrawer} className="mobile-drawer__link">
-                <Radio size={18} />
-                <span>درع عزل المنافذ PORT-GUARD</span>
+              <NavLink to="/bastion" onClick={closeDrawer} className="mobile-drawer__link">
+                <ShieldCheck size={18} />
+                <span>بوابة الحماية السيادية Bastion PAM</span>
               </NavLink>
-
-              <span className="mobile-drawer__section-title">النظام والامتثال</span>
-              <NavLink to="/storage" onClick={closeDrawer} className="mobile-drawer__link">
-                <HardDrive size={18} />
-                <span>إدارة التخزين وفك الملفات</span>
-              </NavLink>
-              <NavLink to="/users" onClick={closeDrawer} className="mobile-drawer__link">
-                <Users size={18} />
-                <span>حوكمة المستخدمين وجلسات RDP</span>
-              </NavLink>
-              <NavLink to="/audit" onClick={closeDrawer} className="mobile-drawer__link">
-                <ScrollText size={18} />
-                <span>سجل التدقيق والامتثال الجنائي</span>
-              </NavLink>
-              <NavLink to="/settings" onClick={closeDrawer} className="mobile-drawer__link">
-                <Settings size={18} />
-                <span>إعدادات النظام والإنذارات</span>
-              </NavLink>
-
-              <span className="mobile-drawer__section-title">البوابات السيادية والامتيازات</span>
               <NavLink to="/jit" onClick={closeDrawer} className="mobile-drawer__link">
                 <Shield size={18} />
-                <span>ترقية الصلاحيات JIT v2.5</span>
+                <span>ترقية الصلاحيات المؤقتة JIT</span>
+              </NavLink>
+
+              <span className="mobile-drawer__section-title">التدقيق والتقارير</span>
+              <NavLink to="/audit" onClick={closeDrawer} className="mobile-drawer__link">
+                <ScrollText size={18} />
+                <span>سجل التدقيق وسلسلة Merkle</span>
               </NavLink>
               <NavLink to="/replay" onClick={closeDrawer} className="mobile-drawer__link">
                 <Film size={18} />
-                <span>التحقيق واسترجاع الجلسات</span>
+                <span>تسجيلات الجلسات الزمنية</span>
               </NavLink>
-              <NavLink to="/login" onClick={closeDrawer} className="mobile-drawer__link">
-                <Lock size={18} />
-                <span>بوابة الدخول Zero-Trust SSO</span>
-              </NavLink>
-              <NavLink to="/lockout" onClick={closeDrawer} className="mobile-drawer__link">
-                <ShieldAlert size={18} />
-                <span>درع المحيط Perimeter Lockout</span>
-              </NavLink>
-              <NavLink to="/gallery" onClick={closeDrawer} className="mobile-drawer__link">
-                <Sparkles size={18} />
-                <span>معرض واجهات Stitch (20)</span>
+              <NavLink to="/settings" onClick={closeDrawer} className="mobile-drawer__link">
+                <Settings size={18} />
+                <span>إعدادات وسياسات المنظومة</span>
               </NavLink>
             </div>
           </div>

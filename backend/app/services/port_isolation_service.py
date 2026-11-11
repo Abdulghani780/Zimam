@@ -380,6 +380,11 @@ class PortIsolationService:
             'project_name': project_name or f'Project on {assigned}',
             'claimed_at': time.time(),
         }
+        try:
+            from ..infrastructure.db import db_set_reservation
+            db_set_reservation(assigned, username, project_name or '')
+        except Exception:
+            pass
 
         return {
             'ok': True,
@@ -393,6 +398,12 @@ class PortIsolationService:
     @classmethod
     def release_port(cls, port: int, username: str = '') -> Dict[str, Any]:
         """Releases an explicit port reservation."""
+        try:
+            from ..infrastructure.db import db_remove_reservation
+            db_remove_reservation(port)
+        except Exception:
+            pass
+
         if port in cls._claims:
             del cls._claims[port]
             return {'ok': True, 'port': port, 'message': f'تم إلغاء حجز المنفذ {port} وإتاحته للجميع.'}

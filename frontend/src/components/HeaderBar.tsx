@@ -31,7 +31,7 @@ export function HeaderBar({
     setTrimming(true);
     try {
       const res = await api.trimGovernor();
-      const reclaimed = res.result?.reclaimed_mb || 0;
+      const reclaimed = res.reclaimed_mb ?? res.result?.reclaimed_mb ?? 0;
       toast(reclaimed > 0 ? `تم استرداد ${reclaimed} MB من ذاكرة الجلسات الخاملة بنجاح.` : 'السيرفر يعمل بكفاءة قصوى، لا توجد جلسات خاملة حالياً.', 'success');
     } catch (err: any) {
       toast(err.message || 'فشل تفريغ الذاكرة', 'error');
@@ -60,7 +60,7 @@ export function HeaderBar({
     }
   };
 
-  const roleColor = currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent, #d4a017)' : '#3b82f6';
+  const roleColor = currentUser?.role === 'admin' ? 'var(--status-safe)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--status-info)';
   const roleLabel = currentUser?.role === 'admin' ? 'مدير النظام (Admin)' : currentUser?.role === 'operator' ? 'مشغل (Operator)' : 'مراجع (Viewer)';
 
   return (
@@ -70,9 +70,9 @@ export function HeaderBar({
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        backgroundColor: '#0e0d0d',
-        borderBottom: '1px solid rgba(212, 160, 23, 0.25)',
-        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.85)',
+        backgroundColor: 'var(--surface-ground)',
+        borderBottom: '1px solid var(--glass-rim)',
+        boxShadow: 'var(--glass-shadow)',
         width: '100%',
       }}
     >
@@ -89,7 +89,7 @@ export function HeaderBar({
           width: '100%',
           boxSizing: 'border-box',
           flexWrap: 'wrap',
-          backgroundColor: '#0e0d0d',
+          backgroundColor: 'transparent',
         }}
       >
         {/* Status Pills */}
@@ -106,7 +106,7 @@ export function HeaderBar({
             className="badge badge--accent"
             style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
           >
-            <span>{health?.os_display || 'Windows Server 2025'}</span>
+            <span>{health?.os_display || 'جارٍ قراءة بيانات المضيف'}</span>
           </div>
 
           <button
@@ -114,9 +114,9 @@ export function HeaderBar({
             onClick={onOpenAiDiag}
             className="badge badge--warning hover:brightness-110 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
             style={{
-              border: '1px solid rgba(212, 160, 23, 0.4)',
-              background: 'rgba(212, 160, 23, 0.12)',
-              color: '#d4a017',
+              border: '1px solid var(--status-warning-border)',
+              background: 'var(--status-warning-surface)',
+              color: 'var(--status-warning)',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               display: 'inline-flex',
@@ -142,9 +142,9 @@ export function HeaderBar({
               gap: 8,
               padding: '6px 14px',
               borderRadius: '9999px',
-              background: 'rgba(255, 255, 255, 0.04)',
+              background: 'var(--glass-rim-low)',
               border: `1px solid ${roleColor}`,
-              color: '#f0ede6',
+              color: 'var(--text)',
               cursor: 'pointer',
               fontFamily: 'inherit',
               fontSize: 12,
@@ -161,7 +161,7 @@ export function HeaderBar({
                 padding: '2px 6px',
                 borderRadius: 4,
                 background: roleColor,
-                color: '#000',
+                color: 'var(--on-accent)',
                 fontWeight: 700,
               }}
             >
@@ -194,7 +194,7 @@ export function HeaderBar({
             variant="glass"
             loading={trimming}
             onClick={handleTrim}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent, #d4a017)', whiteSpace: 'nowrap' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent, var(--accent))', whiteSpace: 'nowrap' }}
           >
             <Zap size={14} />
             <span>تفريغ الخمول</span>

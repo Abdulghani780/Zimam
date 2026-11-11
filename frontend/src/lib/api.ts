@@ -111,6 +111,9 @@ export interface SecurityStats {
   auto_ban_enabled: boolean;
   fail_threshold: number;
   ban_duration_hours: number;
+  firewall_active?: boolean;
+  threat_level?: string;
+  failed_logins_today?: number;
 }
 
 export interface SecurityEvent {
@@ -128,6 +131,7 @@ export interface AssetItem {
   host: string;
   type: string;
   port: number;
+  protocol?: string;
   status: string;
   latency_ms: number;
   last_check: string;
@@ -175,10 +179,9 @@ export interface HealthInfo {
   ok: boolean;
   is_windows: boolean;
   os_kind: string;
-  os_display: string;
+  os_display?: string;
   is_admin: boolean;
   actions_enabled: boolean;
-  session_token: string;
   version: string;
   authenticated?: boolean;
   current_user?: string;
@@ -215,63 +218,19 @@ export interface HistoricalPoint {
   active_sessions: number;
 }
 
-let sessionToken = typeof localStorage !== 'undefined' ? (localStorage.getItem('asaas_session_token') || '') : '';
-
-export function setSessionToken(token: string) {
-  sessionToken = token;
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('asaas_session_token', token);
-  }
-}
-
-async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
-  if (!sessionToken && typeof localStorage !== 'undefined') {
-    sessionToken = localStorage.getItem('asaas_session_token') || '';
-  }
-  if (!sessionToken && path !== '/api/health') {
-    try {
-      const hRes = await fetch('/api/health');
-      if (hRes.ok) {
-        const hJson = await hRes.json();
-        if (hJson && hJson.session_token) {
-          setSessionToken(hJson.session_token);
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
   headers.set('Accept', 'application/json');
   if (options.body && typeof options.body === 'string') {
     headers.set('Content-Type', 'application/json');
   }
-  if (sessionToken) {
-    headers.set('X-Asaas-Token', sessionToken);
-    headers.set('X-Session-Token', sessionToken);
-    headers.set('Authorization', `Bearer ${sessionToken}`);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('asaas_auth_claim') : null;
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+    headers.set('X-Session-Token', token);
   }
-
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(path, { ...options, headers, credentials: 'same-origin' });
   if (!res.ok) {
-    // If 401 Unauthorized, token in localStorage is likely stale from previous server run.
-    // Fetch fresh token from /api/health and retry once automatically!
-    if (res.status === 401 && !isRetry && path !== '/api/health' && path !== '/api/auth/login') {
-      try {
-        const hRes = await fetch('/api/health');
-        if (hRes.ok) {
-          const hJson = await hRes.json();
-          if (hJson && hJson.session_token) {
-            setSessionToken(hJson.session_token);
-            return request<T>(path, options, true);
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-
     let errMessage = `HTTP error ${res.status}`;
     try {
       const errJson = await res.json();
@@ -289,11 +248,7 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
 export const api = {
   // Health
   getHealth: async (): Promise<HealthInfo> => {
-    const data = await request<HealthInfo>('/api/health');
-    if (data.session_token) {
-      setSessionToken(data.session_token);
-    }
-    return data;
+    return request<HealthInfo>('/api/health');
   },
 
   // Telemetry & Snapshot
@@ -385,7 +340,23 @@ export const api = {
   getSecurityStats: () => request<SecurityStats>('/api/security/stats'),
   getSecurityEvents: async (): Promise<SecurityEvent[]> => {
     const res = await request<any>('/api/security/events');
-    return Array.isArray(res) ? res : (res?.events || []);
+    const list = Array.isArray(res) ? res : (res?.events || []);
+    return list.map((e: any, idx: number) => {
+      const rawSeverity = String(e?.details?.severity || e?.severity || e?.status || 'info').toLowerCase();
+      const severity = rawSeverity.includes('critical') || rawSeverity.includes('block')
+        ? 'danger'
+        : rawSeverity.includes('warn') || rawSeverity.includes('alert')
+          ? 'warning'
+          : 'info';
+      return {
+        event_id: Number(e?.id ?? e?.event_id ?? idx),
+        time: e?.timestamp || e?.time || '',
+        user: e?.user || 'System',
+        ip: e?.ip || e?.ip_address || '—',
+        action: e?.action || e?.event || e?.event_type || 'EVENT',
+        severity,
+      } as SecurityEvent;
+    });
   },
   getBlockedIps: async (): Promise<string[]> => {
     const res = await request<any>('/api/security/events');
@@ -417,9 +388,10 @@ export const api = {
       host: a.host || a.address || '127.0.0.1',
       type: a.type || a.platform_display || a.platform || 'Windows Server',
       port: Number(a.port || 3389),
-      status: String(a.status || 'online').toLowerCase(),
-      latency_ms: a.latency_ms ?? (String(a.status || '').toLowerCase() === 'online' ? 1.2 : 0),
-      last_check: a.last_check || new Date().toLocaleTimeString('ar-SA'),
+      protocol: a.protocol || (Number(a.port) === 22 ? 'SSH' : 'RDP'),
+      status: String(a.status || 'unknown').toLowerCase(),
+      latency_ms: Number(a.latency_ms ?? 0),
+      last_check: a.last_check || '',
     }));
   },
   addAsset: (asset: { name: string; host: string; type: string; port: number }) =>
@@ -455,22 +427,21 @@ export const api = {
     const res = await request<any>('/api/vault/accounts');
     return Array.isArray(res) ? res : (res?.accounts || []);
   },
-  addVaultAccount: (acc: { asset_id: string; username: string; password: string; protocol: string; notes?: string }) =>
-    request<any>('/api/vault/accounts/add', {
+  addVaultAccount: (account: { asset_id?: string; asset_name: string; username: string; protocol: string; password: string }) =>
+    request<{ ok: boolean; id: string; message?: string }>('/api/vault/accounts/add', {
       method: 'POST',
-      body: JSON.stringify(acc),
+      body: JSON.stringify(account),
     }),
   deleteVaultAccount: (id: string) =>
-    request<any>('/api/vault/accounts/delete', {
+    request<{ ok: boolean; id: string }>('/api/vault/accounts/delete', {
       method: 'POST',
       body: JSON.stringify({ id }),
     }),
-  revealPassword: (id: string, master_key: string) =>
-    request<{ ok: boolean; password?: string; error?: string }>('/api/vault/reveal', {
+  revealVaultSecret: (id: string) =>
+    request<{ ok: boolean; secret?: string; error?: string; username?: string; asset_name?: string }>('/api/vault/reveal', {
       method: 'POST',
-      body: JSON.stringify({ id, master_key }),
+      body: JSON.stringify({ id }),
     }),
-
   // Storage
   getStorageBreakdown: async (drive: string = 'C'): Promise<any> => {
     const res = await request<any>(`/api/storage/breakdown?drive=${drive}`);
@@ -621,27 +592,20 @@ export const api = {
 
   // Multi-User RBAC & Auth (Story 1)
   login: async (username: string, password: string) => {
-    const res = await request<{ ok: boolean; token: string; user: AppUser; message: string }>('/api/auth/login', {
+    const res = await request<{ ok: boolean; user: AppUser; message: string; token?: string }>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
-    if (res.ok && res.token) {
-      setSessionToken(res.token);
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('asaas_user_profile', JSON.stringify(res.user));
-      }
+    if (res.token && typeof window !== 'undefined') {
+      localStorage.setItem('asaas_auth_claim', res.token);
     }
     return res;
   },
   logout: async () => {
-    try {
-      await request('/api/auth/logout', { method: 'POST' });
-    } finally {
-      setSessionToken('');
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem('asaas_user_profile');
-      }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('asaas_auth_claim');
     }
+    await request('/api/auth/logout', { method: 'POST' });
   },
   getCurrentUser: () => request<{ ok: boolean; user: AppUser }>('/api/auth/me'),
   getAppUsers: () => request<{ ok: boolean; users: AppUser[]; count: number }>('/api/auth/users'),
@@ -686,13 +650,18 @@ export const api = {
       body: JSON.stringify({ path }),
     }),
 
-  // JIT Zero-Trust Elevation (Story 1 / JumpServer PAM)
+  // Legacy JIT compatibility surface; real grants are policy + gateway work.
   getJitGrants: () =>
     request<{ ok: boolean; grants: any[]; count: number }>('/api/jit/grants'),
   requestJitElevation: (params: { role: string; reason: string; duration_mins: number; user?: string }) =>
-    request<{ ok: boolean; id: string; message: string; grant?: any }>('/api/jit/request', {
+    request<{ ok: boolean; id: string; message: string; status?: string; grant?: any }>('/api/jit/request', {
       method: 'POST',
       body: JSON.stringify(params),
+    }),
+  approveJitElevation: (id: string, approve: boolean = true) =>
+    request<{ ok: boolean; id: string; user?: string; status?: string; message: string; error?: string }>('/api/jit/approve', {
+      method: 'POST',
+      body: JSON.stringify({ id, approve }),
     }),
   revokeJitElevation: (id: string) =>
     request<{ ok: boolean; id: string; user?: string; message: string }>('/api/jit/revoke', {
@@ -703,4 +672,178 @@ export const api = {
   // Audit Cryptographic Chain Verification
   verifyAuditChain: () =>
     request<{ ok: boolean; records_checked: number; chain_intact: boolean; root_hash: string; full_digest?: string; message: string }>('/api/audit/verify-chain'),
+
+  // =====================================================================
+  // ASAAS Enterprise v3.0: Windows Server & Developer Platform API Client
+  // =====================================================================
+
+  // 1. Servers & Server Groups
+  getServers: () => request<{ ok: boolean; servers: any[] }>('/api/servers'),
+  checkServers: () => request<{ ok: boolean; servers: any[] }>('/api/servers/check'),
+  addServer: (server: { name: string; ip: string; os?: string; domain?: string }) =>
+    request<{ ok: boolean; id: string; name: string; error?: string }>('/api/servers', {
+      method: 'POST',
+      body: JSON.stringify(server),
+    }),
+  deleteServer: (id: string) =>
+    request<{ ok: boolean; message?: string; error?: string }>('/api/servers/delete', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+  getServerGroups: () => request<{ ok: boolean; groups: any[] }>('/api/server-groups'),
+  createServerGroup: (group: { name: string; description: string; server_ids: string[] }) =>
+    request<{ ok: boolean; id: string; name: string; error?: string }>('/api/server-groups/create', {
+      method: 'POST',
+      body: JSON.stringify(group),
+    }),
+  deleteServerGroup: (id: string) =>
+    request<{ ok: boolean; message?: string; error?: string }>('/api/server-groups/delete', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+  getLocalServerInfo: () => request<any>('/api/server/local'),
+  restartServer: (params: { reason?: string; timeout?: number; confirmed?: boolean }) =>
+    request<any>('/api/server/restart', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  shutdownServer: (params: { reason?: string; timeout?: number; confirmed?: boolean }) =>
+    request<any>('/api/server/shutdown', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+
+  // 2. Roles & Features
+  getRoles: (refresh = false) => request<{ ok: boolean; roles: any[] }>(`/api/roles${refresh ? '?refresh=1' : ''}`),
+  installRole: (name: string) =>
+    request<any>('/api/roles/install', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  uninstallRole: (name: string, confirmed = false) =>
+    request<any>('/api/roles/uninstall', {
+      method: 'POST',
+      body: JSON.stringify({ name, confirmed }),
+    }),
+
+  // 3. Services & Processes
+  getServicesList: (query = '') => request<{ ok: boolean; services: any[] }>(`/api/services${query ? `?q=${query}` : ''}`),
+  controlServiceAction: (name: string, action: 'start' | 'stop' | 'restart') =>
+    request<any>('/api/services/control', {
+      method: 'POST',
+      body: JSON.stringify({ name, action }),
+    }),
+  getProcessesList: () => request<{ ok: boolean; processes: any[] }>('/api/processes'),
+  terminateProcessAction: (pid: number, force = false) =>
+    request<any>('/api/processes/terminate', {
+      method: 'POST',
+      body: JSON.stringify({ pid, force }),
+    }),
+
+  // 4. Storage, Volumes, SMB Shares, File Explorer
+  getDisks: () => request<{ ok: boolean; disks: any[] }>('/api/storage/disks'),
+  getVolumes: () => request<{ ok: boolean; volumes: any[] }>('/api/storage/volumes'),
+  getSmbShares: () => request<{ ok: boolean; shares: any[] }>('/api/storage/shares'),
+  createSmbShare: (share: { name: string; path: string; description?: string }) =>
+    request<any>('/api/storage/shares/create', {
+      method: 'POST',
+      body: JSON.stringify(share),
+    }),
+  deleteSmbShare: (name: string) =>
+    request<any>('/api/storage/shares/delete', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  browseFiles: (path = 'C:\\') => request<any>(`/api/storage/explorer?path=${encodeURIComponent(path)}`),
+
+  // 5. Network & Firewall
+  getNetworkAdapters: () => request<{ ok: boolean; adapters: any[] }>('/api/network/adapters'),
+  pingHost: (host: string, count = 4) =>
+    request<any>('/api/network/ping', {
+      method: 'POST',
+      body: JSON.stringify({ host, count }),
+    }),
+  testTcpPort: (host: string, port: number) =>
+    request<any>('/api/network/test-port', {
+      method: 'POST',
+      body: JSON.stringify({ host, port }),
+    }),
+  getFirewallStatus: () => request<any>('/api/firewall/status'),
+  getFirewallRulesList: () => request<{ ok: boolean; rules: any[] }>('/api/firewall/rules'),
+  toggleFirewallRule: (name: string, enabled: boolean) =>
+    request<any>('/api/firewall/rules/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ name, enabled }),
+    }),
+
+  // 6. Events, Tasks, Updates, Certificates
+  getEventLogs: (logName = 'System') => request<{ ok: boolean; events: any[] }>(`/api/events?log=${logName}`),
+  getTasksList: () => request<{ ok: boolean; tasks: any[] }>('/api/tasks'),
+  getUpdates: () => request<any>('/api/updates/status'),
+  getCertificatesList: () => request<{ ok: boolean; certificates: any[] }>('/api/certificates'),
+
+  // 7. Virtualization & Containers
+  getHyperV: () => request<any>('/api/hyperv/status'),
+  getDocker: () => request<any>('/api/docker/status'),
+
+  // 8. Developer Workspaces & Projects
+  getDeveloperProjects: () => request<{ ok: boolean; projects: any[] }>('/api/workspaces/projects'),
+  createDeveloperProject: (params: { name: string; runtime?: string; port?: number }) =>
+    request<any>('/api/workspaces/projects/create', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
+  startDeveloperProject: (project_id: string) =>
+    request<any>('/api/workspaces/projects/start', {
+      method: 'POST',
+      body: JSON.stringify({ project_id }),
+    }),
+  stopDeveloperProject: (project_id: string) =>
+    request<any>('/api/workspaces/projects/stop', {
+      method: 'POST',
+      body: JSON.stringify({ project_id }),
+    }),
+  deleteDeveloperProject: (project_id: string) =>
+    request<any>('/api/workspaces/projects/delete', {
+      method: 'POST',
+      body: JSON.stringify({ project_id }),
+    }),
+  allocatePortProbe: (port?: number, project_name = 'TestProject') =>
+    request<any>('/api/ports/allocate', {
+      method: 'POST',
+      body: JSON.stringify({ port, project_name }),
+    }),
+  getConflictsList: () => request<{ ok: boolean; conflicts: any[] }>('/api/conflicts'),
+  getQuotasConfig: () => request<any>('/api/quotas'),
+  saveQuotasConfig: (quotas: any) =>
+    request<any>('/api/quotas', {
+      method: 'POST',
+      body: JSON.stringify(quotas),
+    }),
+  getActionJobsList: () => request<{ ok: boolean; jobs: any[] }>('/api/action-jobs'),
+  getReplayEvents: () =>
+    request<{ ok: boolean; events: Array<{ id: string; time: string; event: string; command: string; risk: string; user: string }> }>('/api/replay/events'),
+
+  // 9. Sovereign Database Management & SQL Studio (Story 10)
+  getDatabaseEngines: () => request<{ ok: boolean; engines: any[] }>('/api/database/engines'),
+  getDatabaseStats: () => request<any>('/api/database/stats'),
+  getDatabaseTables: () => request<{ ok: boolean; tables: any[] }>('/api/database/tables'),
+  getTableData: (table: string, limit = 50, offset = 0) =>
+    request<any>(`/api/database/table-data?table=${encodeURIComponent(table)}&limit=${limit}&offset=${offset}`),
+  executeDatabaseQuery: (query: string) =>
+    request<any>('/api/database/query', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    }),
+  createDatabaseBackup: (description = 'Manual Snapshot') =>
+    request<any>('/api/database/backup', {
+      method: 'POST',
+      body: JSON.stringify({ description }),
+    }),
+  getDatabaseBackups: () => request<{ ok: boolean; backups: any[] }>('/api/database/backups'),
+  optimizeDatabase: () =>
+    request<any>('/api/database/optimize', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
 };

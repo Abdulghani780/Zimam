@@ -9,7 +9,11 @@ import time
 import psutil
 from typing import Dict, Any, Optional
 
-from ..infrastructure.db import db_get_governor_settings, db_save_governor_settings
+from ..infrastructure.db import (
+    MAX_RECLAIMED_MB,
+    db_get_governor_settings,
+    db_save_governor_settings,
+)
 
 IS_WINDOWS = sys.platform == 'win32'
 if IS_WINDOWS:
@@ -29,7 +33,12 @@ class GovernorService:
         self.auto_disconnect_mins: int = settings.get('auto_disconnect_mins', 60)
         self.auto_logoff_enabled: bool = settings.get('auto_logoff_enabled', False)
         self.auto_logoff_hours: int = settings.get('auto_logoff_hours', 8)
-        self.reclaimed_mb: float = settings.get('reclaimed_mb', 0.0)
+        # Reclaimed memory is session-scoped: every server session starts from
+        # zero and the counter is capped so a corrupt legacy value can never
+        # inflate the UI again.
+        self.reclaimed_mb: float = 0.0
+        self.trimmed_sessions: int = 0
+        self._throttled_pids: set[int] = set()
 
         # Background enforcement worker thread
         self._running = True
@@ -37,7 +46,12 @@ class GovernorService:
         self._worker.start()
 
     def get_status(self) -> Dict[str, Any]:
-        """Returns the full Governor status and policies."""
+        """Returns the full Governor status, policies, and live enforcement counters."""
+        try:
+            from ..infrastructure.win32_wts import Win32WtsService
+            active_sessions = len(Win32WtsService.list_active_sessions())
+        except Exception:
+            active_sessions = 0
         return {
             'ok': True,
             'enabled': True,
@@ -51,6 +65,11 @@ class GovernorService:
             'auto_logoff_hours': self.auto_logoff_hours,
             'reclaimed_mb': round(self.reclaimed_mb, 1),
             'total_reclaimed_mb': round(self.reclaimed_mb, 1),
+            'session_scoped': True,
+            'max_reclaimed_mb': MAX_RECLAIMED_MB,
+            'trimmed_sessions': self.trimmed_sessions,
+            'throttled_pids': len(self._throttled_pids),
+            'active_sessions': active_sessions,
         }
 
     def update_settings(self, new_settings: Dict[str, Any]) -> Dict[str, Any]:
@@ -75,10 +94,16 @@ class GovernorService:
             'auto_disconnect_mins': self.auto_disconnect_mins,
             'auto_logoff_enabled': self.auto_logoff_enabled,
             'auto_logoff_hours': self.auto_logoff_hours,
-            'reclaimed_mb': self.reclaimed_mb,
         }
         db_save_governor_settings(to_save)
         return self.get_status()
+
+    def _add_reclaimed(self, mb: float) -> None:
+        """Adds reclaimed MB to the current session, capped at a sane limit."""
+        self.reclaimed_mb = min(
+            MAX_RECLAIMED_MB,
+            round(self.reclaimed_mb + max(0.0, float(mb)), 1),
+        )
 
     def trim_process(self, pid: int) -> int:
         if not IS_WINDOWS or pid <= 4:
@@ -92,7 +117,10 @@ class GovernorService:
                 kernel32.SetProcessWorkingSetSize(h, -1, -1)
                 psapi.EmptyWorkingSet(h)
                 mem_after = psutil.Process(pid).memory_info().rss
-                return max(0, mem_before - mem_after)
+                freed = max(0, mem_before - mem_after)
+                if freed > 0:
+                    self._throttled_pids.add(pid)
+                return freed
             finally:
                 kernel32.CloseHandle(h)
         except Exception:
@@ -111,8 +139,7 @@ class GovernorService:
             except Exception:
                 pass
         mb = round(total_freed / (1024 * 1024), 1)
-        self.reclaimed_mb += mb
-        db_save_governor_settings({'reclaimed_mb': self.reclaimed_mb})
+        self._add_reclaimed(mb)
         return {
             'ok': True,
             'reclaimed_mb': mb,
@@ -142,8 +169,9 @@ class GovernorService:
             except Exception:
                 pass
         mb = round(total_freed / (1024 * 1024), 1)
-        self.reclaimed_mb += mb
-        db_save_governor_settings({'reclaimed_mb': self.reclaimed_mb})
+        self._add_reclaimed(mb)
+        if count > 0:
+            self.trimmed_sessions += 1
         return {
             'ok': True,
             'session_id': session_id,
@@ -157,8 +185,7 @@ class GovernorService:
         if pid:
             freed = self.trim_process(int(pid))
             mb = round(freed / (1024 * 1024), 1)
-            self.reclaimed_mb += mb
-            db_save_governor_settings({'reclaimed_mb': self.reclaimed_mb})
+            self._add_reclaimed(mb)
             return {
                 'ok': True,
                 'pid': int(pid),
@@ -190,8 +217,7 @@ class GovernorService:
                     pass
 
             mb = round(total_freed / (1024 * 1024), 1)
-            self.reclaimed_mb += mb
-            db_save_governor_settings({'reclaimed_mb': self.reclaimed_mb})
+            self._add_reclaimed(mb)
             return {
                 'ok': True,
                 'target': target_name,

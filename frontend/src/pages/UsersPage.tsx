@@ -5,14 +5,17 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, Field, TextInput, PasswordInput, PasswordStrength, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
-import { api, type LocalUser, type DomainProfile } from '../lib/api';
+import { Card, Button, Modal, Field, TextInput, PasswordInput, PasswordStrength, Glass, Select, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
+import { api, type LocalUser, type DomainProfile, type AppUser } from '../lib/api';
 import {
   Users,
   UserPlus,
   CheckCircle2,
   KeyRound,
   RefreshCw,
+  UserCog,
+  Trash2,
+  ShieldCheck,
 } from 'lucide-react';
 
 export function UsersPage() {
@@ -25,6 +28,18 @@ export function UsersPage() {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [actionUser, setActionUser] = useState<string | null>(null);
+
+  // ASAAS application-user management (separate from Windows SAM accounts).
+  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  const [appUsersLoading, setAppUsersLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [appModalOpen, setAppModalOpen] = useState(false);
+  const [appUsername, setAppUsername] = useState('');
+  const [appPassword, setAppPassword] = useState('');
+  const [appFullName, setAppFullName] = useState('');
+  const [appRole, setAppRole] = useState<'admin' | 'operator' | 'viewer'>('viewer');
+  const [appSubmitting, setAppSubmitting] = useState(false);
+  const [appActionUser, setAppActionUser] = useState<string | null>(null);
 
   // Form states
   const [username, setUsername] = useState('');
@@ -48,9 +63,111 @@ export function UsersPage() {
     }
   };
 
+  const fetchAppUsers = async () => {
+    setAppUsersLoading(true);
+    try {
+      const res = await api.getAppUsers();
+      if (res?.ok) setAppUsers(Array.isArray(res.users) ? res.users : []);
+    } catch {
+      // The endpoint is admin-only; non-admin operators simply see the
+      // read-only notice instead of a noisy toast.
+    } finally {
+      setAppUsersLoading(false);
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await api.getCurrentUser();
+      if (res?.ok && res.user) setCurrentUser(res.user);
+    } catch {
+      // ignore; role-based controls remain hidden until identity resolves
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchAppUsers();
+    fetchCurrentUser();
   }, []);
+
+  const canManageAppUsers = currentUser?.role === 'admin';
+
+  const handleCreateAppUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAppSubmitting(true);
+    try {
+      const res = await api.createAppUser({
+        username: appUsername.trim(),
+        password: appPassword,
+        role: appRole,
+        full_name: appFullName.trim(),
+      });
+      if (res.ok) {
+        toast(`تم إنشاء حساب مشغل النظام [${appUsername}] بدور ${appRole}.`, 'success');
+        setAppModalOpen(false);
+        setAppUsername('');
+        setAppPassword('');
+        setAppFullName('');
+        setAppRole('viewer');
+        fetchAppUsers();
+      } else {
+        toast(res.error || 'فشل إنشاء حساب المشغل', 'error');
+      }
+    } catch (err: any) {
+      toast(err.message || 'خطأ أثناء إنشاء حساب المشغل', 'error');
+    } finally {
+      setAppSubmitting(false);
+    }
+  };
+
+  const handleAppRoleChange = async (user: AppUser, role: string) => {
+    if (role === user.role) return;
+    if (!confirm(`تغيير دور الحساب [${user.username}] إلى (${role})؟`)) {
+      fetchAppUsers();
+      return;
+    }
+    setAppActionUser(user.username);
+    try {
+      const res = await api.updateAppUserRole(user.username, role);
+      if (res.ok) {
+        toast(`تم تحديث دور الحساب [${user.username}] إلى (${role}).`, 'success');
+        fetchAppUsers();
+      } else {
+        toast(res.error || 'فشل تحديث الدور', 'error');
+      }
+    } catch (err: any) {
+      toast(err.message || 'خطأ أثناء تحديث الدور', 'error');
+    } finally {
+      setAppActionUser(null);
+    }
+  };
+
+  const handleDeleteAppUser = async (user: AppUser) => {
+    if (user.username.toLowerCase() === 'admin') {
+      toast('لا يمكن حذف الحساب الجذري admin.', 'error');
+      return;
+    }
+    if (currentUser?.username?.toLowerCase() === user.username.toLowerCase()) {
+      toast('لا يمكنك حذف الحساب الذي تستخدمه حالياً.', 'error');
+      return;
+    }
+    if (!confirm(`حذف حساب مشغل النظام [${user.username}] نهائياً؟`)) return;
+    setAppActionUser(user.username);
+    try {
+      const res = await api.deleteAppUser(user.username);
+      if (res.ok) {
+        toast(`تم حذف حساب المشغل [${user.username}].`, 'success');
+        fetchAppUsers();
+      } else {
+        toast(res.error || 'فشل حذف الحساب', 'error');
+      }
+    } catch (err: any) {
+      toast(err.message || 'خطأ أثناء حذف الحساب', 'error');
+    } finally {
+      setAppActionUser(null);
+    }
+  };
 
   const handleToggleState = async (user: LocalUser) => {
     setActionUser(user.username);
@@ -137,16 +254,16 @@ export function UsersPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Sovereign IAM Header (Stitch RDP Top) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -160,8 +277,8 @@ export function UsersPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
@@ -173,7 +290,7 @@ export function UsersPage() {
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -222,7 +339,7 @@ export function UsersPage() {
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               سياسات أمان الحسابات وتصليب كلمات المرور
             </h4>
-            <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>مفعلة Enforced</span>
+            <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>مفعلة Enforced</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
             فرض طول 12+ رمز، حظر كلمات المرور الشائعة، قفل الحساب التلقائي بعد 5 محاولات خاطئة لمنع هجمات التخمين.
@@ -246,7 +363,7 @@ export function UsersPage() {
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               بيئة تشغيل السيرفر
             </h4>
-            <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700 }}>
+            <span style={{ fontSize: 11, color: 'var(--chart-out)', fontWeight: 700 }}>
               {domainProfile?.is_domain_controller ? 'Domain Controller' : 'Sovereign Standalone Host'}
             </span>
           </div>
@@ -373,6 +490,169 @@ export function UsersPage() {
         </TableContainer>
       </Card>
 
+      {/* 4. ASAAS Application Users (operators of the console itself) */}
+      <Card
+        title="حسابات مشغلي النظام (ASAAS App Users)"
+        icon="users"
+        actions={
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              إجمالي الحسابات: {appUsers.length} حساب
+            </span>
+            <Button
+              size="sm"
+              variant="glass"
+              onClick={fetchAppUsers}
+              loading={appUsersLoading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            >
+              <RefreshCw size={12} />
+              <span>تحديث</span>
+            </Button>
+            {canManageAppUsers && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => setAppModalOpen(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <UserCog size={13} />
+                <span>إضافة حساب مشغل</span>
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {!canManageAppUsers && currentUser && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: 'var(--partial-bg)',
+              color: 'var(--partial)',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            إدارة حسابات مشغلي النظام مقيدة بمدير النظام (Admin). يمكنك مراجعة بيانات حسابك فقط.
+          </div>
+        )}
+
+        <TableContainer>
+          <Table style={{ width: '100%', tableLayout: 'fixed' }}>
+            <TableHeader>
+              <TableRow>
+                <TableHead style={{ width: '18%', textAlign: 'start' }}>اسم المستخدم</TableHead>
+                <TableHead style={{ width: '20%', textAlign: 'start' }}>الاسم الكامل</TableHead>
+                <TableHead style={{ width: '19%', textAlign: 'start' }}>الدور والصلاحية</TableHead>
+                <TableHead style={{ width: '12%', textAlign: 'start' }}>حالة الحساب</TableHead>
+                <TableHead style={{ width: '19%', textAlign: 'start' }}>آخر دخول</TableHead>
+                <TableHead style={{ width: '12%', textAlign: 'end' }}>إجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {appUsers.length === 0 ? (
+                <TableEmpty
+                  colSpan={6}
+                  message={appUsersLoading ? 'جارٍ تحميل حسابات المشغلين...' : 'لا توجد حسابات مشغلين مسجلة حالياً.'}
+                />
+              ) : (
+                appUsers.map((u) => {
+                  const isSelf = currentUser?.username?.toLowerCase() === u.username.toLowerCase();
+                  const isRoot = u.username.toLowerCase() === 'admin';
+                  return (
+                    <TableRow key={u.id}>
+                      <TableCell style={{ width: '18%' }} className="font-bold text-title">
+                        <div className="flex items-center gap-2">
+                          <UserCog size={15} className="text-primary" />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {u.username}
+                            {isSelf && (
+                              <span style={{ marginInlineStart: 6, fontSize: 10, color: 'var(--accent)' }}>(أنت)</span>
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell style={{ width: '20%' }} className="text-xs text-muted">
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {u.full_name || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ width: '19%' }}>
+                        {canManageAppUsers && !isRoot ? (
+                          <select
+                            value={u.role}
+                            disabled={appActionUser === u.username}
+                            onChange={(e) => handleAppRoleChange(u, e.target.value)}
+                            className="text-input"
+                            style={{ width: '100%', fontSize: 12, padding: '5px 8px' }}
+                            aria-label={`دور الحساب ${u.username}`}
+                          >
+                            <option value="admin">مدير النظام (Admin)</option>
+                            <option value="operator">مشغل (Operator)</option>
+                            <option value="viewer">مشاهد (Viewer)</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded font-bold ${
+                              u.role === 'admin'
+                                ? 'bg-primary/20 text-primary border border-border-gold-rim'
+                                : 'bg-surface-glass-tint text-muted'
+                            }`}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            {u.role === 'admin' ? 'مدير النظام (Admin)' : u.role === 'operator' ? 'مشغل (Operator)' : 'مشاهد (Viewer)'}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell style={{ width: '12%' }}>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold ${
+                            u.is_active
+                              ? 'bg-status-safe-surface text-status-safe'
+                              : 'bg-status-danger-surface text-status-danger'
+                          }`}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-status-safe' : 'bg-status-danger'}`} />
+                          {u.is_active ? 'نشط Active' : 'معطّل Disabled'}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ width: '19%' }} className="text-xs text-muted">
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          {u.last_login ? new Date(u.last_login).toLocaleString('ar-SA') : 'لم يسجل بعد'}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ width: '12%', textAlign: 'end' }}>
+                        {canManageAppUsers ? (
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            disabled={isRoot || isSelf || appActionUser === u.username}
+                            onClick={() => handleDeleteAppUser(u)}
+                            style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
+                            title={isRoot ? 'الحساب الجذري محمي من الحذف' : 'حذف حساب المشغل'}
+                          >
+                            <Trash2 size={12} style={{ marginInlineEnd: 4 }} />
+                            حذف
+                          </Button>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                            <ShieldCheck size={12} style={{ marginInlineEnd: 4 }} />
+                            مقيد
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
       {/* Modal: Change Password */}
       {passwordModalOpen && (
         <Modal onClose={() => setPasswordModalOpen(false)} title={`تغيير كلمة المرور للمستخدم: ${selectedUser}`}>
@@ -470,6 +750,68 @@ export function UsersPage() {
               </Button>
               <Button type="submit" variant="primary" loading={loading}>
                 إنشاء الحساب
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {/* Modal: Create ASAAS App User */}
+      {appModalOpen && (
+        <Modal onClose={() => setAppModalOpen(false)} title="إضافة حساب مشغل جديد لمنصة ASAAS">
+          <form onSubmit={handleCreateAppUser} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Field label="اسم المستخدم (Username)">
+              {(id) => (
+                <TextInput
+                  id={id}
+                  value={appUsername}
+                  onChange={(e) => setAppUsername(e.target.value)}
+                  placeholder="مثال: ops.khalid"
+                  required
+                  minLength={3}
+                />
+              )}
+            </Field>
+
+            <Field label="الاسم الكامل (Full Name)">
+              {(id) => (
+                <TextInput
+                  id={id}
+                  value={appFullName}
+                  onChange={(e) => setAppFullName(e.target.value)}
+                  placeholder="مثال: خالد محمد - مشغل البنية التحتية"
+                />
+              )}
+            </Field>
+
+            <Field label="الدور والصلاحية (Role)">
+              {() => (
+                <Select value={appRole} onChange={(e) => setAppRole(e.target.value as 'admin' | 'operator' | 'viewer')}>
+                  <option value="viewer">مشاهد (Viewer) - قراءة وتدقيق فقط</option>
+                  <option value="operator">مشغل (Operator) - تنفيذ عمليات التشغيل</option>
+                  <option value="admin">مدير النظام (Admin) - صلاحيات كاملة</option>
+                </Select>
+              )}
+            </Field>
+
+            <Field label="كلمة المرور (Password)">
+              {(id) => (
+                <PasswordInput
+                  id={id}
+                  value={appPassword}
+                  onChange={(e) => setAppPassword(e.target.value)}
+                  placeholder="كلمة مرور قوية (12+ رمز)..."
+                  required
+                />
+              )}
+            </Field>
+            <PasswordStrength password={appPassword} />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              <Button type="button" variant="ghost" onClick={() => setAppModalOpen(false)}>
+                إلغاء
+              </Button>
+              <Button type="submit" variant="primary" loading={appSubmitting}>
+                إنشاء حساب المشغل
               </Button>
             </div>
           </form>

@@ -19,7 +19,7 @@ import {
 export function SecurityPage() {
   const toast = useToast();
   const [stats, setStats] = useState<SecurityStats | null>(null);
-  const [, setEvents] = useState<SecurityEvent[]>([]);
+  const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [blockedIps, setBlockedIps] = useState<string[]>([]);
   const [manualIp, setManualIp] = useState('');
   const [manualReason] = useState('Manual Security Shield Block');
@@ -38,8 +38,8 @@ export function SecurityPage() {
         api.getBlockedIps().catch(() => []),
       ]);
       setStats(st);
-      setEvents(Array.isArray(ev) ? ev : (ev as any)?.events || []);
-      setBlockedIps(Array.isArray(blk) ? blk : (blk as any)?.blocked_ips || []);
+      setEvents(Array.isArray(ev) ? ev : []);
+      setBlockedIps(Array.isArray(blk) ? blk : []);
     } catch (err: any) {
       toast(err.message || 'فشل جلب بيانات الأمان', 'error');
     }
@@ -102,17 +102,22 @@ export function SecurityPage() {
     }
   };
 
+  const threatLevel = stats?.threat_level || 'LOW';
+  const threatLabel = threatLevel === 'HIGH' ? 'مرتفع (High)' : threatLevel === 'MEDIUM' ? 'متوسط (Medium)' : 'منخفض (Safe)';
+  const threatColor = threatLevel === 'HIGH' ? 'var(--unpaid)' : threatLevel === 'MEDIUM' ? 'var(--partial)' : 'var(--accent)';
+  const firewallActive = stats?.firewall_active ?? false;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Cyber Defense Ambient Header (Stitch _5 Top) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -126,8 +131,8 @@ export function SecurityPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
@@ -139,7 +144,7 @@ export function SecurityPage() {
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -176,31 +181,33 @@ export function SecurityPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>الهجمات المعترضة</span>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#22c55e', fontFamily: 'var(--font)' }}>
-            {stats?.attacks_intercepted || 142}
+          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--paid)', fontFamily: 'var(--font)' }}>
+            {stats?.attacks_intercepted ?? 0}
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>اعتراض تلقائي فوري</span>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>العناوين المحظورة</span>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444', fontFamily: 'var(--font)' }}>
-            {blockedIps.length || stats?.blocked_ips_count || 12}
+          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--unpaid)', fontFamily: 'var(--font)' }}>
+            {blockedIps.length > 0 ? blockedIps.length : (stats?.blocked_ips_count ?? 0)}
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>في جدار حماية ويندوز</span>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>مستوى التهديد العام</span>
-          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--accent)' }}>
-            منخفض (Safe)
+          <div style={{ fontSize: 28, fontWeight: 800, color: threatColor }}>
+            {threatLabel}
           </div>
-          <span style={{ fontSize: 11, color: '#22c55e' }}>● لا توجد ثغرات نشطة</span>
+          <span style={{ fontSize: 11, color: firewallActive ? 'var(--paid)' : 'var(--unpaid)' }}>
+            ● {firewallActive ? 'جدار الحماية نشط' : 'جدار الحماية غير نشط'}
+          </span>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>حماية جلسات RDP</span>
-          <div style={{ fontSize: 28, fontWeight: 800, color: '#38bdf8' }}>
+          <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--chart-out)' }}>
             NLA مشفر
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Network Level Auth</span>
@@ -216,12 +223,12 @@ export function SecurityPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: 'rgba(239, 68, 68, 0.15)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
+                background: 'var(--unpaid-bg)',
+                border: '1px solid var(--unpaid-bg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#ef4444',
+                color: 'var(--unpaid)',
               }}
             >
               <Terminal size={20} />
@@ -249,8 +256,8 @@ export function SecurityPage() {
                   padding: '4px 10px',
                   borderRadius: 6,
                   fontSize: 11,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--glass-rim-low)',
+                  border: '1px solid var(--glass-rim-low)',
                   color: 'var(--text-2)',
                   cursor: 'pointer',
                   fontFamily: 'var(--font)',
@@ -292,12 +299,12 @@ export function SecurityPage() {
               borderRadius: 10,
               background:
                 commandResult.risk_level === 'CRITICAL' || (!commandResult?.safe)
-                  ? 'rgba(239, 68, 68, 0.08)'
-                  : 'rgba(34, 197, 94, 0.08)',
+                  ? 'var(--unpaid-bg)'
+                  : 'var(--paid-bg)',
               border: `1px solid ${
                 commandResult.risk_level === 'CRITICAL' || (!commandResult?.safe)
-                  ? 'rgba(239, 68, 68, 0.3)'
-                  : 'rgba(34, 197, 94, 0.3)'
+                  ? 'var(--unpaid-bg)'
+                  : 'var(--paid-bg)'
               }`,
               display: 'flex',
               flexDirection: 'column',
@@ -309,7 +316,7 @@ export function SecurityPage() {
                 style={{
                   fontSize: 14,
                   fontWeight: 800,
-                  color: (!commandResult?.safe) ? '#ef4444' : '#22c55e',
+                  color: (!commandResult?.safe) ? 'var(--unpaid)' : 'var(--paid)',
                 }}
               >
                 {(!commandResult?.safe) ? '⚠️ أمر عالي الخطورة محظور تنفيذه!' : '✅ أمر آمن ومصرح به'}
@@ -367,7 +374,7 @@ export function SecurityPage() {
               ) : (
                 blockedIps.map((ip) => (
                   <TableRow key={ip}>
-                    <TableCell style={{ fontFamily: 'var(--font)', fontWeight: 700, color: '#ef4444' }}>
+                    <TableCell style={{ fontFamily: 'var(--font)', fontWeight: 700, color: 'var(--unpaid)' }}>
                       {ip}
                     </TableCell>
                     <TableCell style={{ fontSize: 12, color: 'var(--text-2)' }}>
@@ -383,8 +390,8 @@ export function SecurityPage() {
                           fontWeight: 700,
                           padding: '2px 8px',
                           borderRadius: 4,
-                          background: 'rgba(239, 68, 68, 0.12)',
-                          color: '#ef4444',
+                          background: 'var(--unpaid-bg)',
+                          color: 'var(--unpaid)',
                         }}
                       >
                         محظور BLOCKED
@@ -397,9 +404,66 @@ export function SecurityPage() {
                         onClick={() => handleUnblock(ip)}
                         style={{ padding: '4px 10px', fontSize: 11 }}
                       >
-                        <Unlock size={12} color="#22c55e" />
+                        <Unlock size={12} color="var(--paid)" />
                         <span>فك الحظر</span>
                       </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
+      {/* 5. Real Security Event Stream */}
+      <Card title="سجل الأحداث الأمنية الفعلي (Security Event Stream)" icon="alert">
+        <TableContainer className="max-h-[360px]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>الوقت</TableHead>
+                <TableHead>نوع الحدث</TableHead>
+                <TableHead>عنوان IP</TableHead>
+                <TableHead>المستخدم</TableHead>
+                <TableHead>مستوى الخطورة</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {events.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-3)' }}>
+                    لا توجد أحداث أمنية مسجلة حتى الآن.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                events.map((event) => (
+                  <TableRow key={event.event_id}>
+                    <TableCell style={{ fontSize: 12, fontFamily: 'var(--font)', color: 'var(--text-2)' }}>
+                      {event.time}
+                    </TableCell>
+                    <TableCell style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>
+                      {event.action}
+                    </TableCell>
+                    <TableCell style={{ fontSize: 12, fontFamily: 'var(--font)', color: 'var(--text-2)' }}>
+                      {event.ip}
+                    </TableCell>
+                    <TableCell style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                      {event.user}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          background: event.severity === 'danger' ? 'var(--unpaid-bg)' : event.severity === 'warning' ? 'var(--partial-bg)' : 'var(--paid-bg)',
+                          color: event.severity === 'danger' ? 'var(--unpaid)' : event.severity === 'warning' ? 'var(--partial)' : 'var(--paid)',
+                        }}
+                      >
+                        {event.severity.toUpperCase()}
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))

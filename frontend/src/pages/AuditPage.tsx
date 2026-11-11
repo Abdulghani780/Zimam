@@ -77,16 +77,16 @@ export function AuditPage() {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Executive Ambient Cryptographic Header (Stitch _6) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -100,8 +100,8 @@ export function AuditPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
@@ -113,7 +113,7 @@ export function AuditPage() {
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -139,8 +139,8 @@ export function AuditPage() {
                 gap: 8,
                 padding: '6px 14px',
                 borderRadius: 8,
-                background: 'rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(212, 160, 23, 0.25)',
+                background: 'var(--shadow-soft)',
+                border: '1px solid var(--accent-soft)',
                 width: 'fit-content',
                 marginTop: 4,
               }}
@@ -203,7 +203,7 @@ export function AuditPage() {
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               ضمان عدم التلاعب (Tamper Resistance)
             </h4>
-            <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}><bdi dir="ltr">100%</bdi> سليم</span>
+            <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}><bdi dir="ltr">100%</bdi> سليم</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
             يتم ترقيم وتشفير كل سجل ببصمة الكتلة السابقة (SHA-256 Merkle Chain). أي تعديل يدوي في قاعدة البيانات يكشف الخرق فوراً.
@@ -219,9 +219,9 @@ export function AuditPage() {
             <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>3 فئات معتمدة</span>
           </div>
           <div style={{ display: 'flex', gap: 10, fontSize: 11, marginTop: 4 }}>
-            <span style={{ color: '#ef4444' }}>● عمليات عالية الخطورة <bdi dir="ltr">(12%)</bdi></span>
+            <span style={{ color: 'var(--unpaid)' }}>● عمليات عالية الخطورة <bdi dir="ltr">(12%)</bdi></span>
             <span style={{ color: 'var(--accent)' }}>● تعديل سياسات <bdi dir="ltr">(38%)</bdi></span>
-            <span style={{ color: '#22c55e' }}>● استعلام اعتيادي <bdi dir="ltr">(50%)</bdi></span>
+            <span style={{ color: 'var(--paid)' }}>● استعلام اعتيادي <bdi dir="ltr">(50%)</bdi></span>
           </div>
         </Glass>
 
@@ -231,10 +231,10 @@ export function AuditPage() {
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               مستودع الأرشيف البارد (Cold Vault)
             </h4>
-            <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700 }}>365 يوم احتفاظ</span>
+            <span style={{ fontSize: 11, color: 'var(--chart-out)', fontWeight: 700 }}>365 يوم احتفاظ</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            تفريغ دوري تلقائي شهرياً إلى وسائط غير قابلة للتعديل WORM (Write Once Read Many) مع توقيع إلكتروني مستقل.
+            تُعرض هنا سجلات التدقيق المرتبطة بسلسلة hashes عند توفر Control Plane؛ لا يُعلن توافق WORM قبل ربط تخزين MinIO بسياسة retention وlegal hold فعلية.
           </p>
         </Glass>
       </div>

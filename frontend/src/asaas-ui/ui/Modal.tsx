@@ -47,7 +47,6 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
   },
   _ref
 ) {
-  if (!open) return null;
   const titleId = useId();
   const descId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -59,6 +58,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
 
   // Accessible Focus Management & Escape Handler
   useEffect(() => {
+    if (!open) return;
     const dialog = dialogRef.current;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
@@ -114,7 +114,9 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
         opener.focus();
       }
     };
-  }, []);
+  }, [open]);
+
+  if (!open) return null;
 
   const maxWidthStyle = {
     sm: '480px',
@@ -148,7 +150,6 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
     >
       <div
         ref={dialogRef}
-        id={titleId}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
@@ -160,9 +161,9 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
           width: '100%',
           maxWidth: maxWidthStyle,
           margin: 'auto',
-          backgroundColor: '#141312',
-          border: '1px solid rgba(212, 160, 23, 0.45)',
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(212, 160, 23, 0.15)',
+          backgroundColor: 'var(--bg, #141312)',
+          border: '1px solid var(--accent-border, rgba(212, 160, 23, 0.45))',
+          boxShadow: 'var(--glass-shadow)',
           borderRadius: '16px',
           overflow: 'hidden',
           display: 'flex',
@@ -180,7 +181,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
             left: 0,
             right: 0,
             height: '2px',
-            background: 'linear-gradient(90deg, transparent, #d4a017, transparent)',
+            background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
             zIndex: 10,
           }}
         />
@@ -192,20 +193,21 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '16px 20px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            backgroundColor: 'rgba(24, 22, 20, 0.85)',
+            borderBottom: '1px solid var(--hairline)',
+            backgroundColor: 'var(--glass-tint-strong)',
             flexShrink: 0,
             gap: 12,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            {icon && <div style={{ color: '#d4a017', display: 'flex', flexShrink: 0 }}>{icon}</div>}
+            {icon && <div style={{ color: 'var(--accent)', display: 'flex', flexShrink: 0 }}>{icon}</div>}
             <div style={{ minWidth: 0 }}>
               <h2
+                id={titleId}
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: '#f3efe6',
+                  color: 'var(--text)',
                   margin: 0,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
@@ -219,7 +221,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
                   id={descId}
                   style={{
                     fontSize: 12,
-                    color: '#8a8478',
+                    color: 'var(--text-3)',
                     margin: '3px 0 0',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -238,7 +240,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
             onClick={onClose}
             aria-label="إغلاق النافذة"
             style={{
-              color: '#8a8478',
+              color: 'var(--text-3)',
               padding: 6,
               borderRadius: 8,
               background: 'transparent',
@@ -260,7 +262,7 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
             padding: '20px',
             overflowY: 'auto',
             flex: 1,
-            color: '#d6d0c4',
+            color: 'var(--text-2)',
             fontSize: '13.5px',
             lineHeight: 1.6,
           }}
@@ -273,8 +275,8 @@ export const Modal = forwardRef<HTMLDivElement, ModalProps>(function Modal(
           <footer
             style={{
               padding: '14px 20px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-              backgroundColor: 'rgba(15, 14, 13, 0.95)',
+              borderTop: '1px solid var(--hairline)',
+              backgroundColor: 'var(--glass-tint-strong)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',

@@ -32,7 +32,7 @@ export function ControlPage() {
   const [dailyLogoffChecked, setDailyLogoffChecked] = useState<boolean>(false);
   const [trimmingTarget, setTrimmingTarget] = useState<string | null>(null);
 
-  const fetchControlData = async () => {
+  const fetchControlData = async (silent = false) => {
     try {
       const [g, s, snap] = await Promise.all([
         api.getGovernorStatus(),
@@ -43,15 +43,20 @@ export function ControlPage() {
       setAutoTrimChecked(g?.auto_trim ?? true);
       setIdleSlider(g?.idle_threshold_mins ?? 15);
       setAutoDiscChecked(g?.auto_disconnect_enabled ?? true);
+      setDailyLogoffChecked(g?.auto_logoff_enabled ?? false);
       setServices(Array.isArray(s) ? s : (s as any)?.services || []);
       setProcesses(snap?.processes || []);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب بيانات الحاكم', 'error');
+      if (!silent) toast(err.message || 'فشل جلب بيانات الحاكم', 'error');
     }
   };
 
   useEffect(() => {
     fetchControlData();
+    // Keep processes/services and governor counters live from the real
+    // `/api/snapshot` inventory instead of freezing the first page load.
+    const timer = setInterval(() => fetchControlData(true), 10_000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleToggleAutoTrim = async (val: boolean) => {
@@ -63,6 +68,30 @@ export function ControlPage() {
     } catch (err: any) {
       toast(err.message || 'خطأ في حفظ السياسة', 'error');
       setAutoTrimChecked(!val);
+    }
+  };
+
+  const handleToggleAutoDisconnect = async (val: boolean) => {
+    setAutoDiscChecked(val);
+    try {
+      const updated = await api.updateGovernor({ auto_disconnect_enabled: val });
+      setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
+      toast(val ? 'تم تفعيل الفصل التلقائي للجلسات المنسية.' : 'تم تعطيل الفصل التلقائي للجلسات.', 'success');
+    } catch (err: any) {
+      toast(err.message || 'خطأ في حفظ سياسة فصل الجلسات', 'error');
+      setAutoDiscChecked(!val);
+    }
+  };
+
+  const handleToggleDailyLogoff = async (val: boolean) => {
+    setDailyLogoffChecked(val);
+    try {
+      const updated = await api.updateGovernor({ auto_logoff_enabled: val });
+      setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
+      toast(val ? 'تم تفعيل تسجيل الخروج الإجباري بنهاية العمل.' : 'تم تعطيل تسجيل الخروج الإجباري.', 'success');
+    } catch (err: any) {
+      toast(err.message || 'خطأ في حفظ سياسة تسجيل الخروج', 'error');
+      setDailyLogoffChecked(!val);
     }
   };
 
@@ -139,16 +168,16 @@ export function ControlPage() {
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Ambient Executive Backlight Banner (Stitch Screen _1 Top) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -160,7 +189,7 @@ export function ControlPage() {
             width: 280,
             height: 280,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(212, 160, 23, 0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -172,7 +201,7 @@ export function ControlPage() {
             width: 240,
             height: 240,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(246, 190, 57, 0.08) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -186,8 +215,8 @@ export function ControlPage() {
                 gap: 6,
                 padding: '4px 12px',
                 borderRadius: 9999,
-                background: 'rgba(34, 197, 94, 0.12)',
-                color: '#22c55e',
+                background: 'var(--paid-bg)',
+                color: 'var(--paid)',
                 fontSize: 12,
                 fontWeight: 700,
               }}
@@ -197,8 +226,8 @@ export function ControlPage() {
                   width: 7,
                   height: 7,
                   borderRadius: '50%',
-                  background: '#22c55e',
-                  boxShadow: '0 0 8px #22c55e',
+                  background: 'var(--paid)',
+                  boxShadow: '0 0 8px var(--paid)',
                 }}
               />
               نظام الحاكم الذكي في وضع الحماية التلقائية Active Autonomous Governor
@@ -207,7 +236,7 @@ export function ControlPage() {
               style={{
                 padding: '3px 10px',
                 borderRadius: 9999,
-                background: 'rgba(255, 255, 255, 0.06)',
+                background: 'var(--glass-rim-low)',
                 color: 'var(--text-3)',
                 fontFamily: 'var(--font)',
                 fontSize: 11,
@@ -252,8 +281,8 @@ export function ControlPage() {
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#22c55e',
-                  background: 'rgba(34, 197, 94, 0.12)',
+                  color: 'var(--paid)',
+                  background: 'var(--paid-bg)',
                   padding: '2px 8px',
                   borderRadius: 4,
                   letterSpacing: 0.5,
@@ -271,8 +300,8 @@ export function ControlPage() {
                 justifyContent: 'space-between',
                 padding: '12px 14px',
                 borderRadius: 10,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                background: 'var(--glass-rim-low)',
+                border: '1px solid var(--glass-rim-low)',
               }}
             >
               <div>
@@ -298,8 +327,8 @@ export function ControlPage() {
               style={{
                 padding: '14px',
                 borderRadius: 10,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                background: 'var(--glass-rim-low)',
+                border: '1px solid var(--glass-rim-low)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 10,
@@ -319,7 +348,7 @@ export function ControlPage() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 4,
-                    background: 'rgba(0,0,0,0.3)',
+                    background: 'var(--shadow-soft)',
                     padding: '2px 8px',
                     borderRadius: 6,
                     color: 'var(--accent)',
@@ -368,8 +397,8 @@ export function ControlPage() {
                 justifyContent: 'space-between',
                 padding: '12px 14px',
                 borderRadius: 10,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                background: 'var(--glass-rim-low)',
+                border: '1px solid var(--glass-rim-low)',
               }}
             >
               <div>
@@ -384,7 +413,7 @@ export function ControlPage() {
                 <input
                   type="checkbox"
                   checked={autoDiscChecked}
-                  onChange={(e) => setAutoDiscChecked(e.target.checked)}
+                  onChange={(e) => handleToggleAutoDisconnect(e.target.checked)}
                 />
                 <span className="toggle-slider" />
               </label>
@@ -398,8 +427,8 @@ export function ControlPage() {
                 justifyContent: 'space-between',
                 padding: '12px 14px',
                 borderRadius: 10,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                background: 'var(--glass-rim-low)',
+                border: '1px solid var(--glass-rim-low)',
               }}
             >
               <div>
@@ -414,7 +443,7 @@ export function ControlPage() {
                 <input
                   type="checkbox"
                   checked={dailyLogoffChecked}
-                  onChange={(e) => setDailyLogoffChecked(e.target.checked)}
+                  onChange={(e) => handleToggleDailyLogoff(e.target.checked)}
                 />
                 <span className="toggle-slider" />
               </label>
@@ -426,8 +455,8 @@ export function ControlPage() {
                 marginTop: 6,
                 padding: '14px 16px',
                 borderRadius: 12,
-                background: 'rgba(0, 0, 0, 0.25)',
-                border: '1px solid rgba(212, 160, 23, 0.15)',
+                background: 'var(--shadow-soft)',
+                border: '1px solid var(--accent-soft)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -438,7 +467,7 @@ export function ControlPage() {
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>كفاءة تشغيل الذاكرة الحية</span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>88.4%</span>
-                  <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>استقرار عالي</span>
+                  <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>استقرار عالي</span>
                 </div>
                 <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0, lineHeight: 1.4 }}>
                   تم تحجيم تسريبات المقابض (Handle Leaks) بنسبة ممتازة خلال الـ 24 ساعة الماضية.
@@ -451,13 +480,13 @@ export function ControlPage() {
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke="rgba(255,255,255,0.08)"
+                    stroke="var(--glass-rim-low)"
                     strokeWidth="3.5"
                   />
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
-                    stroke="#d4a017"
+                    stroke="var(--accent)"
                     strokeWidth="3.5"
                     strokeDasharray="88, 100"
                     strokeLinecap="round"
@@ -473,7 +502,7 @@ export function ControlPage() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Activity size={14} color="#d4a017" />
+                  <Activity size={14} color="var(--accent)" />
                   <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-1)', fontFamily: 'var(--font)' }}>
                     88%
                   </span>
@@ -493,12 +522,12 @@ export function ControlPage() {
                     width: 36,
                     height: 36,
                     borderRadius: 10,
-                    background: 'rgba(251, 146, 60, 0.15)',
-                    border: '1px solid rgba(251, 146, 60, 0.3)',
+                    background: 'var(--partial-bg)',
+                    border: '1px solid color-mix(in srgb, var(--partial) 34%, transparent)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fb923c',
+                    color: 'var(--partial)',
                   }}
                 >
                   <Cpu size={20} />
@@ -531,8 +560,8 @@ export function ControlPage() {
                 style={{
                   padding: '14px',
                   borderRadius: 10,
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(212, 160, 23, 0.15)',
+                  background: 'var(--glass-rim-low)',
+                  border: '1px solid var(--accent-soft)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
@@ -545,7 +574,7 @@ export function ControlPage() {
                       fontSize: 11,
                       fontFamily: 'var(--font)',
                       color: 'var(--accent)',
-                      background: 'rgba(212, 160, 23, 0.12)',
+                      background: 'var(--accent-soft)',
                       padding: '2px 6px',
                       borderRadius: 4,
                       fontWeight: 700,
@@ -558,7 +587,7 @@ export function ControlPage() {
                   Microsoft SQL Server Database Engine
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: '#22c55e' }}>● Working Set Active</span>
+                  <span style={{ fontSize: 10, color: 'var(--paid)' }}>● Working Set Active</span>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -576,8 +605,8 @@ export function ControlPage() {
                 style={{
                   padding: '14px',
                   borderRadius: 10,
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(212, 160, 23, 0.15)',
+                  background: 'var(--glass-rim-low)',
+                  border: '1px solid var(--accent-soft)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
@@ -590,7 +619,7 @@ export function ControlPage() {
                       fontSize: 11,
                       fontFamily: 'var(--font)',
                       color: 'var(--accent)',
-                      background: 'rgba(212, 160, 23, 0.12)',
+                      background: 'var(--accent-soft)',
                       padding: '2px 6px',
                       borderRadius: 4,
                       fontWeight: 700,
@@ -603,7 +632,7 @@ export function ControlPage() {
                   DefaultAppPool IIS Worker Process
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: '#22c55e' }}>● HTTP Active</span>
+                  <span style={{ fontSize: 10, color: 'var(--paid)' }}>● HTTP Active</span>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -621,8 +650,8 @@ export function ControlPage() {
                 style={{
                   padding: '14px',
                   borderRadius: 10,
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(212, 160, 23, 0.15)',
+                  background: 'var(--glass-rim-low)',
+                  border: '1px solid var(--accent-soft)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
@@ -635,7 +664,7 @@ export function ControlPage() {
                       fontSize: 11,
                       fontFamily: 'var(--font)',
                       color: 'var(--accent)',
-                      background: 'rgba(212, 160, 23, 0.12)',
+                      background: 'var(--accent-soft)',
                       padding: '2px 6px',
                       borderRadius: 4,
                       fontWeight: 700,
@@ -648,7 +677,7 @@ export function ControlPage() {
                   Antimalware Service Executable
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: '#38bdf8' }}>● Real-time Guard</span>
+                  <span style={{ fontSize: 10, color: 'var(--chart-out)' }}>● Real-time Guard</span>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -666,8 +695,8 @@ export function ControlPage() {
                 style={{
                   padding: '14px',
                   borderRadius: 10,
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(212, 160, 23, 0.15)',
+                  background: 'var(--glass-rim-low)',
+                  border: '1px solid var(--accent-soft)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 10,
@@ -680,7 +709,7 @@ export function ControlPage() {
                       fontSize: 11,
                       fontFamily: 'var(--font)',
                       color: 'var(--accent)',
-                      background: 'rgba(212, 160, 23, 0.12)',
+                      background: 'var(--accent-soft)',
                       padding: '2px 6px',
                       borderRadius: 4,
                       fontWeight: 700,
@@ -713,8 +742,8 @@ export function ControlPage() {
                 marginTop: 'auto',
                 padding: '12px 16px',
                 borderRadius: 10,
-                background: 'rgba(212, 160, 23, 0.08)',
-                border: '1px solid rgba(212, 160, 23, 0.25)',
+                background: 'var(--accent-soft)',
+                border: '1px solid var(--accent-soft)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -785,8 +814,8 @@ export function ControlPage() {
                         fontSize: 11,
                         fontWeight: 700,
                         background:
-                          svc.status === 'Running' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                        color: svc.status === 'Running' ? '#22c55e' : '#ef4444',
+                          svc.status === 'Running' ? 'var(--paid-bg)' : 'var(--unpaid-bg)',
+                        color: svc.status === 'Running' ? 'var(--paid)' : 'var(--unpaid)',
                       }}
                     >
                       <span
@@ -794,7 +823,7 @@ export function ControlPage() {
                           width: 6,
                           height: 6,
                           borderRadius: '50%',
-                          background: svc.status === 'Running' ? '#22c55e' : '#ef4444',
+                          background: svc.status === 'Running' ? 'var(--paid)' : 'var(--unpaid)',
                         }}
                       />
                       {svc.status === 'Running' ? 'تعمل (Running)' : 'متوقفة (Stopped)'}
@@ -804,7 +833,7 @@ export function ControlPage() {
                     <span
                       style={{
                         fontSize: 11,
-                        background: 'rgba(255,255,255,0.05)',
+                        background: 'var(--glass-rim-low)',
                         padding: '2px 8px',
                         borderRadius: 4,
                         color: 'var(--text-2)',
@@ -818,7 +847,7 @@ export function ControlPage() {
                       style={{
                         fontSize: 11,
                         color: 'var(--accent)',
-                        background: 'rgba(212, 160, 23, 0.12)',
+                        background: 'var(--accent-soft)',
                         padding: '2px 8px',
                         borderRadius: 4,
                       }}
@@ -836,7 +865,7 @@ export function ControlPage() {
                           onClick={() => handleServiceControl(svc.name, 'start')}
                           style={{ padding: '4px 10px', fontSize: 11 }}
                         >
-                          <Play size={12} color="#22c55e" />
+                          <Play size={12} color="var(--paid)" />
                           <span>تشغيل</span>
                         </Button>
                       ) : (
@@ -845,7 +874,7 @@ export function ControlPage() {
                           variant="ghost"
                           loading={serviceAction === `${svc.name}-stop`}
                           onClick={() => handleServiceControl(svc.name, 'stop')}
-                          style={{ padding: '4px 10px', fontSize: 11, color: '#ef4444' }}
+                          style={{ padding: '4px 10px', fontSize: 11, color: 'var(--unpaid)' }}
                         >
                           <Square size={12} />
                           <span>إيقاف</span>
@@ -925,7 +954,7 @@ export function ControlPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleTerminateProcess(p.pid, p.name)}
-                        style={{ padding: '4px 8px', fontSize: 11, color: '#ef4444' }}
+                        style={{ padding: '4px 8px', fontSize: 11, color: 'var(--unpaid)' }}
                         title="إنهاء العملية"
                       >
                         <Trash2 size={12} />
