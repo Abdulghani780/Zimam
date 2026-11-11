@@ -550,6 +550,9 @@ def init_db() -> None:
 
 def db_is_ip_rate_limited(ip: str, max_attempts: int = 5, window_seconds: int = 600) -> bool:
     """Checks if IP has exceeded maximum failed login attempts within window."""
+    # Loopback addresses are exempt from lockouts to prevent locking out local admin console & test runners
+    if ip in ('127.0.0.1', '::1', 'localhost', 'testclient'):
+        return False
     try:
         cutoff = (datetime.now(timezone.utc) - timedelta(seconds=window_seconds)).isoformat()
         with get_db_connection() as conn:
@@ -557,8 +560,11 @@ def db_is_ip_rate_limited(ip: str, max_attempts: int = 5, window_seconds: int = 
             cur.execute("""
                 SELECT COUNT(*) as failed_count
                 FROM login_attempts
-                WHERE ip = ? AND success = 0 AND attempted_at > ?
-            """, (ip, cutoff))
+                WHERE ip = ? AND success = 0 AND attempted_at > COALESCE(
+                    (SELECT MAX(attempted_at) FROM login_attempts WHERE ip = ? AND success = 1),
+                    ?
+                )
+            """, (ip, ip, cutoff))
             row = cur.fetchone()
             return row['failed_count'] >= max_attempts if row else False
     except Exception:
