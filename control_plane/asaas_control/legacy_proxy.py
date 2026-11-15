@@ -2,20 +2,59 @@
 
 Until each feature group migrates to ``/api/v1`` (see
 ``docs/MIGRATION_PLAN.md``), the control plane forwards ``/api/*`` requests
-to the local legacy backend so the SPA mounted at ``/console`` works on a
+to the local legacy backend so the SPA served at the origin root works on a
 single origin. ``/api/v1`` routes are registered earlier and always win.
 """
 from __future__ import annotations
 
+import asyncio
 import os
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from sqlalchemy import select
+
+from .models import AppSession, User
+from .security import token_hash
+from .storage import db_session
 
 router = APIRouter()
 
 LEGACY_BASE_URL = os.getenv("ASAAS_LEGACY_API_URL", "http://127.0.0.1:8765").rstrip("/")
+
+# Header used to carry an authenticated /api/v1 identity to the legacy
+# backend. The proxy strips any client-supplied value before injecting its
+# own, so browsers can never forge it (it is also absent from the legacy
+# CORS allow-headers list).
+PROXY_USER_HEADER = "x-asaas-proxy-user"
+V1_SESSION_COOKIE = "asaas_v1_session"
+
+
+def _v1_session_username(raw: str | None) -> str | None:
+    """Resolve a control-plane session cookie to a username, or None."""
+    if not raw:
+        return None
+    try:
+        with db_session() as db:
+            row = db.scalar(
+                select(AppSession).where(
+                    AppSession.token_hash == token_hash(raw),
+                    AppSession.revoked.is_(False),
+                )
+            )
+            if not row:
+                return None
+            expires = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=UTC)
+            if expires <= datetime.now(UTC):
+                return None
+            user = db.get(User, row.user_id)
+            if not user or not user.is_active:
+                return None
+            return user.username
+    except Exception:
+        return None
 
 # Long-lived SSE streams must not hit the default 5s read timeout.
 _client: httpx.AsyncClient | None = None
@@ -55,8 +94,11 @@ async def proxy_legacy(path: str, request: Request):
 
     headers = {
         k: v for k, v in request.headers.items()
-        if k.lower() not in _HOP_BY_HOP
+        if k.lower() not in _HOP_BY_HOP and not k.lower().startswith("x-asaas-proxy-")
     }
+    v1_user = await asyncio.to_thread(_v1_session_username, request.cookies.get(V1_SESSION_COOKIE))
+    if v1_user:
+        headers[PROXY_USER_HEADER] = v1_user
     body = await request.body()
 
     client = _get_client()

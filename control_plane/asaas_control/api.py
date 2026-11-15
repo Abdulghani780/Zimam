@@ -92,7 +92,7 @@ def _set_session(response: Response, user_id: str) -> str:
     expires = datetime.now(UTC) + timedelta(seconds=settings.session_ttl_seconds)
     with db_session() as db:
         db.add(AppSession(id=uuid.uuid4().hex, user_id=user_id, token_hash=token_hash(raw), expires_at=expires, revoked=False))
-    response.set_cookie("asaas_session", raw, httponly=True, secure=settings.secure_cookies, samesite="lax", max_age=settings.session_ttl_seconds, path="/")
+    response.set_cookie("asaas_v1_session", raw, httponly=True, secure=settings.secure_cookies, samesite="lax", max_age=settings.session_ttl_seconds, path="/")
     return raw
 
 
@@ -101,7 +101,7 @@ def _expired(value: datetime) -> bool:
     return current <= datetime.now(UTC)
 
 
-def _current_user(session_cookie: str | None = Cookie(default=None, alias="asaas_session"), authorization: str | None = Header(default=None)) -> User:
+def _current_user(session_cookie: str | None = Cookie(default=None, alias="asaas_v1_session"), authorization: str | None = Header(default=None)) -> User:
     raw = session_cookie or (authorization[7:] if authorization and authorization.lower().startswith("bearer ") else None)
     if not raw:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
@@ -168,13 +168,13 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
 
 
 @router.post("/auth/logout")
-def logout(response: Response, session_cookie: str | None = Cookie(default=None, alias="asaas_session")) -> dict:
+def logout(response: Response, session_cookie: str | None = Cookie(default=None, alias="asaas_v1_session")) -> dict:
     if session_cookie:
         with db_session() as db:
             row = db.scalar(select(AppSession).where(AppSession.token_hash == token_hash(session_cookie)))
             if row:
                 row.revoked = True
-    response.delete_cookie("asaas_session", path="/")
+    response.delete_cookie("asaas_v1_session", path="/")
     return {"authenticated": False}
 
 

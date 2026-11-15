@@ -10,7 +10,7 @@ implemented **and** the consuming page has been switched over.
 
 | Legacy area (examples) | v1 equivalent | Status |
 |---|---|---|
-| `/api/auth/login`, `/logout`, `/me` | `/api/v1/auth/login`, `/logout`, `/me` (+TOTP MFA) | ✅ covered — switch pages first |
+| `/api/auth/login`, `/logout`, `/me` | `/api/v1/auth/login`, `/logout`, `/me` (+TOTP MFA) | ✅ **login page prefers v1**; bridge below carries the session to legacy endpoints |
 | `/api/auth/users*` (create/delete/role/password) | `/api/v1/users` (read-only today) | 🟡 user admin writes pending |
 | `/api/metrics`, `/metrics/history`, `/snapshot`, `/governor/*` | agent `heartbeat` inventory | 🟡 telemetry pipeline not wired to UI |
 | `/api/sessions`, `/sessions/disconnect|logoff|shadow` | `/api/v1/sessions`, `POST /sessions/{id}/terminate` | 🟡 terminate returns 501 until gateway lands |
@@ -24,6 +24,23 @@ implemented **and** the consuming page has been switched over.
 | `/api/database/*` explorer | — | ⚪ stays local |
 | `/api/ai/diagnose`, `/api/alerts/*`, `/api/notifications` | — | ⚪ stays local |
 | `/stitch/*`, `/api/stitch/screens`, `StitchGalleryPage` | removed — design sources and gallery retired | ✅ removed |
+
+## Session bridge (auth slice, implemented)
+
+The two identity stores are separate (control-plane Postgres/SQLite `users` vs
+legacy `app_users`), so a single cookie cannot serve both. The bridge:
+
+- v1 sessions use cookie **`asaas_v1_session`** (legacy keeps `asaas_session`).
+- `legacy_proxy.py` validates the v1 cookie against the control-plane DB and
+  injects `X-ASAAS-Proxy-User: <username>` on forwarded `/api/*` calls;
+  client-supplied `X-ASAAS-Proxy-*` headers are always stripped.
+- The legacy `_authenticate()` accepts that header **only from loopback** and
+  resolves the username in `app_users` — the user must exist locally (same
+  username). Browsers cannot forge it (not in CORS allow-headers); a local
+  process could, which is acceptable for this appliance threat model.
+- Login page tries `/api/v1/auth/login` first, verifies `/api/auth/me` through
+  the bridge, and falls back to legacy login on any v1 failure (including when
+  the control plane is absent on the legacy origin).
 
 ## Rules
 

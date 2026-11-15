@@ -238,6 +238,24 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
             if sess:
                 return True, sess
 
+        # Control-plane bridge: the :8876 proxy validates an /api/v1 session
+        # and forwards the username as X-ASAAS-Proxy-User. Trusted only from
+        # loopback — browsers cannot set the header (absent from the CORS
+        # allow-headers list) and this listener is not exposed remotely.
+        if self.client_address[0] in ('127.0.0.1', '::1'):
+            proxy_user = (self.headers.get('X-ASAAS-Proxy-User') or '').strip()
+            if proxy_user:
+                profile = db_get_app_user(proxy_user)
+                if profile and profile.get('is_active'):
+                    return True, {
+                        'user_id': profile.get('id'),
+                        'username': profile.get('username'),
+                        'role': profile.get('role'),
+                        'full_name': profile.get('full_name'),
+                        'ip': self.client_address[0],
+                        'expires_at': '',
+                    }
+
         return False, {}
 
     def do_GET(self) -> None:

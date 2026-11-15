@@ -670,6 +670,11 @@ export const api = {
     return res;
   },
   logout: async () => {
+    // Best-effort: also revoke the control-plane session when present.
+    try {
+      const { apiV1 } = await import('./apiV1');
+      await apiV1.logout();
+    } catch { /* control plane may be absent on the legacy origin */ }
     await request('/api/auth/logout', { method: 'POST' });
   },
   getCurrentUser: () => request<{ ok: boolean; user: AppUser }>('/api/auth/me'),

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Moon, ShieldCheck, Sun } from 'lucide-react';
 import { Button, Field, FormError, Glass, PasswordInput, TextInput, useTheme } from '../asaas-ui';
 import { api } from '../lib/api';
+import { apiV1, ApiV1Error } from '../lib/apiV1';
 
 type LoginLocationState = { from?: string };
 
@@ -22,7 +23,26 @@ export function ZeroTrustLoginPage() {
     setError(null);
 
     try {
-      await api.login(username.trim(), password);
+      // Prefer the control-plane session (/api/v1) when it is reachable; the
+      // proxy bridges it to legacy endpoints. Fall back to the legacy login.
+      try {
+        await apiV1.login(username.trim(), password);
+        // The console still reads the local directory profile through the
+        // bridge — surface a clear error if no matching local user exists.
+        try {
+          await api.getCurrentUser();
+        } catch {
+          throw new Error('تم التحقق من الحساب في طبقة التحكم، لكن لا يوجد ملف مطابق في الدليل المحلي. شغّل أداة bootstrap_admin.py لإنشاء حساب محلي بنفس الاسم.');
+        }
+      } catch (v1Error) {
+        if (v1Error instanceof ApiV1Error && v1Error.status === 401 && /mfa/i.test(v1Error.message)) {
+          throw v1Error;
+        }
+        if (v1Error instanceof Error && v1Error.message.startsWith('تم التحقق')) {
+          throw v1Error;
+        }
+        await api.login(username.trim(), password);
+      }
       const requested = (location.state as LoginLocationState | null)?.from;
       const destination = requested?.startsWith('/') && !requested.startsWith('//') ? requested : '/';
       navigate(destination, { replace: true });
