@@ -331,6 +331,7 @@ export function SettingsPage() {
                   max="95"
                   step="5"
                   value={cpuThreshold}
+                  aria-label={t('عتبة إنذار المعالج CPU:')}
                   onChange={(e) => setCpuThreshold(e.target.value)}
                   style={{ width: '100%', accentColor: 'var(--accent)' }}
                 />
@@ -347,6 +348,7 @@ export function SettingsPage() {
                   max="98"
                   step="2"
                   value={ramThreshold}
+                  aria-label={t('عتبة إنذار الذاكرة RAM:')}
                   onChange={(e) => setRamThreshold(e.target.value)}
                   style={{ width: '100%', accentColor: 'var(--accent)' }}
                 />
@@ -363,6 +365,7 @@ export function SettingsPage() {
                   max="98"
                   step="2"
                   value={diskThreshold}
+                  aria-label={t('عتبة امتلاء القرص')}
                   onChange={(e) => setDiskThreshold(e.target.value)}
                   style={{ width: '100%', accentColor: 'var(--accent)' }}
                 />

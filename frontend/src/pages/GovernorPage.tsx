@@ -368,6 +368,7 @@ export function GovernorPage() {
                 max="60"
                 step="5"
                 value={idleSlider}
+                aria-label={t('عتبة خمول الجلسات المستهدفة:')}
                 onChange={(e) => handleIdleSliderChange(Number(e.target.value))}
                 style={{
                   width: '100%',

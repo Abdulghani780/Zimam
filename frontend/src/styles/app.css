@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -321,8 +321,8 @@ button, input, select, textarea, .btn, .badge {
   border-inline-end: 1px solid var(--hairline);
   background-color: color-mix(in srgb, var(--bg) 78%, transparent);
   background-image: linear-gradient(165deg, var(--glass-tint-strong), transparent 72%);
-  backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   z-index: 25;
 }
 
@@ -443,8 +443,8 @@ button, input, select, textarea, .btn, .badge {
   background-image: linear-gradient(180deg, var(--glass-tint-strong), transparent) !important;
   border-bottom: 1px solid var(--hairline) !important;
   box-shadow: 0 10px 34px -24px color-mix(in srgb, var(--brand-ink) 55%, transparent) !important;
-  backdrop-filter: blur(24px) saturate(135%);
   -webkit-backdrop-filter: blur(24px) saturate(135%);
+  backdrop-filter: blur(24px) saturate(135%);
   contain: layout;
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -499,8 +499,8 @@ button, input, select, textarea, .btn, .badge {
     radial-gradient(circle at 8% 0%, var(--accent-soft), transparent 38%),
     linear-gradient(145deg, var(--glass-tint-strong), transparent 72%) !important;
   box-shadow: var(--glass-shadow) !important;
-  backdrop-filter: blur(22px) saturate(130%);
   -webkit-backdrop-filter: blur(22px) saturate(130%);
+  backdrop-filter: blur(22px) saturate(130%);
 }
 
 .page-hero::after {
@@ -852,8 +852,8 @@ button, input, select, textarea, .btn, .badge {
     inset-inline: 0;
     height: 60px;
     background: var(--surface-ground);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     border-top: 1px solid var(--hairline);
     z-index: 100;
     align-items: center;
@@ -1146,8 +1146,8 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   border-radius: var(--radius-xl);
   border: 1px solid var(--glass-rim);
   background: linear-gradient(155deg, var(--glass-tint-strong) 0%, var(--glass-tint) 100%);
-  backdrop-filter: blur(28px) saturate(160%);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
   box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-rim-high);
   transition: transform 0.28s var(--ease-spring), box-shadow 0.25s var(--ease-out), border-color 0.2s ease;
 }
@@ -1329,12 +1329,12 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   top: 0 !important;
   z-index: 60 !important;
   width: 100% !important;
-  background: var(--surface-canvas) !important;
-  background-image: none !important;
-  border-bottom: 1px solid var(--panel-line) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: color-mix(in srgb, var(--bg) 76%, transparent) !important;
+  background-image: linear-gradient(180deg, var(--glass-tint-strong), transparent) !important;
+  border-bottom: 1px solid var(--hairline) !important;
+  box-shadow: 0 12px 36px -26px color-mix(in srgb, var(--brand-ink, #221f1f) 60%, transparent) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
 }
 
 .header-inner {
@@ -1645,11 +1645,11 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--surface-container-high) transparent;
-  border-inline-end: 1px solid var(--panel-line);
-  background: var(--surface-canvas);
-  background-image: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  border-inline-end: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--bg) 74%, transparent);
+  background-image: linear-gradient(180deg, var(--glass-tint-strong), transparent 40%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
   z-index: 25;
 }
 
@@ -1956,8 +1956,8 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   background: var(--surface-ground);
   color: var(--text-2);
   box-shadow: inset 0 0 0 1px var(--panel-line);
-  backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .btn--glass:hover:not(:disabled) {
@@ -2266,20 +2266,8 @@ textarea.ui-input {
 }
 
 /* ---------- Panels & cards ---------- */
-.glass,
-.card {
-  background: var(--panel) !important;
-  border: 1px solid var(--panel-line) !important;
-  border-radius: 12px !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-
-.glass::before,
-.glass::after {
-  display: none !important;
-}
+/* Liquid glass is restored: the kit's .glass material (blur + rim + sheen)
+   is the Signature Luxury surface — no flattening overrides. */
 
 .card {
   padding: 16px !important;
@@ -2302,10 +2290,15 @@ textarea.ui-input {
 }
 
 .panel {
-  background: var(--panel);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
   border: 1px solid var(--panel-line);
-  border-radius: 12px;
+  border-radius: 14px;
   min-width: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 244, 214, 0.05),
+              0 1px 2px rgba(0, 0, 0, 0.35),
+              0 14px 40px -22px rgba(0, 0, 0, 0.65);
 }
 
 .panel__head {
@@ -2365,10 +2358,17 @@ textarea.ui-input {
   display: flex;
   flex-direction: column;
   padding: 15px 16px 14px;
-  border-radius: 11px;
+  border-radius: 14px;
   border: 1px solid var(--panel-line);
-  background: linear-gradient(180deg, var(--surface-ground) 0%, var(--surface-ground) 100%);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--surface-ground) 90%, transparent) 0%,
+    color-mix(in srgb, var(--surface-ground) 82%, transparent) 100%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+  backdrop-filter: blur(16px) saturate(125%);
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 244, 214, 0.06),
+              0 1px 2px rgba(0, 0, 0, 0.35),
+              0 14px 36px -20px rgba(0, 0, 0, 0.6);
 }
 
 .kpi::after {
@@ -3721,8 +3721,8 @@ textarea.ui-input {
   place-items: center;
   padding: 20px;
   background: rgba(4, 7, 9, 0.74);
-  backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 @keyframes pop-in {
@@ -6324,5 +6324,123 @@ input, textarea {
   @keyframes sig-fade {
     from { opacity: 0; }
     to   { opacity: 1; }
+  }
+}
+
+/* ── 16. Interaction polish: material response (Phase 4) ── */
+
+/* KPI command tiles: lift + gold rim + deepened shadow on hover */
+.kpi {
+  transition: transform 0.28s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              box-shadow 0.28s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              border-color 0.2s ease;
+}
+.kpi:hover {
+  transform: translateY(-3px);
+  border-color: rgba(212, 175, 106, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 214, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 22px 44px -18px rgba(0, 0, 0, 0.75),
+    0 0 28px -10px rgba(212, 175, 106, 0.28);
+}
+.kpi:active {
+  transform: translateY(-1px) scale(0.995);
+  transition-duration: 0.1s;
+}
+
+/* Sidebar links: press feedback + smoother color settle */
+.sidebar-link {
+  transition: transform 0.16s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              background-color 0.18s ease,
+              color 0.18s ease,
+              box-shadow 0.2s ease;
+}
+.sidebar-link:active {
+  transform: translateX(calc(1px * var(--dir-x, 1))) scale(0.985);
+}
+
+/* Header icon buttons: tactile press */
+.header-icon-btn {
+  transition: transform 0.15s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              background-color 0.18s ease,
+              color 0.18s ease,
+              box-shadow 0.2s ease;
+}
+.header-icon-btn:active {
+  transform: scale(0.92);
+  transition-duration: 0.08s;
+}
+
+/* Glass panels that are pure display surfaces (not table hosts): gentle lift.
+   Table cards stay still — rows are the interaction, not the frame. */
+.glass-panel:not(:has(table)):not(:has(.app-table)):not(:has(thead)),
+.card:not(:has(table)):not(:has(.app-table)):not(:has(thead)) {
+  transition: transform 0.25s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              box-shadow 0.25s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+              border-color 0.2s ease;
+}
+.glass-panel:not(:has(table)):not(:has(.app-table)):not(:has(thead)):hover,
+.card:not(:has(table)):not(:has(.app-table)):not(:has(thead)):hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 175, 106, 0.22);
+}
+
+/* Ghost/secondary buttons: warm inset tint on press */
+.btn--ghost:active:not(:disabled),
+.btn--glass:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 0.09s;
+}
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(212, 175, 106, 0.07);
+  color: var(--text-1);
+}
+
+/* Danger buttons: deepen on hover, keep crimson quiet */
+.btn--danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* Inputs: gold caret + slightly warmer hover surface */
+.input:hover:not(:focus):not(:disabled),
+.ui-input:hover:not(:focus):not(:disabled) {
+  box-shadow: inset 0 0 0 1px rgba(212, 175, 106, 0.22),
+              inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Links inside prose: gold underline sweep */
+a:not(.btn):not(.sidebar-link):not(.nav-link):not(.header-brand) {
+  text-decoration-color: rgba(212, 175, 106, 0.4);
+  text-underline-offset: 3px;
+  transition: color 0.18s ease, text-decoration-color 0.18s ease;
+}
+a:not(.btn):not(.sidebar-link):not(.nav-link):not(.header-brand):hover {
+  color: var(--text-gold, #d4af6a);
+  text-decoration-color: rgba(212, 175, 106, 0.8);
+}
+
+/* Badges/chips: subtle gold edge on hover */
+.badge, .chip, .tag {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.badge:hover, .chip:hover, .tag:hover {
+  border-color: rgba(212, 175, 106, 0.35);
+}
+
+/* Number cells: keep tabular rhythm on hover states */
+td[style*='font-variant-numeric'],
+.kpi__value, .stat-value {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi, .sidebar-link, .header-icon-btn,
+  .glass-panel, .card, .btn--ghost, .btn--glass,
+  .input, .ui-input, a, .badge, .chip, .tag {
+    transition: none !important;
+  }
+  .kpi:hover, .glass-panel:hover, .card:hover {
+    transform: none !important;
   }
 }

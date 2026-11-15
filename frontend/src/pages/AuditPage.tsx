@@ -186,6 +186,7 @@ export function AuditPage() {
                   onClick={() => copyHash(chainFingerprint)}
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0 }}
                   title={t('نسخ البصمة')}
+                  aria-label={t('نسخ البصمة')}
                 >
                   <Copy size={13} />
                 </button>
