@@ -6029,3 +6029,107 @@ thead::after {
     transition: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   CYBERPUNK SECURE OPS LAYER — ionized cyan/violet on deep void
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Scanline sweep across the whole viewport — barely-there CRT texture */
+.app-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(125, 211, 252, 0.012) 3px,
+    rgba(125, 211, 252, 0.012) 4px
+  );
+}
+
+/* Neon corner brackets on hero panels — targeting reticle feel */
+.page-hero {
+  border-color: rgba(34, 211, 238, 0.3) !important;
+}
+
+.page-hero::before {
+  background:
+    radial-gradient(55% 130% at 88% -10%, rgba(34, 211, 238, 0.16), transparent 60%),
+    radial-gradient(40% 120% at 4% 110%, rgba(167, 139, 250, 0.12), transparent 60%);
+}
+
+.page-hero h1 {
+  background: linear-gradient(115deg, #eaf4ff 20%, #67e8f9 60%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Telemetry numbers render in mono — SOC/NOC readout style */
+.num,
+.font-telemetry,
+.stat-card__value,
+.table td,
+.table th {
+  font-family: var(--mono, 'JetBrains Mono', 'Cascadia Code', Consolas, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-card__value {
+  background: linear-gradient(115deg, #eaf4ff 40%, #67e8f9 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Sidebar: ionized rail */
+.sidebar-link.active {
+  background: linear-gradient(115deg, rgba(34, 211, 238, 0.16), rgba(167, 139, 250, 0.1)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(103, 232, 249, 0.4),
+    0 0 22px -6px rgba(34, 211, 238, 0.55) !important;
+}
+
+.sidebar-link.active::before {
+  background: linear-gradient(180deg, #67e8f9, #a78bfa);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.8);
+}
+
+/* Status pills get a neon outer glow */
+[class*='status-safe'],
+.bg-status-safe-surface {
+  box-shadow: 0 0 14px -4px rgba(52, 211, 153, 0.5);
+}
+
+[class*='status-danger'],
+.bg-status-danger-surface {
+  box-shadow: 0 0 14px -4px rgba(251, 113, 133, 0.5);
+}
+
+/* Focus rings become laser-cyan */
+:focus-visible {
+  outline: 2px solid rgba(103, 232, 249, 0.8);
+  outline-offset: 2px;
+}
+
+/* Table header rule goes ionized */
+thead::after {
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.55), rgba(167, 139, 250, 0.55), transparent);
+}
+
+/* Auth card: containment-field glow */
+.auth-card {
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.12),
+    0 30px 90px -30px rgba(34, 211, 238, 0.4),
+    0 0 80px -30px rgba(167, 139, 250, 0.45),
+    var(--glass-shadow) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell::after {
+    display: none;
+  }
+}
