@@ -295,11 +295,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (options.body && typeof options.body === 'string') {
     headers.set('Content-Type', 'application/json');
   }
-  const token = typeof window !== 'undefined' ? localStorage.getItem('asaas_auth_claim') : null;
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-    headers.set('X-Session-Token', token);
-  }
   const res = await fetch(path, { ...options, headers, credentials: 'same-origin' });
   if (!res.ok) {
     let errMessage = `HTTP error ${res.status}`;
@@ -672,15 +667,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
-    if (res.token && typeof window !== 'undefined') {
-      localStorage.setItem('asaas_auth_claim', res.token);
-    }
     return res;
   },
   logout: async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('asaas_auth_claim');
-    }
     await request('/api/auth/logout', { method: 'POST' });
   },
   getCurrentUser: () => request<{ ok: boolean; user: AppUser }>('/api/auth/me'),

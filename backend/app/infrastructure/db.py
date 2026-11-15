@@ -74,6 +74,11 @@ def verify_password(password: str, salt_hex: str, expected_hash_hex: str) -> boo
     return secrets.compare_digest(calc_hash, expected_hash_hex)
 
 
+def _hash_session_token(token: str) -> str:
+    """Session tokens are stored hashed so a database leak cannot replay them."""
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+
 def init_db() -> None:
     """Create the legacy compatibility schema without shipping credentials."""
     try:
@@ -642,7 +647,7 @@ def db_create_session(user_id: int, username: str, role: str, ip: str, ttl_secon
         cur.execute("""
             INSERT INTO app_sessions (token, user_id, username, role, ip, expires_at, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (token, user_id, username, role, ip, expires_str, now_str))
+        """, (_hash_session_token(token), user_id, username, role, ip, expires_str, now_str))
         conn.commit()
 
     return token
@@ -662,7 +667,7 @@ def db_validate_session(token: str) -> Optional[Dict[str, Any]]:
                 FROM app_sessions s
                 JOIN app_users u ON s.user_id = u.id
                 WHERE s.token = ? AND s.expires_at > ? AND u.is_active = 1
-            """, (token, now_str))
+            """, (_hash_session_token(token), now_str))
             row = cur.fetchone()
             if row:
                 return dict(row)
@@ -675,7 +680,7 @@ def db_revoke_session(token: str) -> bool:
     try:
         with get_db_connection() as conn:
             cur = conn.cursor()
-            cur.execute("DELETE FROM app_sessions WHERE token = ?", (token,))
+            cur.execute("DELETE FROM app_sessions WHERE token = ?", (_hash_session_token(token),))
             conn.commit()
             return cur.rowcount > 0
     except Exception:

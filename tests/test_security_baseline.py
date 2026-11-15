@@ -20,6 +20,7 @@ class LegacySecurityBaselineTests(unittest.TestCase):
     def test_browser_auth_is_not_stored_in_local_storage(self) -> None:
         api = (ROOT / "frontend/src/lib/api.ts").read_text(encoding="utf-8")
         self.assertNotIn("asaas_session_token", api)
+        self.assertNotIn("asaas_auth_claim", api)
         self.assertNotIn("X-Asaas-Token", api)
         self.assertIn("credentials: 'same-origin'", api)
 

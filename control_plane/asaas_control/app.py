@@ -23,6 +23,10 @@ if settings.allowed_origins:
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.allowed_origins), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(router)
 
-frontend_dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+# Vite builds to the repo-root dist/ (vite.config.ts outDir: ../dist).
+repo_root = Path(__file__).resolve().parents[2]
+frontend_dist = repo_root / "dist"
+if not frontend_dist.exists():
+    frontend_dist = repo_root / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/console", StaticFiles(directory=frontend_dist, html=True), name="console")
