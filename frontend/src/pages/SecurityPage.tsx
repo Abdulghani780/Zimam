@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Server Control v2.5 - Screens _5 & _9
  * مصفوفة الدفاع السيبراني ورادار الاختراق ومحلل مخاطر الأوامر
  * Strict implementation of Stitch Prototypes _5 & _9
@@ -15,6 +15,7 @@ import {
   Terminal,
   RefreshCw,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function SecurityPage() {
   const toast = useToast();
@@ -41,7 +42,7 @@ export function SecurityPage() {
       setEvents(Array.isArray(ev) ? ev : []);
       setBlockedIps(Array.isArray(blk) ? blk : []);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب بيانات الأمان', 'error');
+      toast(err.message || t('فشل جلب بيانات الأمان'), 'error');
     }
   };
 
@@ -56,14 +57,14 @@ export function SecurityPage() {
     try {
       const res = await api.blockSecurityIp(manualIp.trim(), manualReason);
       if (res.ok) {
-        toast(`تم حظر عنوان IP [${manualIp}] بجدار حماية ويندوز بنجاح.`, 'success');
+        toast(`${t('تم حظر عنوان IP [')}${manualIp}${t('] بجدار حماية ويندوز بنجاح.')}`, 'success');
         setManualIp('');
         fetchSecurity();
       } else {
-        toast(res.error || 'فشل الحظر', 'error');
+        toast(res.error || t('فشل الحظر'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setBlocking(false);
     }
@@ -73,13 +74,13 @@ export function SecurityPage() {
     try {
       const res = await api.unblockSecurityIp(ip);
       if (res.ok) {
-        toast(`تم رفع الحظر عن عنوان IP [${ip}] بنجاح.`, 'success');
+        toast(`${t('تم رفع الحظر عن عنوان IP [')}${ip}${t('] بنجاح.')}`, 'success');
         fetchSecurity();
       } else {
-        toast(res.error || 'فشل رفع الحظر', 'error');
+        toast(res.error || t('فشل رفع الحظر'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     }
   };
 
@@ -91,19 +92,19 @@ export function SecurityPage() {
       const res = await api.checkCommandRisk(cmd);
       setCommandResult(res);
       if (res?.risk_level === 'CRITICAL' || res?.risk_level === 'HIGH' || (!res?.safe)) {
-        toast('تم رصد نمط برمجي عالي الخطورة محظور تنفيذه!', 'error');
+        toast(t('تم رصد نمط برمجي عالي الخطورة محظور تنفيذه!'), 'error');
       } else {
-        toast('الأمر سليم ولا يحتوي على تعليمات خبيثة.', 'success');
+        toast(t('الأمر سليم ولا يحتوي على تعليمات خبيثة.'), 'success');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تحليل الأمر', 'error');
+      toast(err.message || t('خطأ أثناء تحليل الأمر'), 'error');
     } finally {
       setCheckingCmd(false);
     }
   };
 
   const threatLevel = stats?.threat_level || 'LOW';
-  const threatLabel = threatLevel === 'HIGH' ? 'مرتفع (High)' : threatLevel === 'MEDIUM' ? 'متوسط (Medium)' : 'منخفض (Safe)';
+  const threatLabel = threatLevel === 'HIGH' ? t('مرتفع (High)') : threatLevel === 'MEDIUM' ? t('متوسط (Medium)') : t('منخفض (Safe)');
   const threatColor = threatLevel === 'HIGH' ? 'var(--unpaid)' : threatLevel === 'MEDIUM' ? 'var(--partial)' : 'var(--accent)';
   const firewallActive = stats?.firewall_active ?? false;
 
@@ -138,7 +139,7 @@ export function SecurityPage() {
                 }}
               >
                 <CheckCircle2 size={13} />
-                درع الحماية المحيطي نشط Perimeter Guard
+                {t('درع الحماية المحيطي نشط Perimeter Guard')}
               </span>
               <span
                 style={{
@@ -155,11 +156,10 @@ export function SecurityPage() {
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              مصفوفة الدفاع السيبراني ورادار الاختراق (Cyber Defense Matrix)
+              {t('مصفوفة الدفاع السيبراني ورادار الاختراق (Cyber Defense Matrix)')}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              رصد واعتراض هجمات التخمين على منافذ RDP، كبح محاولات حقن الأوامر التخريبية في الطرفية،
-              وحظر العناوين المشبوهة تلقائياً في جدار الحماية قبل اختراق النظام.
+              {t('رصد واعتراض هجمات التخمين على منافذ RDP، كبح محاولات حقن الأوامر التخريبية في الطرفية، وحظر العناوين المشبوهة تلقائياً في جدار الحماية قبل اختراق النظام.')}
             </p>
           </div>
 
@@ -171,7 +171,7 @@ export function SecurityPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <RefreshCw size={13} />
-              <span>تحديث القواعد الأمنية</span>
+              <span>{t('تحديث القواعد الأمنية')}</span>
             </Button>
           </div>
         </div>
@@ -180,35 +180,35 @@ export function SecurityPage() {
       {/* 2. Top Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>الهجمات المعترضة</span>
+          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('الهجمات المعترضة')}</span>
           <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--paid)', fontFamily: 'var(--font)' }}>
             {stats?.attacks_intercepted ?? 0}
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>اعتراض تلقائي فوري</span>
+          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('اعتراض تلقائي فوري')}</span>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>العناوين المحظورة</span>
+          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('العناوين المحظورة')}</span>
           <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--unpaid)', fontFamily: 'var(--font)' }}>
             {blockedIps.length > 0 ? blockedIps.length : (stats?.blocked_ips_count ?? 0)}
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>في جدار حماية ويندوز</span>
+          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('في جدار حماية ويندوز')}</span>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>مستوى التهديد العام</span>
+          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('مستوى التهديد العام')}</span>
           <div style={{ fontSize: 28, fontWeight: 800, color: threatColor }}>
             {threatLabel}
           </div>
           <span style={{ fontSize: 11, color: firewallActive ? 'var(--paid)' : 'var(--unpaid)' }}>
-            ● {firewallActive ? 'جدار الحماية نشط' : 'جدار الحماية غير نشط'}
+            ● {firewallActive ? t('جدار الحماية نشط') : t('جدار الحماية غير نشط')}
           </span>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>حماية جلسات RDP</span>
+          <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('حماية جلسات RDP')}</span>
           <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--chart-out)' }}>
-            NLA مشفر
+            {t('NLA مشفر')}
           </div>
           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Network Level Auth</span>
         </Glass>
@@ -235,10 +235,10 @@ export function SecurityPage() {
             </div>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                محلل مخاطر الأوامر والطرفية (Command Execution Risk Guard)
+                {t('محلل مخاطر الأوامر والطرفية (Command Execution Risk Guard)')}
               </h2>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                تحليل شجرة البناء النحوي (AST) لأوامر PowerShell و CMD وحجب الأوامر التدميرية
+                {t('تحليل شجرة البناء النحوي (AST) لأوامر PowerShell و CMD وحجب الأوامر التدميرية')}
               </span>
             </div>
           </div>
@@ -275,7 +275,7 @@ export function SecurityPage() {
             type="text"
             value={testCommand}
             onChange={(e) => setTestCommand(e.target.value)}
-            placeholder="أدخل أمر PowerShell أو CMD لاختبار مستوى خطورته..."
+            placeholder={t('أدخل أمر PowerShell أو CMD لاختبار مستوى خطورته...')}
             className="text-input"
             style={{ flex: 1, fontFamily: 'var(--font)', fontSize: 13 }}
           />
@@ -287,7 +287,7 @@ export function SecurityPage() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 18px' }}
           >
             <ShieldAlert size={14} />
-            <span>فحص مخاطر الأمر</span>
+            <span>{t('فحص مخاطر الأمر')}</span>
           </Button>
         </div>
 
@@ -319,14 +319,14 @@ export function SecurityPage() {
                   color: (!commandResult?.safe) ? 'var(--unpaid)' : 'var(--paid)',
                 }}
               >
-                {(!commandResult?.safe) ? '⚠️ أمر عالي الخطورة محظور تنفيذه!' : '✅ أمر آمن ومصرح به'}
+                {(!commandResult?.safe) ? t('⚠️ أمر عالي الخطورة محظور تنفيذه!') : t('✅ أمر آمن ومصرح به')}
               </span>
               <span style={{ fontSize: 12, fontFamily: 'var(--font)', color: 'var(--text-3)' }}>
-                درجة الخطورة: {commandResult.risk_score != null ? `${commandResult.risk_score}%` : '—'}
+                {t('درجة الخطورة')}: {commandResult.risk_score != null ? `${commandResult.risk_score}%` : '—'}
               </span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0 }}>
-              {commandResult.reason || 'لا يوجد تقييم متاح لهذا الأمر.'}
+              {commandResult.reason || t('لا يوجد تقييم متاح لهذا الأمر.')}
             </p>
           </div>
         )}
@@ -334,7 +334,7 @@ export function SecurityPage() {
 
       {/* 4. Windows Firewall Blocklist & Manual Block (Stitch _5 H2) */}
       <Card
-        title="قائمة الحظر بجدار الحماية (Windows Firewall Perimeter Blocklist)"
+        title={t('قائمة الحظر بجدار الحماية (Windows Firewall Perimeter Blocklist)')}
         icon="alert"
         actions={
           <form onSubmit={handleBlockManual} style={{ display: 'flex', gap: 8 }}>
@@ -342,13 +342,13 @@ export function SecurityPage() {
               type="text"
               value={manualIp}
               onChange={(e) => setManualIp(e.target.value)}
-              placeholder="أدخل عنوان IP لحظره فوراً..."
+              placeholder={t('أدخل عنوان IP لحظره فوراً...')}
               className="text-input"
               style={{ width: 220 }}
             />
             <Button size="sm" variant="primary" loading={blocking} type="submit">
               <Lock size={12} />
-              <span>حظر فوري</span>
+              <span>{t('حظر فوري')}</span>
             </Button>
           </form>
         }
@@ -357,18 +357,18 @@ export function SecurityPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>عنوان IP المحظور</TableHead>
-                <TableHead>نوع القاعدة بجدار الحماية</TableHead>
-                <TableHead>سبب الحظر والاعتراض</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead style={{ textAlign: 'end' }}>إجراء الأمان</TableHead>
+                <TableHead>{t('عنوان IP المحظور')}</TableHead>
+                <TableHead>{t('نوع القاعدة بجدار الحماية')}</TableHead>
+                <TableHead>{t('سبب الحظر والاعتراض')}</TableHead>
+                <TableHead>{t('الحالة')}</TableHead>
+                <TableHead style={{ textAlign: 'end' }}>{t('إجراء الأمان')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {blockedIps.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-3)' }}>
-                    لا توجد عناوين محظورة حالياً. جدار الحماية في حالة تأهب.
+                    {t('لا توجد عناوين محظورة حالياً. جدار الحماية في حالة تأهب.')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -381,7 +381,7 @@ export function SecurityPage() {
                       Inbound Block Rule (ASAAS-DEFENSE)
                     </TableCell>
                     <TableCell style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                      محاولات تخمين RDP متكررة (Brute-force)
+                      {t('محاولات تخمين RDP متكررة (Brute-force)')}
                     </TableCell>
                     <TableCell>
                       <span
@@ -394,7 +394,7 @@ export function SecurityPage() {
                           color: 'var(--unpaid)',
                         }}
                       >
-                        محظور BLOCKED
+                        {t('محظور BLOCKED')}
                       </span>
                     </TableCell>
                     <TableCell style={{ textAlign: 'end' }}>
@@ -405,7 +405,7 @@ export function SecurityPage() {
                         style={{ padding: '4px 10px', fontSize: 11 }}
                       >
                         <Unlock size={12} color="var(--paid)" />
-                        <span>فك الحظر</span>
+                        <span>{t('فك الحظر')}</span>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -417,23 +417,23 @@ export function SecurityPage() {
       </Card>
 
       {/* 5. Real Security Event Stream */}
-      <Card title="سجل الأحداث الأمنية الفعلي (Security Event Stream)" icon="alert">
+      <Card title={t('سجل الأحداث الأمنية الفعلي (Security Event Stream)')} icon="alert">
         <TableContainer className="max-h-[360px]">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>الوقت</TableHead>
-                <TableHead>نوع الحدث</TableHead>
-                <TableHead>عنوان IP</TableHead>
-                <TableHead>المستخدم</TableHead>
-                <TableHead>مستوى الخطورة</TableHead>
+                <TableHead>{t('الوقت')}</TableHead>
+                <TableHead>{t('نوع الحدث')}</TableHead>
+                <TableHead>{t('عنوان IP')}</TableHead>
+                <TableHead>{t('المستخدم')}</TableHead>
+                <TableHead>{t('مستوى الخطورة')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {events.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-3)' }}>
-                    لا توجد أحداث أمنية مسجلة حتى الآن.
+                    {t('لا توجد أحداث أمنية مسجلة حتى الآن.')}
                   </TableCell>
                 </TableRow>
               ) : (

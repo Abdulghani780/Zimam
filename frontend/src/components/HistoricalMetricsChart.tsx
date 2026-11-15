@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { ChartPoint } from './CpuHistoryChart';
+import { t } from '../lib/i18n';
 
 interface HistoricalMetricsChartProps {
   points: ChartPoint[];
@@ -52,25 +53,25 @@ export function HistoricalMetricsChart({ points, value, usedGb, totalGb }: Histo
   const total = Number.isFinite(totalGb) ? totalGb.toFixed(1) : '0';
 
   return (
-    <section className="panel chart-card" aria-label="استهلاك الذاكرة">
+    <section className="panel chart-card" aria-label={t('استهلاك الذاكرة')}>
       <header className="panel__head">
         <h2 className="panel__title">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="3" y="5" width="18" height="14" rx="2" />
             <path d="M7 9h10M7 13h6M7 17h8" />
           </svg>
-          استهلاك الذاكرة (RAM)
+          {t('استهلاك الذاكرة (RAM)')}
         </h2>
         <span className="chart-pill" dir="ltr" title={`${used} / ${total} GB`}>{value}%</span>
       </header>
       <div className="panel__body">
         {points.length < 2 ? (
-          <div className="chart-empty">جارٍ تجميع نقاط القياس الحية…</div>
+          <div className="chart-empty">{t('جارٍ تجميع نقاط القياس الحية…')}</div>
         ) : (
           <>
             <div className="chart">
               <div className="chart__plot">
-                <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`استهلاك الذاكرة ${value}%`}>
+                <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`${t('استهلاك الذاكرة ')}${value}%`}>
                   <defs>
                     <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" style={{ stopColor: 'var(--chart-in)' }} stopOpacity="0.38" />

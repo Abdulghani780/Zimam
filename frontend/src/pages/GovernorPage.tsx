@@ -18,6 +18,7 @@ import {
   Trash2,
   CheckCircle2,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function GovernorPage() {
   const toast = useToast();
@@ -48,7 +49,7 @@ export function GovernorPage() {
       setServices(Array.isArray(s) ? s : (s as any)?.services || []);
       setProcesses(snap?.processes || []);
     } catch (err: any) {
-      if (!silent) toast(err.message || 'فشل جلب بيانات الحاكم', 'error');
+      if (!silent) toast(err.message || t('فشل جلب بيانات الحاكم'), 'error');
     }
   };
 
@@ -65,9 +66,9 @@ export function GovernorPage() {
     try {
       const updated = await api.updateGovernor({ auto_trim: val });
       setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
-      toast(val ? 'تم تفعيل التفريغ التلقائي للذاكرة الخاملة.' : 'تم تحويل الحاكم إلى الوضع اليدوي.', 'success');
+      toast(val ? t('تم تفعيل التفريغ التلقائي للذاكرة الخاملة.') : t('تم تحويل الحاكم إلى الوضع اليدوي.'), 'success');
     } catch (err: any) {
-      toast(err.message || 'خطأ في حفظ السياسة', 'error');
+      toast(err.message || t('خطأ في حفظ السياسة'), 'error');
       setAutoTrimChecked(!val);
     }
   };
@@ -77,9 +78,9 @@ export function GovernorPage() {
     try {
       const updated = await api.updateGovernor({ auto_disconnect_enabled: val });
       setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
-      toast(val ? 'تم تفعيل الفصل التلقائي للجلسات المنسية.' : 'تم تعطيل الفصل التلقائي للجلسات.', 'success');
+      toast(val ? t('تم تفعيل الفصل التلقائي للجلسات المنسية.') : t('تم تعطيل الفصل التلقائي للجلسات.'), 'success');
     } catch (err: any) {
-      toast(err.message || 'خطأ في حفظ سياسة فصل الجلسات', 'error');
+      toast(err.message || t('خطأ في حفظ سياسة فصل الجلسات'), 'error');
       setAutoDiscChecked(!val);
     }
   };
@@ -89,9 +90,9 @@ export function GovernorPage() {
     try {
       const updated = await api.updateGovernor({ auto_logoff_enabled: val });
       setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
-      toast(val ? 'تم تفعيل تسجيل الخروج الإجباري بنهاية العمل.' : 'تم تعطيل تسجيل الخروج الإجباري.', 'success');
+      toast(val ? t('تم تفعيل تسجيل الخروج الإجباري بنهاية العمل.') : t('تم تعطيل تسجيل الخروج الإجباري.'), 'success');
     } catch (err: any) {
-      toast(err.message || 'خطأ في حفظ سياسة تسجيل الخروج', 'error');
+      toast(err.message || t('خطأ في حفظ سياسة تسجيل الخروج'), 'error');
       setDailyLogoffChecked(!val);
     }
   };
@@ -113,16 +114,16 @@ export function GovernorPage() {
       if (res && res.ok) {
         const rec = res.reclaimed_mb ?? (res as any)?.result?.reclaimed_mb ?? 0;
         if (rec > 0) {
-          toast(`تم تفريغ مساحة العمل لـ [${targetLabel}] بنجاح â€” تم استرداد ${rec} MB.`, 'success');
+          toast(`${t('تم تفريغ مساحة العمل لـ [')}${targetLabel}${t('] بنجاح â€” تم استرداد ')}${rec} MB.`, 'success');
         } else {
-          toast(res.message || `ذاكرة [${targetLabel}] محسنة مسبقاً ولا توجد صفحات خاملة لتحريرها.`, 'success');
+          toast(res.message || `${t('ذاكرة [')}${targetLabel}${t('] محسنة مسبقاً ولا توجد صفحات خاملة لتحريرها.')}`, 'success');
         }
         fetchControlData();
       } else {
-        toast((res as any)?.error || 'فشل تفريغ الذاكرة للهدف المحدد.', 'error');
+        toast((res as any)?.error || t('فشل تفريغ الذاكرة للهدف المحدد.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'تعذر استدعاء تفريغ الذاكرة', 'error');
+      toast(err.message || t('تعذر استدعاء تفريغ الذاكرة'), 'error');
     } finally {
       setTrimmingTarget(null);
     }
@@ -133,31 +134,31 @@ export function GovernorPage() {
     try {
       const res = await api.controlService(name, action);
       if (res.ok) {
-        toast(`تم تنفيذ أمر (${action}) للخدمة [${name}] بنجاح.`, 'success');
+        toast(`${t('تم تنفيذ أمر (')}${action}${t(') للخدمة [')}${name}${t('] بنجاح.')}`, 'success');
         const fresh = await api.getServices();
         setServices(fresh);
       } else {
-        toast(res.error || 'فشل تنفيذ الأمر', 'error');
+        toast(res.error || t('فشل تنفيذ الأمر'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ في معالجة الخدمة', 'error');
+      toast(err.message || t('خطأ في معالجة الخدمة'), 'error');
     } finally {
       setServiceAction(null);
     }
   };
 
   const handleTerminateProcess = async (pid: number, name: string) => {
-    if (!window.confirm(`هل أنت متأكد من رغبتك في إنهاء العملية ${name} (PID: ${pid})؟`)) return;
+    if (!window.confirm(`${t('هل أنت متأكد من رغبتك في إنهاء العملية ')}${name} (PID: ${pid}${t(')؟')}`)) return;
     try {
       const res = await api.terminateProcess(pid);
       if (res.ok) {
-        toast(`تم إنهاء العملية [${name}] بنجاح.`, 'success');
+        toast(`${t('تم إنهاء العملية [')}${name}${t('] بنجاح.')}`, 'success');
         setProcesses((prev) => prev.filter((p) => p.pid !== pid));
       } else {
-        toast(res.error || 'تعذر إنهاء العملية', 'error');
+        toast(res.error || t('تعذر إنهاء العملية'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     }
   };
 
@@ -231,7 +232,7 @@ export function GovernorPage() {
                   boxShadow: '0 0 8px var(--paid)',
                 }}
               />
-              نظام الحاكم الذكي في وضع الحماية التلقائية Active Autonomous Governor
+              {t('نظام الحاكم الذكي في وضع الحماية التلقائية Active Autonomous Governor')}
             </span>
             <span
               style={{
@@ -256,12 +257,11 @@ export function GovernorPage() {
               margin: 0,
             }}
           >
-            مركز التحكم وحاكم الموارد الذكي (Resource Governor)
+            {t('مركز التحكم وحاكم الموارد الذكي (Resource Governor)')}
           </h1>
 
           <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 900, lineHeight: 1.6 }}>
-            إدارة حيوية لمساحة العمل المادية (Working Set Trim)، جدولة الأولويات، وتفريغ خمول الجلسات والتطبيقات الثقيلة
-            للحفاظ على استقرار أداء ويندوز سيرفر بدون التأثير على سلاسة جلسات المستخدمين.
+            {t('إدارة حيوية لمساحة العمل المادية (Working Set Trim)، جدولة الأولويات، وتفريغ خمول الجلسات والتطبيقات الثقيلة للحفاظ على استقرار أداء ويندوز سيرفر بدون التأثير على سلاسة جلسات المستخدمين.')}
           </p>
         </div>
       </div>
@@ -274,7 +274,7 @@ export function GovernorPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                  سياسات الحاكم التلقائي
+                  {t('سياسات الحاكم التلقائي')}
                 </h2>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Working Set Governor Policies</span>
               </div>
@@ -307,10 +307,10 @@ export function GovernorPage() {
             >
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                  تفعيل التفريغ التلقائي للذاكرة
+                  {t('تفعيل التفريغ التلقائي للذاكرة')}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  Auto Trim Working Set للأعباء غير النشطة
+                  {t('Auto Trim Working Set للأعباء غير النشطة')}
                 </span>
               </div>
               <label className="toggle-switch">
@@ -338,7 +338,7 @@ export function GovernorPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                    حد الخمول للتفريغ التلقائي
+                    {t('حد الخمول للتفريغ التلقائي')}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                     Idle Tolerance Before Set Paging
@@ -358,7 +358,7 @@ export function GovernorPage() {
                   }}
                 >
                   <span>{idleSlider}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>دقيقة</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('دقيقة')}</span>
                 </div>
               </div>
 
@@ -384,9 +384,9 @@ export function GovernorPage() {
                   color: 'var(--text-3)',
                 }}
               >
-                <span>5 د (عدواني)</span>
-                <span>30 دقيقة</span>
-                <span>60 د (متساهل)</span>
+                <span>{t('5 د (عدواني)')}</span>
+                <span>{t('30 دقيقة')}</span>
+                <span>{t('60 د (متساهل)')}</span>
               </div>
             </div>
 
@@ -404,7 +404,7 @@ export function GovernorPage() {
             >
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                  فصل الجلسات المنسية تلقائياً
+                  {t('فصل الجلسات المنسية تلقائياً')}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                   Auto Disconnect after Inactivity
@@ -434,7 +434,7 @@ export function GovernorPage() {
             >
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                  تسجيل الخروج الإجباري بنهاية العمل
+                  {t('تسجيل الخروج الإجباري بنهاية العمل')}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                   Purge session handles at 18:00 AST
@@ -465,13 +465,13 @@ export function GovernorPage() {
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>كفاءة تشغيل الذاكرة الحية</span>
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('كفاءة تشغيل الذاكرة الحية')}</span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>—</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 700 }}>لا تتوفر بيانات</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 700 }}>{t('لا تتوفر بيانات')}</span>
                 </div>
                 <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0, lineHeight: 1.4 }}>
-                  لا يُحتسب مؤشر كفاءة الذاكرة بعد — سيظهر عند توفر قياسات حقيقية من الوكلاء.
+                  {t('لا يُحتسب مؤشر كفاءة الذاكرة بعد — سيظهر عند توفر قياسات حقيقية من الوكلاء.')}
                 </p>
               </div>
 
@@ -527,10 +527,10 @@ export function GovernorPage() {
                 </div>
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                    مصفوفة المستهلكين الأثقل (Heavy Consumer Watchlist)
+                    {t('مصفوفة المستهلكين الأثقل (Heavy Consumer Watchlist)')}
                   </h2>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                    التطبيقات الأكثر استنزافاً لمساحة العمل المادية مع خيار التفريغ الفوري
+                    {t('التطبيقات الأكثر استنزافاً لمساحة العمل المادية مع خيار التفريغ الفوري')}
                   </span>
                 </div>
               </div>
@@ -538,11 +538,11 @@ export function GovernorPage() {
                 size="sm"
                 variant="glass"
                 loading={trimmingTarget === 'GLOBAL'}
-                onClick={() => handleSpecificTrim('تفريغ شامل لجميع العمليات')}
+                onClick={() => handleSpecificTrim(t('تفريغ شامل لجميع العمليات'))}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Zap size={13} color="var(--accent)" />
-                <span>تفريغ شامل فوري</span>
+                <span>{t('تفريغ شامل فوري')}</span>
               </Button>
             </div>
 
@@ -588,7 +588,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('SQL Server Engine')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    تفريغ فوري
+                    {t('تفريغ فوري')}
                   </Button>
                 </div>
               </div>
@@ -633,7 +633,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('IIS Worker Process')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    تفريغ فوري
+                    {t('تفريغ فوري')}
                   </Button>
                 </div>
               </div>
@@ -678,7 +678,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('Microsoft Defender')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    تفريغ فوري
+                    {t('تفريغ فوري')}
                   </Button>
                 </div>
               </div>
@@ -723,7 +723,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('Windows Search Indexer')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    تفريغ فوري
+                    {t('تفريغ فوري')}
                   </Button>
                 </div>
               </div>
@@ -745,7 +745,7 @@ export function GovernorPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircle2 size={16} color="var(--accent)" />
                 <span style={{ fontSize: 12, color: 'var(--text-1)' }}>
-                  إجمالي الذاكرة المستعادة والمتاحة للنظام حالياً:
+                  {t('إجمالي الذاكرة المستعادة والمتاحة للنظام حالياً:')}
                 </span>
               </div>
               <span
@@ -765,11 +765,11 @@ export function GovernorPage() {
 
       {/* 3. Windows Core Services Management Table Section (Stitch _1 L283) */}
       <Card
-        title="جدول خدمات ويندوز الحيوية (Windows Core Services Management)"
+        title={t('جدول خدمات ويندوز الحيوية (Windows Core Services Management)')}
         icon="dashboard"
         actions={
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            إجمالي الخدمات الأساسية: {services.length} خدمة
+            {t('إجمالي الخدمات الأساسية')}: {services.length} {t('خدمة')}
           </span>
         }
       >
@@ -777,12 +777,12 @@ export function GovernorPage() {
           <table className="app-table">
             <thead>
               <tr>
-                <th>اسم الخدمة (Service Name)</th>
-                <th>الوصف والوظيفة بالنظام</th>
-                <th>الحالة الحالية</th>
-                <th>نوع بدء التشغيل</th>
-                <th>التصنيف</th>
-                <th style={{ textAlign: 'end' }}>التحكم بالخدمة</th>
+                <th>{t('اسم الخدمة (Service Name)')}</th>
+                <th>{t('الوصف والوظيفة بالنظام')}</th>
+                <th>{t('الحالة الحالية')}</th>
+                <th>{t('نوع بدء التشغيل')}</th>
+                <th>{t('التصنيف')}</th>
+                <th style={{ textAlign: 'end' }}>{t('التحكم بالخدمة')}</th>
               </tr>
             </thead>
             <tbody>
@@ -819,7 +819,7 @@ export function GovernorPage() {
                           background: svc.status === 'Running' ? 'var(--paid)' : 'var(--unpaid)',
                         }}
                       />
-                      {svc.status === 'Running' ? 'تعمل (Running)' : 'متوقفة (Stopped)'}
+                      {svc.status === 'Running' ? t('تعمل (Running)') : t('متوقفة (Stopped)')}
                     </span>
                   </td>
                   <td>
@@ -859,7 +859,7 @@ export function GovernorPage() {
                           style={{ padding: '4px 10px', fontSize: 11 }}
                         >
                           <Play size={12} color="var(--paid)" />
-                          <span>تشغيل</span>
+                          <span>{t('تشغيل')}</span>
                         </Button>
                       ) : (
                         <Button
@@ -870,7 +870,7 @@ export function GovernorPage() {
                           style={{ padding: '4px 10px', fontSize: 11, color: 'var(--unpaid)' }}
                         >
                           <Square size={12} />
-                          <span>إيقاف</span>
+                          <span>{t('إيقاف')}</span>
                         </Button>
                       )}
                       <Button
@@ -881,7 +881,7 @@ export function GovernorPage() {
                         style={{ padding: '4px 10px', fontSize: 11 }}
                       >
                         <RotateCw size={12} />
-                        <span>إعادة تشغيل</span>
+                        <span>{t('إعادة تشغيل')}</span>
                       </Button>
                     </div>
                   </td>
@@ -893,7 +893,7 @@ export function GovernorPage() {
         {services.length > 50 && (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
             <Button variant="ghost" onClick={() => setShowAllServices((v) => !v)}>
-              {showAllServices ? 'عرض أول 50 خدمة فقط' : `عرض كل الخدمات (${services.length})`}
+              {showAllServices ? t('عرض أول 50 خدمة فقط') : `${t('عرض كل الخدمات (')}${services.length})`}
             </Button>
           </div>
         )}
@@ -901,14 +901,14 @@ export function GovernorPage() {
 
       {/* 4. Process Telemetry & Explorer (Stitch _1 L156) */}
       <Card
-        title="قائمة مراقبة استهلاك العمليات والخدمات (Top Processes Telemetry)"
+        title={t('قائمة مراقبة استهلاك العمليات والخدمات (Top Processes Telemetry)')}
         icon="list"
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative' }}>
             <Search size={15} color="var(--text-3)" style={{ position: 'absolute', insetInlineEnd: 10 }} />
             <input
               type="text"
-              placeholder="ابحث باسم العملية، PID، أو المستخدم..."
+              placeholder={t('ابحث باسم العملية، PID، أو المستخدم...')}
               value={procSearch}
               onChange={(e) => setProcSearch(e.target.value)}
               className="text-input"
@@ -922,11 +922,11 @@ export function GovernorPage() {
             <thead>
               <tr>
                 <th>PID</th>
-                <th>اسم العملية</th>
-                <th>المالك / المستخدم</th>
-                <th>الجلسة</th>
-                <th>مساحة العمل (RAM MB)</th>
-                <th style={{ textAlign: 'end' }}>إجراءات الحاكم</th>
+                <th>{t('اسم العملية')}</th>
+                <th>{t('المالك / المستخدم')}</th>
+                <th>{t('الجلسة')}</th>
+                <th>{t('مساحة العمل (RAM MB)')}</th>
+                <th style={{ textAlign: 'end' }}>{t('إجراءات الحاكم')}</th>
               </tr>
             </thead>
             <tbody>
@@ -946,19 +946,19 @@ export function GovernorPage() {
                         variant="ghost"
                         onClick={() => handleSpecificTrim(p.name, p.pid)}
                         style={{ padding: '4px 8px', fontSize: 11 }}
-                        title="تفريغ Working Set"
+                        title={t('تفريغ Working Set')}
                       >
-                        <span>تفريغ Trim</span>
+                        <span>{t('تفريغ Trim')}</span>
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => handleTerminateProcess(p.pid, p.name)}
                         style={{ padding: '4px 8px', fontSize: 11, color: 'var(--unpaid)' }}
-                        title="إنهاء العملية"
+                        title={t('إنهاء العملية')}
                       >
                         <Trash2 size={12} />
-                        <span>إنهاء</span>
+                        <span>{t('إنهاء')}</span>
                       </Button>
                     </div>
                   </td>

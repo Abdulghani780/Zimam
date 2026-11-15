@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Server Control v2.5 - Screen RDP
  * حوكمة مستخدمي ويندوز المحليين وصلاحيات سطح المكتب البعيد RDP & IAM
  * Strict implementation of Stitch Prototype RDP
@@ -18,6 +18,7 @@ import {
   Trash2,
   ShieldCheck,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function UsersPage() {
   const toast = useToast();
@@ -60,7 +61,7 @@ export function UsersPage() {
         setDomainProfile(dom.domain);
       }
     } catch (err: any) {
-      toast(err.message || 'فشل جلب المستخدمين', 'error');
+      toast(err.message || t('فشل جلب المستخدمين'), 'error');
     }
   };
 
@@ -105,7 +106,7 @@ export function UsersPage() {
         role: appRole,
         full_name: appFullName.trim(),
       });
-      toast(`تم إنشاء حساب مشغل النظام [${appUsername}] بدور ${appRole}.`, 'success');
+      toast(`${t('تم إنشاء حساب مشغل النظام [')}${appUsername}${t('] بدور ')}${appRole}.`, 'success');
       setAppModalOpen(false);
       setAppUsername('');
       setAppPassword('');
@@ -113,7 +114,7 @@ export function UsersPage() {
       setAppRole('viewer');
       fetchAppUsers();
     } catch (err: any) {
-      toast(err.message || 'فشل إنشاء حساب المشغل', 'error');
+      toast(err.message || t('فشل إنشاء حساب المشغل'), 'error');
     } finally {
       setAppSubmitting(false);
     }
@@ -121,17 +122,17 @@ export function UsersPage() {
 
   const handleAppRoleChange = async (user: V1User, role: string) => {
     if (role === user.role) return;
-    if (!confirm(`تغيير دور الحساب [${user.username}] إلى (${role})؟`)) {
+    if (!confirm(`${t('تغيير دور الحساب [')}${user.username}${t('] إلى (')}${role}${t(')؟')}`)) {
       fetchAppUsers();
       return;
     }
     setAppActionUser(user.username);
     try {
       await apiV1.updateUserRole(user.username, role);
-      toast(`تم تحديث دور الحساب [${user.username}] إلى (${role}).`, 'success');
+      toast(`${t('تم تحديث دور الحساب [')}${user.username}${t('] إلى (')}${role}).`, 'success');
       fetchAppUsers();
     } catch (err: any) {
-      toast(err.message || 'فشل تحديث الدور', 'error');
+      toast(err.message || t('فشل تحديث الدور'), 'error');
     } finally {
       setAppActionUser(null);
     }
@@ -139,21 +140,21 @@ export function UsersPage() {
 
   const handleDeleteAppUser = async (user: V1User) => {
     if (user.username.toLowerCase() === 'admin') {
-      toast('لا يمكن تعطيل الحساب الجذري admin.', 'error');
+      toast(t('لا يمكن تعطيل الحساب الجذري admin.'), 'error');
       return;
     }
     if (currentUser?.username?.toLowerCase() === user.username.toLowerCase()) {
-      toast('لا يمكنك تعطيل الحساب الذي تستخدمه حالياً.', 'error');
+      toast(t('لا يمكنك تعطيل الحساب الذي تستخدمه حالياً.'), 'error');
       return;
     }
-    if (!confirm(`تعطيل حساب مشغل النظام [${user.username}]؟ سيتم إنهاء جلساته فوراً.`)) return;
+    if (!confirm(`${t('تعطيل حساب مشغل النظام [')}${user.username}${t(']؟ سيتم إنهاء جلساته فوراً.')}`)) return;
     setAppActionUser(user.username);
     try {
       await apiV1.updateUserStatus(user.username, false);
-      toast(`تم تعطيل حساب المشغل [${user.username}] وإنهاء جلساته.`, 'success');
+      toast(`${t('تم تعطيل حساب المشغل [')}${user.username}${t('] وإنهاء جلساته.')}`, 'success');
       fetchAppUsers();
     } catch (err: any) {
-      toast(err.message || 'فشل تعطيل الحساب', 'error');
+      toast(err.message || t('فشل تعطيل الحساب'), 'error');
     } finally {
       setAppActionUser(null);
     }
@@ -164,13 +165,13 @@ export function UsersPage() {
     try {
       const res = await api.toggleUserState(user.username, !user.enabled);
       if (res.ok) {
-        toast(user.enabled ? `تم تعطيل حساب [${user.username}].` : `تم تفعيل حساب [${user.username}].`, 'success');
+        toast(user.enabled ? `${t('تم تعطيل حساب [')}${user.username}].` : `${t('تم تفعيل حساب [')}${user.username}].`, 'success');
         fetchUsers();
       } else {
-        toast(res.error || 'فشل الإجراء', 'error');
+        toast(res.error || t('فشل الإجراء'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setActionUser(null);
     }
@@ -183,14 +184,14 @@ export function UsersPage() {
     try {
       const res = await api.resetUserPassword(selectedUser, newPassword);
       if (res.ok) {
-        toast(res.message || `تم تغيير كلمة مرور مستخدم ويندوز [${selectedUser}] بنجاح.`, 'success');
+        toast(res.message || `${t('تم تغيير كلمة مرور مستخدم ويندوز [')}${selectedUser}${t('] بنجاح.')}`, 'success');
         setPasswordModalOpen(false);
         setNewPassword('');
       } else {
-        toast(res.error || 'فشل تغيير كلمة المرور', 'error');
+        toast(res.error || t('فشل تغيير كلمة المرور'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء محاولة تغيير كلمة المرور', 'error');
+      toast(err.message || t('خطأ أثناء محاولة تغيير كلمة المرور'), 'error');
     } finally {
       setLoading(false);
     }
@@ -198,20 +199,20 @@ export function UsersPage() {
 
   const handleDelete = async (uname: string) => {
     if (domainProfile?.is_domain_controller) {
-      toast('حظر أمني: لا يمكن حذف حسابات محلية عشوائياً على وحدة تحكم النطاق (Domain Controller).', 'error');
+      toast(t('حظر أمني: لا يمكن حذف حسابات محلية عشوائياً على وحدة تحكم النطاق (Domain Controller).'), 'error');
       return;
     }
-    if (!confirm(`تحذير: هل أنت متأكد من حذف المستخدم [${uname}] نهائياً من نظام ويندوز؟`)) return;
+    if (!confirm(`${t('تحذير: هل أنت متأكد من حذف المستخدم [')}${uname}${t('] نهائياً من نظام ويندوز؟')}`)) return;
     try {
       const res = await api.deleteUser(uname);
       if (res.ok) {
-        toast('تم حذف المستخدم بنجاح', 'success');
+        toast(t('تم حذف المستخدم بنجاح'), 'success');
         fetchUsers();
       } else {
-        toast(res.error || 'فشل الحذف', 'error');
+        toast(res.error || t('فشل الحذف'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     }
   };
 
@@ -227,17 +228,17 @@ export function UsersPage() {
         is_admin: isAdmin,
       });
       if (res.ok) {
-        toast(`تم إنشاء حساب [${username}] وإضافته لمجموعات ويندوز المطلوبة.`, 'success');
+        toast(`${t('تم إنشاء حساب [')}${username}${t('] وإضافته لمجموعات ويندوز المطلوبة.')}`, 'success');
         setModalOpen(false);
         setUsername('');
         setPassword('');
         setFullName('');
         fetchUsers();
       } else {
-        toast(res.error || 'فشل إنشاء المستخدم', 'error');
+        toast(res.error || t('فشل إنشاء المستخدم'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setLoading(false);
     }
@@ -274,7 +275,7 @@ export function UsersPage() {
                 }}
               >
                 <CheckCircle2 size={13} />
-                حوكمة الهوية وإدارة الوصول المميز IAM
+                {t('حوكمة الهوية وإدارة الوصول المميز IAM')}
               </span>
               <span
                 style={{
@@ -291,11 +292,10 @@ export function UsersPage() {
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              حوكمة مستخدمي ويندوز المحليين وصلاحيات سطح المكتب البعيد RDP &amp; IAM
+              {t('حوكمة مستخدمي ويندوز المحليين وصلاحيات سطح المكتب البعيد')} RDP &amp; IAM
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              إدارة شاملة لحسابات ويندوز (SAM / Active Directory)، تعيين صلاحيات الدخول عن بعد (Remote Desktop Users)،
-              وفرض سياسات تصليب كلمات المرور ومكافحة تصعيد الامتيازات.
+              {t('إدارة شاملة لحسابات ويندوز (SAM / Active Directory)، تعيين صلاحيات الدخول عن بعد (Remote Desktop Users)، وفرض سياسات تصليب كلمات المرور ومكافحة تصعيد الامتيازات.')}
             </p>
           </div>
 
@@ -307,7 +307,7 @@ export function UsersPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <RefreshCw size={13} />
-              <span>مزامنة SAM</span>
+              <span>{t('مزامنة SAM')}</span>
             </Button>
             <Button
               size="sm"
@@ -316,7 +316,7 @@ export function UsersPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <UserPlus size={14} />
-              <span>إضافة مستخدم جديد</span>
+              <span>{t('إضافة مستخدم جديد')}</span>
             </Button>
           </div>
         </div>
@@ -327,49 +327,49 @@ export function UsersPage() {
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-              سياسات أمان الحسابات وتصليب كلمات المرور
+              {t('سياسات أمان الحسابات وتصليب كلمات المرور')}
             </h4>
-            <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>مفعلة Enforced</span>
+            <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>{t('مفعلة Enforced')}</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            فرض طول 12+ رمز، حظر كلمات المرور الشائعة، قفل الحساب التلقائي بعد 5 محاولات خاطئة لمنع هجمات التخمين.
+            {t('فرض طول 12+ رمز، حظر كلمات المرور الشائعة، قفل الحساب التلقائي بعد 5 محاولات خاطئة لمنع هجمات التخمين.')}
           </p>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-              جلسات RDP والحصة المتزامنة
+              {t('جلسات RDP والحصة المتزامنة')}
             </h4>
-            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>غير محدودة Unlimited</span>
+            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{t('غير محدودة Unlimited')}</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            دعم اتصالات متعددة متزامنة مع عزل مساحة الذاكرة لكل جلسة مستخدم وضبط استهلاك البرامج الخاملة.
+            {t('دعم اتصالات متعددة متزامنة مع عزل مساحة الذاكرة لكل جلسة مستخدم وضبط استهلاك البرامج الخاملة.')}
           </p>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-              بيئة تشغيل السيرفر
+              {t('بيئة تشغيل السيرفر')}
             </h4>
             <span style={{ fontSize: 11, color: 'var(--chart-out)', fontWeight: 700 }}>
               {domainProfile?.is_domain_controller ? 'Domain Controller' : 'Sovereign Standalone Host'}
             </span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            كافة العمليات المحلية تخضع لرقابة النواة المشددة وتوثق بصمتها في سجل الامتثال الجنائي.
+            {t('كافة العمليات المحلية تخضع لرقابة النواة المشددة وتوثق بصمتها في سجل الامتثال الجنائي.')}
           </p>
         </Glass>
       </div>
 
       {/* 3. Windows Local Users Directory Table (Stitch RDP H2) */}
       <Card
-        title="دليل حسابات السيرفر المحلي (Windows Local Users Directory)"
+        title={t('دليل حسابات السيرفر المحلي (Windows Local Users Directory)')}
         icon="users"
         actions={
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            إجمالي الحسابات: {users.length} مستخدم
+            {t('إجمالي الحسابات')}: {users.length} {t('مستخدم')}
           </span>
         }
       >
@@ -377,17 +377,17 @@ export function UsersPage() {
           <Table style={{ width: "100%", tableLayout: "fixed" }}>
             <TableHeader>
               <TableRow>
-                <TableHead style={{ width: '17%', textAlign: 'start' }}>اسم الحساب (Username)</TableHead>
-                <TableHead style={{ width: '20%', textAlign: 'start' }}>الاسم الكامل والوصف</TableHead>
-                <TableHead style={{ width: '12%', textAlign: 'start' }}>حالة الحساب</TableHead>
-                <TableHead style={{ width: '14%', textAlign: 'start' }}>صلاحية RDP</TableHead>
-                <TableHead style={{ width: '13%', textAlign: 'start' }}>دور الحساب</TableHead>
-                <TableHead style={{ width: '24%', textAlign: 'end' }}>إجراءات الحوكمة</TableHead>
+                <TableHead style={{ width: '17%', textAlign: 'start' }}>{t('اسم الحساب (Username)')}</TableHead>
+                <TableHead style={{ width: '20%', textAlign: 'start' }}>{t('الاسم الكامل والوصف')}</TableHead>
+                <TableHead style={{ width: '12%', textAlign: 'start' }}>{t('حالة الحساب')}</TableHead>
+                <TableHead style={{ width: '14%', textAlign: 'start' }}>{t('صلاحية RDP')}</TableHead>
+                <TableHead style={{ width: '13%', textAlign: 'start' }}>{t('دور الحساب')}</TableHead>
+                <TableHead style={{ width: '24%', textAlign: 'end' }}>{t('إجراءات الحوكمة')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.length === 0 ? (
-                <TableEmpty colSpan={6} message="لا يوجد مستخدمين مسجلين في السيرفر حالياً." />
+                <TableEmpty colSpan={6} message={t('لا يوجد مستخدمين مسجلين في السيرفر حالياً.')} />
               ) : (
                 users.map((u) => (
                   <TableRow key={u.username}>
@@ -399,7 +399,7 @@ export function UsersPage() {
                     </TableCell>
                     <TableCell style={{ width: '20%' }} className="text-xs text-muted">
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                        {u.full_name || u.description || 'حساب مستخدم محلي'}
+                        {u.full_name || u.description || t('حساب مستخدم محلي')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '12%' }}>
@@ -412,7 +412,7 @@ export function UsersPage() {
                         style={{ whiteSpace: 'nowrap' }}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${u.enabled ? 'bg-status-safe' : 'bg-status-danger'}`} />
-                        {u.enabled ? 'نشط Active' : 'معطّل Disabled'}
+                        {u.enabled ? t('نشط Active') : t('معطّل Disabled')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '14%' }}>
@@ -422,7 +422,7 @@ export function UsersPage() {
                         }`}
                         style={{ whiteSpace: 'nowrap' }}
                       >
-                        {u.is_rdp ? 'مفعّل (RDP)' : 'معطّل'}
+                        {u.is_rdp ? t('مفعّل (RDP)') : t('معطّل')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '13%' }}>
@@ -434,7 +434,7 @@ export function UsersPage() {
                         }`}
                         style={{ whiteSpace: 'nowrap' }}
                       >
-                        {u.is_admin ? 'مدير نظام (Admin)' : 'مستخدم قياسي (User)'}
+                        {u.is_admin ? t('مدير نظام (Admin)') : t('مستخدم قياسي (User)')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '24%', textAlign: 'end' }}>
@@ -451,7 +451,7 @@ export function UsersPage() {
                           className="text-primary"
                         >
                           <KeyRound size={12} style={{ marginInlineEnd: 4 }} />
-                          كلمة المرور
+                          {t('كلمة المرور')}
                         </Button>
                         <Button
                           size="sm"
@@ -460,7 +460,7 @@ export function UsersPage() {
                           onClick={() => handleToggleState(u)}
                           style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
                         >
-                          {u.enabled ? 'تعطيل' : 'تفعيل'}
+                          {u.enabled ? t('تعطيل') : t('تفعيل')}
                         </Button>
                         <Button
                           size="sm"
@@ -468,7 +468,7 @@ export function UsersPage() {
                           onClick={() => handleDelete(u.username)}
                           style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
                         >
-                          حذف
+                          {t('حذف')}
                         </Button>
                       </div>
                     </TableCell>
@@ -482,12 +482,12 @@ export function UsersPage() {
 
       {/* 4. ASAAS Application Users (operators of the console itself) */}
       <Card
-        title="حسابات مشغلي النظام (ASAAS App Users)"
+        title={t('حسابات مشغلي النظام (ASAAS App Users)')}
         icon="users"
         actions={
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-              إجمالي الحسابات: {appUsers.length} حساب
+              {t('إجمالي الحسابات')}: {appUsers.length} {t('حساب')}
             </span>
             <Button
               size="sm"
@@ -497,7 +497,7 @@ export function UsersPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
             >
               <RefreshCw size={12} />
-              <span>تحديث</span>
+              <span>{t('تحديث')}</span>
             </Button>
             {canManageAppUsers && (
               <Button
@@ -507,7 +507,7 @@ export function UsersPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
               >
                 <UserCog size={13} />
-                <span>إضافة حساب مشغل</span>
+                <span>{t('إضافة حساب مشغل')}</span>
               </Button>
             )}
           </div>
@@ -525,7 +525,7 @@ export function UsersPage() {
               fontWeight: 600,
             }}
           >
-            إدارة حسابات مشغلي النظام مقيدة بمدير النظام (Admin). يمكنك مراجعة بيانات حسابك فقط.
+            {t('إدارة حسابات مشغلي النظام مقيدة بمدير النظام (Admin). يمكنك مراجعة بيانات حسابك فقط.')}
           </div>
         )}
 
@@ -533,19 +533,19 @@ export function UsersPage() {
           <Table style={{ width: '100%', tableLayout: 'fixed' }}>
             <TableHeader>
               <TableRow>
-                <TableHead style={{ width: '18%', textAlign: 'start' }}>اسم المستخدم</TableHead>
-                <TableHead style={{ width: '20%', textAlign: 'start' }}>الاسم الكامل</TableHead>
-                <TableHead style={{ width: '19%', textAlign: 'start' }}>الدور والصلاحية</TableHead>
-                <TableHead style={{ width: '12%', textAlign: 'start' }}>حالة الحساب</TableHead>
-                <TableHead style={{ width: '19%', textAlign: 'start' }}>المصادقة الثنائية</TableHead>
-                <TableHead style={{ width: '12%', textAlign: 'end' }}>إجراءات</TableHead>
+                <TableHead style={{ width: '18%', textAlign: 'start' }}>{t('اسم المستخدم')}</TableHead>
+                <TableHead style={{ width: '20%', textAlign: 'start' }}>{t('الاسم الكامل')}</TableHead>
+                <TableHead style={{ width: '19%', textAlign: 'start' }}>{t('الدور والصلاحية')}</TableHead>
+                <TableHead style={{ width: '12%', textAlign: 'start' }}>{t('حالة الحساب')}</TableHead>
+                <TableHead style={{ width: '19%', textAlign: 'start' }}>{t('المصادقة الثنائية')}</TableHead>
+                <TableHead style={{ width: '12%', textAlign: 'end' }}>{t('إجراءات')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {appUsers.length === 0 ? (
                 <TableEmpty
                   colSpan={6}
-                  message={appUsersLoading ? 'جارٍ تحميل حسابات المشغلين...' : 'لا توجد حسابات مشغلين مسجلة حالياً.'}
+                  message={appUsersLoading ? t('جارٍ تحميل حسابات المشغلين...') : t('لا توجد حسابات مشغلين مسجلة حالياً.')}
                 />
               ) : (
                 appUsers.map((u) => {
@@ -559,7 +559,7 @@ export function UsersPage() {
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {u.username}
                             {isSelf && (
-                              <span style={{ marginInlineStart: 6, fontSize: 10, color: 'var(--accent)' }}>(أنت)</span>
+                              <span style={{ marginInlineStart: 6, fontSize: 10, color: 'var(--accent)' }}>{t('(أنت)')}</span>
                             )}
                           </span>
                         </div>
@@ -577,11 +577,11 @@ export function UsersPage() {
                             onChange={(e) => handleAppRoleChange(u, e.target.value)}
                             className="text-input"
                             style={{ width: '100%', fontSize: 12, padding: '5px 8px' }}
-                            aria-label={`دور الحساب ${u.username}`}
+                            aria-label={`${t('دور الحساب ')}${u.username}`}
                           >
-                            <option value="admin">مدير النظام (Admin)</option>
-                            <option value="operator">مشغل (Operator)</option>
-                            <option value="viewer">مشاهد (Viewer)</option>
+                            <option value="admin">{t('مدير النظام (Admin)')}</option>
+                            <option value="operator">{t('مشغل (Operator)')}</option>
+                            <option value="viewer">{t('مشاهد (Viewer)')}</option>
                           </select>
                         ) : (
                           <span
@@ -592,7 +592,7 @@ export function UsersPage() {
                             }`}
                             style={{ whiteSpace: 'nowrap' }}
                           >
-                            {u.role === 'admin' ? 'مدير النظام (Admin)' : u.role === 'operator' ? 'مشغل (Operator)' : 'مشاهد (Viewer)'}
+                            {u.role === 'admin' ? t('مدير النظام (Admin)') : u.role === 'operator' ? t('مشغل (Operator)') : t('مشاهد (Viewer)')}
                           </span>
                         )}
                       </TableCell>
@@ -606,12 +606,12 @@ export function UsersPage() {
                           style={{ whiteSpace: 'nowrap' }}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-status-safe' : 'bg-status-danger'}`} />
-                          {u.is_active ? 'نشط Active' : 'معطّل Disabled'}
+                          {u.is_active ? t('نشط Active') : t('معطّل Disabled')}
                         </span>
                       </TableCell>
                       <TableCell style={{ width: '19%' }} className="text-xs text-muted">
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          {u.mfa_enabled ? 'MFA مفعّل' : '—'}
+                          {u.mfa_enabled ? t('MFA مفعّل') : '—'}
                         </span>
                       </TableCell>
                       <TableCell style={{ width: '12%', textAlign: 'end' }}>
@@ -623,10 +623,10 @@ export function UsersPage() {
                               disabled={isRoot || isSelf || appActionUser === u.username}
                               onClick={() => handleDeleteAppUser(u)}
                               style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
-                              title={isRoot ? 'الحساب الجذري محمي من التعطيل' : 'تعطيل حساب المشغل وإنهاء جلساته'}
+                              title={isRoot ? t('الحساب الجذري محمي من التعطيل') : t('تعطيل حساب المشغل وإنهاء جلساته')}
                             >
                               <Trash2 size={12} style={{ marginInlineEnd: 4 }} />
-                              تعطيل
+                              {t('تعطيل')}
                             </Button>
                           ) : (
                             <Button
@@ -637,23 +637,23 @@ export function UsersPage() {
                                 setAppActionUser(u.username);
                                 try {
                                   await apiV1.updateUserStatus(u.username, true);
-                                  toast(`تم تفعيل حساب المشغل [${u.username}].`, 'success');
+                                  toast(`${t('تم تفعيل حساب المشغل [')}${u.username}].`, 'success');
                                   fetchAppUsers();
                                 } catch (err: any) {
-                                  toast(err.message || 'فشل تفعيل الحساب', 'error');
+                                  toast(err.message || t('فشل تفعيل الحساب'), 'error');
                                 } finally {
                                   setAppActionUser(null);
                                 }
                               }}
                               style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
                             >
-                              تفعيل
+                              {t('تفعيل')}
                             </Button>
                           )
                         ) : (
                           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                             <ShieldCheck size={12} style={{ marginInlineEnd: 4 }} />
-                            مقيد
+                            {t('مقيد')}
                           </span>
                         )}
                       </TableCell>
@@ -668,15 +668,15 @@ export function UsersPage() {
 
       {/* Modal: Change Password */}
       {passwordModalOpen && (
-        <Modal onClose={() => setPasswordModalOpen(false)} title={`تغيير كلمة المرور للمستخدم: ${selectedUser}`}>
+        <Modal onClose={() => setPasswordModalOpen(false)} title={`${t('تغيير كلمة المرور للمستخدم: ')}${selectedUser}`}>
           <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="كلمة المرور الجديدة (New Password)">
+            <Field label={t('كلمة المرور الجديدة (New Password)')}>
               {(id) => (
                 <PasswordInput
                   id={id}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="أدخل كلمة مرور قوية (12+ رمز)..."
+                  placeholder={t('أدخل كلمة مرور قوية (12+ رمز)...')}
                   required
                 />
               )}
@@ -685,10 +685,10 @@ export function UsersPage() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setPasswordModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button type="submit" variant="primary" loading={loading}>
-                تحديث كلمة المرور
+                {t('تحديث كلمة المرور')}
               </Button>
             </div>
           </form>
@@ -697,38 +697,38 @@ export function UsersPage() {
 
       {/* Modal: Create User (Stitch RDP H2) */}
       {modalOpen && (
-        <Modal onClose={() => setModalOpen(false)} title="إضافة مستخدم ويندوز محلي جديد">
+        <Modal onClose={() => setModalOpen(false)} title={t('إضافة مستخدم ويندوز محلي جديد')}>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="اسم الحساب بالإنجليزية (Username)">
+            <Field label={t('اسم الحساب بالإنجليزية (Username)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="مثال: khalid.ops"
+                  placeholder={t('مثال: khalid.ops')}
                   required
                 />
               )}
             </Field>
 
-            <Field label="الاسم الكامل أو الوصف (Full Name / Description)">
+            <Field label={t('الاسم الكامل أو الوصف (Full Name / Description)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="مثال: خالد محمد - فريق الدعم الفني"
+                  placeholder={t('مثال: خالد محمد - فريق الدعم الفني')}
                 />
               )}
             </Field>
 
-            <Field label="كلمة المرور (Password)">
+            <Field label={t('كلمة المرور (Password)')}>
               {(id) => (
                 <PasswordInput
                   id={id}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="كلمة مرور مؤمنة..."
+                  placeholder={t('كلمة مرور مؤمنة...')}
                   required
                 />
               )}
@@ -743,7 +743,7 @@ export function UsersPage() {
                   onChange={(e) => setIsRdp(e.target.checked)}
                   style={{ accentColor: 'var(--accent)' }}
                 />
-                <span>منح إذن تسجيل الدخول عن بعد (Remote Desktop Users)</span>
+                <span>{t('منح إذن تسجيل الدخول عن بعد (Remote Desktop Users)')}</span>
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13 }}>
@@ -753,16 +753,16 @@ export function UsersPage() {
                   onChange={(e) => setIsAdmin(e.target.checked)}
                   style={{ accentColor: 'var(--accent)' }}
                 />
-                <span>منح صلاحيات مدير نظام كامل (Administrators Group)</span>
+                <span>{t('منح صلاحيات مدير نظام كامل (Administrators Group)')}</span>
               </label>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button type="submit" variant="primary" loading={loading}>
-                إنشاء الحساب
+                {t('إنشاء الحساب')}
               </Button>
             </div>
           </form>
@@ -770,49 +770,49 @@ export function UsersPage() {
       )}
       {/* Modal: Create ASAAS App User */}
       {appModalOpen && (
-        <Modal onClose={() => setAppModalOpen(false)} title="إضافة حساب مشغل جديد لمنصة ASAAS">
+        <Modal onClose={() => setAppModalOpen(false)} title={t('إضافة حساب مشغل جديد لمنصة ASAAS')}>
           <form onSubmit={handleCreateAppUser} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="اسم المستخدم (Username)">
+            <Field label={t('اسم المستخدم (Username)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={appUsername}
                   onChange={(e) => setAppUsername(e.target.value)}
-                  placeholder="مثال: ops.khalid"
+                  placeholder={t('مثال: ops.khalid')}
                   required
                   minLength={3}
                 />
               )}
             </Field>
 
-            <Field label="الاسم الكامل (Full Name)">
+            <Field label={t('الاسم الكامل (Full Name)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={appFullName}
                   onChange={(e) => setAppFullName(e.target.value)}
-                  placeholder="مثال: خالد محمد - مشغل البنية التحتية"
+                  placeholder={t('مثال: خالد محمد - مشغل البنية التحتية')}
                 />
               )}
             </Field>
 
-            <Field label="الدور والصلاحية (Role)">
+            <Field label={t('الدور والصلاحية (Role)')}>
               {() => (
                 <Select value={appRole} onChange={(e) => setAppRole(e.target.value as 'admin' | 'operator' | 'viewer')}>
-                  <option value="viewer">مشاهد (Viewer) - قراءة وتدقيق فقط</option>
-                  <option value="operator">مشغل (Operator) - تنفيذ عمليات التشغيل</option>
-                  <option value="admin">مدير النظام (Admin) - صلاحيات كاملة</option>
+                  <option value="viewer">{t('مشاهد (Viewer) - قراءة وتدقيق فقط')}</option>
+                  <option value="operator">{t('مشغل (Operator) - تنفيذ عمليات التشغيل')}</option>
+                  <option value="admin">{t('مدير النظام (Admin) - صلاحيات كاملة')}</option>
                 </Select>
               )}
             </Field>
 
-            <Field label="كلمة المرور (Password)">
+            <Field label={t('كلمة المرور (Password)')}>
               {(id) => (
                 <PasswordInput
                   id={id}
                   value={appPassword}
                   onChange={(e) => setAppPassword(e.target.value)}
-                  placeholder="كلمة مرور قوية (12+ رمز)..."
+                  placeholder={t('كلمة مرور قوية (12+ رمز)...')}
                   required
                 />
               )}
@@ -821,10 +821,10 @@ export function UsersPage() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setAppModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button type="submit" variant="primary" loading={appSubmitting}>
-                إنشاء حساب المشغل
+                {t('إنشاء حساب المشغل')}
               </Button>
             </div>
           </form>

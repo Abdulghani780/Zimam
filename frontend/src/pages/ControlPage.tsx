@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useTelemetry } from '../lib/useTelemetry';
 import { api, type UserSession } from '../lib/api';
 import { SessionDrawer } from '../components/SessionDrawer';
@@ -31,6 +31,7 @@ import {
   formatSessionDuration,
   sessionStatus,
 } from '../lib/sessionUtils';
+import { t } from '../lib/i18n';
 
 type StatusFilter = 'all' | 'active' | 'disconnected' | 'other';
 
@@ -187,10 +188,10 @@ export function ControlPage() {
     setElevating(true);
     try {
       const res = await api.requestElevation();
-      toast(res.message || 'تم إرسال طلب رفع الصلاحيات، يرجى الموافقة على نافذة UAC في شاشة السيرفر.', 'success');
+      toast(res.message || t('تم إرسال طلب رفع الصلاحيات، يرجى الموافقة على نافذة UAC في شاشة السيرفر.'), 'success');
       setAccessDenied(null);
     } catch (err: any) {
-      toast(err.message || 'تعذر طلب ترقية الصلاحيات', 'error');
+      toast(err.message || t('تعذر طلب ترقية الصلاحيات'), 'error');
     } finally {
       setElevating(false);
     }
@@ -204,17 +205,17 @@ export function ControlPage() {
       if (res.ok) {
         toast(
           mode === 'control'
-            ? `تم إطلاق نافذة التحكم بجلسة ${session.user} بنجاح.`
-            : `تم إطلاق المراقبة الحية لجلسة ${session.user} بنجاح.`,
+            ? `${t('تم إطلاق نافذة التحكم بجلسة ')}${session.user}${t(' بنجاح.')}`
+            : `${t('تم إطلاق المراقبة الحية لجلسة ')}${session.user}${t(' بنجاح.')}`,
           'success',
         );
       } else {
-        const message = res.error || 'تعذر إطلاق الجلسة. تأكد من صلاحيات المسؤول وتفعيل سياسة RDP Shadowing.';
+        const message = res.error || t('تعذر إطلاق الجلسة. تأكد من صلاحيات المسؤول وتفعيل سياسة RDP Shadowing.');
         toast(message, 'error');
         noteActionError(message);
       }
     } catch (err: any) {
-      const message = err.message || 'خطأ في إطلاق الجلسة';
+      const message = err.message || t('خطأ في إطلاق الجلسة');
       toast(message, 'error');
       noteActionError(message);
     } finally {
@@ -264,12 +265,12 @@ export function ControlPage() {
       if (succeeded === targets.length) {
         toast(
           kind === 'disconnect'
-            ? `تم فصل ${succeeded} جلسة بنجاح مع إبقاء برامج المستخدمين في الخلفية.`
-            : `تم تسجيل خروج ${succeeded} جلسة وإنهاء برامجها بنجاح.`,
+            ? `${t('تم فصل ')}${succeeded}${t(' جلسة بنجاح مع إبقاء برامج المستخدمين في الخلفية.')}`
+            : `${t('تم تسجيل خروج ')}${succeeded}${t(' جلسة وإنهاء برامجها بنجاح.')}`,
           'success',
         );
       } else {
-        toast(firstError || `تعذر إكمال العملية على ${targets.length - succeeded} جلسة.`, 'error');
+        toast(firstError || `${t('تعذر إكمال العملية على ')}${targets.length - succeeded}${t(' جلسة.')}`, 'error');
         noteActionError(firstError);
       }
 
@@ -290,13 +291,13 @@ export function ControlPage() {
       const reclaimed = res.reclaimed_mb ?? res.result?.reclaimed_mb ?? 0;
       toast(
         reclaimed > 0
-          ? `تم استرداد ${reclaimed} MB من ذاكرة جلسة ${session.user}.`
-          : res.message || `ذاكرة جلسة ${session.user} مُحسّنة مسبقاً ولا توجد صفحات خاملة لتحريرها.`,
+          ? `${t('تم استرداد ')}${reclaimed}${t(' MB من ذاكرة جلسة ')}${session.user}.`
+          : res.message || `${t('ذاكرة جلسة ')}${session.user}${t(' مُحسّنة مسبقاً ولا توجد صفحات خاملة لتحريرها.')}`,
         'success',
       );
       await refresh();
     } catch (err: any) {
-      toast(err.message || 'تعذر تفريغ ذاكرة الجلسة', 'error');
+      toast(err.message || t('تعذر تفريغ ذاكرة الجلسة'), 'error');
     } finally {
       setBusy(null);
     }
@@ -308,15 +309,15 @@ export function ControlPage() {
     try {
       const res = await api.enableShadowPolicy();
       if (res.ok) {
-        toast(res.message || 'تم تفعيل سياسة RDP Shadowing في الريجستري بنجاح.', 'success');
+        toast(res.message || t('تم تفعيل سياسة RDP Shadowing في الريجستري بنجاح.'), 'success');
         setAccessDenied(null);
       } else {
-        const message = res.error || 'فشل تعديل سياسة الريجستري (يتطلب تشغيل السيرفر كمسؤول).';
+        const message = res.error || t('فشل تعديل سياسة الريجستري (يتطلب تشغيل السيرفر كمسؤول).');
         toast(message, 'error');
         noteActionError(message);
       }
     } catch (err: any) {
-      const message = err.message || 'تعذر تفعيل سياسة RDP Shadowing';
+      const message = err.message || t('تعذر تفعيل سياسة RDP Shadowing');
       toast(message, 'error');
       noteActionError(message);
     } finally {
@@ -333,18 +334,18 @@ export function ControlPage() {
         <div className="page-head__title">
           <span className="page-head__icon"><Monitor size={20} /></span>
           <div>
-            <h1>إدارة جلسات سطح المكتب البعيد (RDP)</h1>
-            <p>مراقبة وإدارة جلسات المستخدمين النشطة على الخوادم بشكل آمن وفوري</p>
+            <h1>{t('إدارة جلسات سطح المكتب البعيد (RDP)')}</h1>
+            <p>{t('مراقبة وإدارة جلسات المستخدمين النشطة على الخوادم بشكل آمن وفوري')}</p>
           </div>
         </div>
         <div className="page-head__actions">
           <button type="button" className="btn-gold-outline" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw size={15} className={refreshing ? 'spin' : ''} />
-            {refreshing ? 'جارٍ التحديث…' : 'تحديث الآن'}
+            {refreshing ? t('جارٍ التحديث…') : t('تحديث الآن')}
           </button>
           <span className="rdp-count">
             <span className="conn-dot" style={{ color: 'var(--status-safe)' }} />
-            جلسات نشطة: <strong>{activeCount}</strong> من {sessions.length}
+            {t('جلسات نشطة:')} <strong>{activeCount}</strong> من {sessions.length}
           </span>
         </div>
       </div>
@@ -353,14 +354,14 @@ export function ControlPage() {
         <div className="rdp-banner" role="alert">
           <span className="rdp-banner__icon"><ShieldAlert size={18} /></span>
           <div className="rdp-banner__copy">
-            <strong>رفض نظام ويندوز تنفيذ العملية (Access Denied)</strong>
+            <strong>{t('رفض نظام ويندوز تنفيذ العملية (Access Denied)')}</strong>
             <p>{accessDenied}</p>
           </div>
           <button type="button" className="btn-gold-outline" onClick={handleElevate} disabled={elevating}>
             <ShieldCheck size={15} />
-            {elevating ? 'جارٍ طلب الترقية…' : 'ترقية السيرفر كمسؤول'}
+            {elevating ? t('جارٍ طلب الترقية…') : t('ترقية السيرفر كمسؤول')}
           </button>
-          <button type="button" className="modal-panel__close" onClick={() => setAccessDenied(null)} aria-label="إغلاق التنبيه">
+          <button type="button" className="modal-panel__close" onClick={() => setAccessDenied(null)} aria-label={t('إغلاق التنبيه')}>
             <X size={16} />
           </button>
         </div>
@@ -368,7 +369,7 @@ export function ControlPage() {
 
       <div className="rdp-layout">
         <div className="rdp-main">
-          <section className="panel" aria-label="قائمة جلسات سطح المكتب البعيد">
+          <section className="panel" aria-label={t('قائمة جلسات سطح المكتب البعيد')}>
             <div className="rdp-filters">
               <label className="search-box">
                 <Search size={15} />
@@ -376,42 +377,42 @@ export function ControlPage() {
                   type="text"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="ابحث باسم المستخدم أو الخادم أو معرّف الجلسة…"
-                  aria-label="البحث في الجلسات"
+                  placeholder={t('ابحث باسم المستخدم أو الخادم أو معرّف الجلسة…')}
+                  aria-label={t('البحث في الجلسات')}
                 />
               </label>
 
               <div className="ui-select">
                 <select
-                  aria-label="تصفية حسب الخادم"
+                  aria-label={t('تصفية حسب الخادم')}
                   value={serverFilter}
                   onChange={(event) => setServerFilter(event.target.value)}
                 >
-                  <option value="all">كل الخوادم</option>
+                  <option value="all">{t('كل الخوادم')}</option>
                   <option value={hostname}>{hostname}</option>
                 </select>
               </div>
 
               <div className="ui-select">
                 <select
-                  aria-label="تصفية حسب حالة الجلسة"
+                  aria-label={t('تصفية حسب حالة الجلسة')}
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
                 >
-                  <option value="all">كل الحالات</option>
-                  <option value="active">نشطة</option>
-                  <option value="disconnected">خاملة</option>
-                  <option value="other">مستمرة</option>
+                  <option value="all">{t('كل الحالات')}</option>
+                  <option value="active">{t('نشطة')}</option>
+                  <option value="disconnected">{t('خاملة')}</option>
+                  <option value="other">{t('مستمرة')}</option>
                 </select>
               </div>
 
               <div className="ui-select">
                 <select
-                  aria-label="تصفية حسب المستخدم"
+                  aria-label={t('تصفية حسب المستخدم')}
                   value={userFilter}
                   onChange={(event) => setUserFilter(event.target.value)}
                 >
-                  <option value="all">كل المستخدمين</option>
+                  <option value="all">{t('كل المستخدمين')}</option>
                   {userOptions.map((user) => (
                     <option key={user} value={user}>{user}</option>
                   ))}
@@ -429,18 +430,18 @@ export function ControlPage() {
                         className="table-check"
                         data-checked={allVisibleSelected ? 'true' : 'false'}
                         onClick={toggleSelectAll}
-                        aria-label="تحديد كل الجلسات الظاهرة"
+                        aria-label={t('تحديد كل الجلسات الظاهرة')}
                         aria-pressed={allVisibleSelected}
                       >
                         {allVisibleSelected && <Check size={11} />}
                       </button>
                     </th>
-                    <th>اسم المستخدم</th>
-                    <th>عنوان المصدر (IP)</th>
-                    <th>وقت تسجيل الدخول</th>
-                    <th>مدة الجلسة</th>
-                    <th>حالة الجلسة</th>
-                    <th>الخادم</th>
+                    <th>{t('اسم المستخدم')}</th>
+                    <th>{t('عنوان المصدر (IP)')}</th>
+                    <th>{t('وقت تسجيل الدخول')}</th>
+                    <th>{t('مدة الجلسة')}</th>
+                    <th>{t('حالة الجلسة')}</th>
+                    <th>{t('الخادم')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -449,8 +450,8 @@ export function ControlPage() {
                       <td colSpan={7}>
                         <div className="rdp-empty">
                           <Monitor size={26} />
-                          <strong>لا توجد جلسات مطابقة</strong>
-                          <span>جرّب تغيير عوامل التصفية أو البحث للعثور على جلسة.</span>
+                          <strong>{t('لا توجد جلسات مطابقة')}</strong>
+                          <span>{t('جرّب تغيير عوامل التصفية أو البحث للعثور على جلسة.')}</span>
                         </div>
                       </td>
                     </tr>
@@ -473,7 +474,7 @@ export function ControlPage() {
                             className="table-check"
                             data-checked={selected ? 'true' : 'false'}
                             onClick={() => toggleSelect(session)}
-                            aria-label={`تحديد جلسة ${session.user}`}
+                            aria-label={`${t('تحديد جلسة ')}${session.user}`}
                             aria-pressed={selected}
                           >
                             {selected && <Check size={11} />}
@@ -483,14 +484,14 @@ export function ControlPage() {
                           <span className="cell-user">
                             <UserRound size={13} />
                             <span className="cell-strong" dir="ltr">{session.user}</span>
-                            {session.is_current && <span className="mini-chip">أنت هنا</span>}
+                            {session.is_current && <span className="mini-chip">{t('أنت هنا')}</span>}
                           </span>
                         </td>
                         <td>
                           <span
                             className="mono-sm"
                             dir="ltr"
-                            title="لا يوفّر Windows WTS عنوان IP المصدر للجلسة"
+                            title={t('لا يوفّر Windows WTS عنوان IP المصدر للجلسة')}
                           >
                             —
                           </span>
@@ -518,7 +519,7 @@ export function ControlPage() {
 
             <div className="rdp-quickbar">
               <span className="rdp-quickbar__label">
-                إجراءات سريعة على المحدد ({selectionCount})
+                {t('إجراءات سريعة على المحدد')} ({selectionCount})
               </span>
               <div className="rdp-quickbar__actions">
                 <button
@@ -528,7 +529,7 @@ export function ControlPage() {
                   disabled={!singleTarget || Boolean(busy)}
                 >
                   <Eye size={15} />
-                  عرض الجلسة
+                  {t('عرض الجلسة')}
                 </button>
                 <button
                   type="button"
@@ -537,7 +538,7 @@ export function ControlPage() {
                   disabled={bulkTargets.length === 0 || confirmBusy}
                 >
                   <Unplug size={15} />
-                  قطع الاتصال
+                  {t('قطع الاتصال')}
                 </button>
                 <button
                   type="button"
@@ -546,7 +547,7 @@ export function ControlPage() {
                   disabled={!singleTarget || Boolean(busy)}
                 >
                   <MonitorPlay size={15} />
-                  مراقبة الجلسة (Shadow)
+                  {t('مراقبة الجلسة (Shadow)')}
                 </button>
 
                 <div className="menu-wrap">
@@ -558,7 +559,7 @@ export function ControlPage() {
                     aria-haspopup="menu"
                   >
                     <MoreHorizontal size={16} />
-                    المزيد
+                    {t('المزيد')}
                   </button>
 
                   {moreOpen && (
@@ -566,7 +567,7 @@ export function ControlPage() {
                       <button
                         type="button"
                         className="menu-backdrop"
-                        aria-label="إغلاق قائمة الإجراءات"
+                        aria-label={t('إغلاق قائمة الإجراءات')}
                         onClick={() => setMoreOpen(false)}
                       />
                       <div className="menu-pop" role="menu">
@@ -580,7 +581,7 @@ export function ControlPage() {
                           }}
                         >
                           <MessageSquare size={14} />
-                          إرسال تنبيه مباشر للمستخدم
+                          {t('إرسال تنبيه مباشر للمستخدم')}
                         </button>
                         <button
                           type="button"
@@ -589,7 +590,7 @@ export function ControlPage() {
                           onClick={requestBulkLogoff}
                         >
                           <LogOut size={14} />
-                          تسجيل خروج إجباري
+                          {t('تسجيل خروج إجباري')}
                         </button>
                         <button
                           type="button"
@@ -598,7 +599,7 @@ export function ControlPage() {
                           onClick={() => { if (singleTarget) void handleTrim(singleTarget); }}
                         >
                           <Zap size={14} />
-                          تفريغ الذاكرة الخاملة للجلسة
+                          {t('تفريغ الذاكرة الخاملة للجلسة')}
                         </button>
                         <div className="menu-pop__sep" />
                         <button
@@ -608,11 +609,11 @@ export function ControlPage() {
                           onClick={handleEnablePolicy}
                         >
                           <ShieldCheck size={14} />
-                          {busy === 'policy' ? 'جارٍ تفعيل السياسة…' : 'تفعيل سياسة RDP Shadowing'}
+                          {busy === 'policy' ? t('جارٍ تفعيل السياسة…') : t('تفعيل سياسة RDP Shadowing')}
                         </button>
                         <button type="button" role="menuitem" onClick={handleRefresh}>
                           <RefreshCw size={14} />
-                          تحديث بيانات الجلسات
+                          {t('تحديث بيانات الجلسات')}
                         </button>
                       </div>
                     </>
@@ -623,7 +624,7 @@ export function ControlPage() {
 
             <div className="pagination">
               <span>
-                إظهار {visibleFrom} - {visibleTo} من {filteredSessions.length} جلسة
+                {t('إظهار')} {visibleFrom} - {visibleTo} {t('من')} {filteredSessions.length} {t('جلسة')}
               </span>
 
               {totalPages > 1 && (
@@ -632,7 +633,7 @@ export function ControlPage() {
                     type="button"
                     onClick={() => setPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage <= 1}
-                    aria-label="الصفحة السابقة"
+                    aria-label={t('الصفحة السابقة')}
                   >
                     <ChevronRight size={13} />
                   </button>
@@ -650,7 +651,7 @@ export function ControlPage() {
                     type="button"
                     onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage >= totalPages}
-                    aria-label="الصفحة التالية"
+                    aria-label={t('الصفحة التالية')}
                   >
                     <ChevronLeft size={13} />
                   </button>
@@ -658,10 +659,10 @@ export function ControlPage() {
               )}
 
               <span className="pagination__size">
-                عدد العناصر في الصفحة
+                {t('عدد العناصر في الصفحة')}
                 <span className="ui-select">
                   <select
-                    aria-label="عدد العناصر في الصفحة"
+                    aria-label={t('عدد العناصر في الصفحة')}
                     value={pageSize}
                     onChange={(event) => setPageSize(Number(event.target.value))}
                   >
@@ -700,20 +701,20 @@ export function ControlPage() {
             className="modal-panel"
             role="dialog"
             aria-modal="true"
-            aria-label={isDisconnect ? 'تأكيد قطع الاتصال' : 'تأكيد تسجيل الخروج'}
+            aria-label={isDisconnect ? t('تأكيد قطع الاتصال') : t('تأكيد تسجيل الخروج')}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-panel__head">
               <span className="modal-panel__title">
                 {isDisconnect ? <Unplug size={18} /> : <LogOut size={18} />}
-                {isDisconnect ? 'تأكيد قطع الاتصال' : 'تأكيد تسجيل الخروج'}
+                {isDisconnect ? t('تأكيد قطع الاتصال') : t('تأكيد تسجيل الخروج')}
               </span>
               <button
                 type="button"
                 className="modal-panel__close"
                 onClick={() => setConfirmState(null)}
                 disabled={confirmBusy}
-                aria-label="إغلاق نافذة التأكيد"
+                aria-label={t('إغلاق نافذة التأكيد')}
               >
                 <X size={16} />
               </button>
@@ -722,8 +723,8 @@ export function ControlPage() {
             <div className="modal-panel__body">
               <p style={{ margin: 0 }}>
                 {isDisconnect
-                  ? 'هل أنت متأكد من قطع اتصال المستخدم؟'
-                  : 'هل أنت متأكد من تسجيل خروج المستخدم؟'}
+                  ? t('هل أنت متأكد من قطع اتصال المستخدم؟')
+                  : t('هل أنت متأكد من تسجيل خروج المستخدم؟')}
               </p>
 
               {confirmSingle ? (
@@ -732,7 +733,7 @@ export function ControlPage() {
                     <UserRound size={15} />
                     <span>
                       <strong dir="ltr">{confirmSingle.user}</strong>
-                      <small>اسم المستخدم</small>
+                      <small>{t('اسم المستخدم')}</small>
                     </span>
                   </span>
                   <span className="modal-kv__divider" />
@@ -740,7 +741,7 @@ export function ControlPage() {
                     <Server size={15} />
                     <span>
                       <strong dir="ltr">{hostname}</strong>
-                      <small>الخادم</small>
+                      <small>{t('الخادم')}</small>
                     </span>
                   </span>
                 </div>
@@ -749,8 +750,8 @@ export function ControlPage() {
                   <span className="modal-kv__cell">
                     <Users size={15} />
                     <span>
-                      <strong>{confirmState.sessions.length} جلسات محددة</strong>
-                      <small>سيتم تنفيذ الإجراء على جميع الجلسات المحددة</small>
+                      <strong>{confirmState.sessions.length} {t('جلسات محددة')}</strong>
+                      <small>{t('سيتم تنفيذ الإجراء على جميع الجلسات المحددة')}</small>
                     </span>
                   </span>
                 </div>
@@ -759,8 +760,8 @@ export function ControlPage() {
               <div className="modal-warning">
                 <AlertCircle size={14} />
                 {isDisconnect
-                  ? 'سيتم إنهاء جلسة سطح المكتب البعيد (RDP) فوراً مع إبقاء برامج المستخدم في الخلفية.'
-                  : 'سيتم إغلاق كافة البرامج المفتوحة وإنهاء جلسة المستخدم نهائياً.'}
+                  ? t('سيتم إنهاء جلسة سطح المكتب البعيد (RDP) فوراً مع إبقاء برامج المستخدم في الخلفية.')
+                  : t('سيتم إغلاق كافة البرامج المفتوحة وإنهاء جلسة المستخدم نهائياً.')}
               </div>
             </div>
 
@@ -772,10 +773,10 @@ export function ControlPage() {
                 disabled={confirmBusy}
               >
                 {confirmBusy
-                  ? 'جارٍ التنفيذ…'
+                  ? t('جارٍ التنفيذ…')
                   : isDisconnect
-                    ? 'قطع الاتصال الآن'
-                    : 'تسجيل الخروج الآن'}
+                    ? t('قطع الاتصال الآن')
+                    : t('تسجيل الخروج الآن')}
               </button>
               <button
                 type="button"
@@ -783,7 +784,7 @@ export function ControlPage() {
                 onClick={() => setConfirmState(null)}
                 disabled={confirmBusy}
               >
-                إلغاء
+                {t('إلغاء')}
               </button>
             </div>
           </div>

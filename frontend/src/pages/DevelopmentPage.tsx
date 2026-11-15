@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 5: Development (بيئات المطورين، إدارة المشاريع، وتوجيه المنافذ الذكي)
  * Zero-Mock Production with Real Windows Multi-Tenant & Smart Port Orchestration
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Layers,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function DevelopmentPage() {
   const toast = useToast();
@@ -74,7 +75,7 @@ export function DevelopmentPage() {
         });
       }
     } catch (err: any) {
-      toast(err.message || 'فشل جلب بيانات بيئات المطورين', 'error');
+      toast(err.message || t('فشل جلب بيانات بيئات المطورين'), 'error');
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ export function DevelopmentPage() {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjName) {
-      toast('يرجى إدخال اسم المشروع', 'error');
+      toast(t('يرجى إدخال اسم المشروع'), 'error');
       return;
     }
     setSubmittingProj(true);
@@ -98,16 +99,16 @@ export function DevelopmentPage() {
         port: newProjPort ? Number(newProjPort) : undefined,
       });
       if (res.ok) {
-        toast(`تم إنشاء مساحة المشروع [${newProjName}] وتخصيص المنفذ ${res.port} بنجاح.`, 'success');
+        toast(`${t('تم إنشاء مساحة المشروع [')}${newProjName}${t('] وتخصيص المنفذ ')}${res.port}${t(' بنجاح.')}`, 'success');
         setProjectModalOpen(false);
         setNewProjName('');
         setNewProjPort(undefined);
         fetchData();
       } else {
-        toast(res.error || 'فشل إنشاء المشروع', 'error');
+        toast(res.error || t('فشل إنشاء المشروع'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تسجيل المشروع', 'error');
+      toast(err.message || t('خطأ أثناء تسجيل المشروع'), 'error');
     } finally {
       setSubmittingProj(false);
     }
@@ -117,13 +118,13 @@ export function DevelopmentPage() {
     try {
       const res = await api.startDeveloperProject(id);
       if (res.ok) {
-        toast(`تم تشغيل خدمة المشروع [${name}] على المنفذ ${res.port || 'المخصص'}.`, 'success');
+        toast(`${t('تم تشغيل خدمة المشروع [')}${name}${t('] على المنفذ ')}${res.port || t('المخصص')}.`, 'success');
         fetchData();
       } else {
-        toast(res.error || 'فشل تشغيل المشروع', 'error');
+        toast(res.error || t('فشل تشغيل المشروع'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ في تشغيل المشروع', 'error');
+      toast(err.message || t('خطأ في تشغيل المشروع'), 'error');
     }
   };
 
@@ -131,28 +132,28 @@ export function DevelopmentPage() {
     try {
       const res = await api.stopDeveloperProject(id);
       if (res.ok) {
-        toast(`تم إيقاف المشروع [${name}] بنجاح.`, 'success');
+        toast(`${t('تم إيقاف المشروع [')}${name}${t('] بنجاح.')}`, 'success');
         fetchData();
       } else {
-        toast(res.error || 'فشل إيقاف المشروع', 'error');
+        toast(res.error || t('فشل إيقاف المشروع'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ في إيقاف المشروع', 'error');
+      toast(err.message || t('خطأ في إيقاف المشروع'), 'error');
     }
   };
 
   const handleDeleteProject = async (id: string, name: string) => {
-    if (!window.confirm(`هل أنت متأكد من حذف مساحة عمل المشروع [${name}]؟`)) return;
+    if (!window.confirm(`${t('هل أنت متأكد من حذف مساحة عمل المشروع [')}${name}${t(']؟')}`)) return;
     try {
       const res = await api.deleteDeveloperProject(id);
       if (res.ok) {
-        toast(`تم حذف المشروع [${name}] وتحرير المنفذ.`, 'success');
+        toast(`${t('تم حذف المشروع [')}${name}${t('] وتحرير المنفذ.')}`, 'success');
         fetchData();
       } else {
-        toast(res.error || 'فشل حذف المشروع', 'error');
+        toast(res.error || t('فشل حذف المشروع'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ في حذف المشروع', 'error');
+      toast(err.message || t('خطأ في حذف المشروع'), 'error');
     }
   };
 
@@ -164,12 +165,12 @@ export function DevelopmentPage() {
       const res = await api.allocatePortProbe(probePort, probeProjectName);
       setProbeResult(res);
       if (res.ok && res.assigned_port === probePort) {
-        toast(`المنفذ ${probePort} شاغر ومتاح للحجز الذري!`, 'success');
+        toast(`${t('المنفذ ')}${probePort}${t(' شاغر ومتاح للحجز الذري!')}`, 'success');
       } else if (res.ok) {
-        toast(`تم رصد تعارض على المنفذ ${probePort}، وتم تخصيص المنفذ البديل ${res.assigned_port} تلقائياً.`, 'info');
+        toast(`${t('تم رصد تعارض على المنفذ ')}${probePort}${t('، وتم تخصيص المنفذ البديل ')}${res.assigned_port}${t(' تلقائياً.')}`, 'info');
       }
     } catch (err: any) {
-      toast(err.message || 'فشل فحص المنفذ', 'error');
+      toast(err.message || t('فشل فحص المنفذ'), 'error');
     } finally {
       setProbing(false);
     }
@@ -181,12 +182,12 @@ export function DevelopmentPage() {
     try {
       const res = await api.saveQuotasConfig(quotas);
       if (res.ok) {
-        toast('تم تحديث سياسات وحصص استهلاك المطورين بنجاح.', 'success');
+        toast(t('تم تحديث سياسات وحصص استهلاك المطورين بنجاح.'), 'success');
       } else {
-        toast(res.error || 'فشل حفظ الحصص', 'error');
+        toast(res.error || t('فشل حفظ الحصص'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء حفظ الحصص', 'error');
+      toast(err.message || t('خطأ أثناء حفظ الحصص'), 'error');
     } finally {
       setSavingQuotas(false);
     }
@@ -199,20 +200,20 @@ export function DevelopmentPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Code size={24} style={{ color: 'var(--accent)' }} />
-            <span>بيئات المطورين وحوكمة المشاريع (Multi-Tenant Workspaces)</span>
+            <span>{t('بيئات المطورين وحوكمة المشاريع (Multi-Tenant Workspaces)')}</span>
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
-            إدارة مساحات عمل المطورين، عزل المنافذ الذري (Zero-Collision)، بوابات التوجيه السحابية، وضبط حصص الموارد.
+            {t('إدارة مساحات عمل المطورين، عزل المنافذ الذري (Zero-Collision)، بوابات التوجيه السحابية، وضبط حصص الموارد.')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <Button variant="ghost" onClick={fetchData} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={15} className={loading ? 'spin' : ''} />
-            <span>تحديث</span>
+            <span>{t('تحديث')}</span>
           </Button>
           <Button variant="primary" onClick={() => setProjectModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Plus size={16} />
-            <span>إنشاء مشروع جديد</span>
+            <span>{t('إنشاء مشروع جديد')}</span>
           </Button>
         </div>
       </div>
@@ -237,7 +238,7 @@ export function DevelopmentPage() {
           }}
         >
           <FolderGit2 size={16} />
-          <span>مشاريع المطورين النشطة ({projects.length})</span>
+          <span>{t('مشاريع المطورين النشطة')} ({projects.length})</span>
         </button>
 
         <button
@@ -258,7 +259,7 @@ export function DevelopmentPage() {
           }}
         >
           <Radio size={16} />
-          <span>منسق المنافذ الذكي (Smart Port Sentinel)</span>
+          <span>{t('منسق المنافذ الذكي (Smart Port Sentinel)')}</span>
         </button>
 
         <button
@@ -279,7 +280,7 @@ export function DevelopmentPage() {
           }}
         >
           <Sliders size={16} />
-          <span>حصص الموارد وعزل الأداء (Quotas)</span>
+          <span>{t('حصص الموارد وعزل الأداء (Quotas)')}</span>
         </button>
 
         <button
@@ -300,7 +301,7 @@ export function DevelopmentPage() {
           }}
         >
           <Layers size={16} />
-          <span>بوابة التطبيقات السحابية (Gateway Routes)</span>
+          <span>{t('بوابة التطبيقات السحابية (Gateway Routes)')}</span>
         </button>
       </div>
 
@@ -310,12 +311,12 @@ export function DevelopmentPage() {
           {projects.length === 0 ? (
             <Card style={{ padding: 40, textAlign: 'center' }}>
               <FolderGit2 size={40} style={{ color: 'var(--text-3)', margin: '0 auto 12px' }} />
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>لا توجد مشاريع مسجلة حالياً</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{t('لا توجد مشاريع مسجلة حالياً')}</div>
               <p style={{ fontSize: 13, color: 'var(--text-3)', maxWidth: 400, margin: '8px auto 16px' }}>
-                ابدأ بتسجيل أول بيئة عمل للمطورين مع تخصيص منافذ ذري وعزل كامل لمسار التشغيل.
+                {t('ابدأ بتسجيل أول بيئة عمل للمطورين مع تخصيص منافذ ذري وعزل كامل لمسار التشغيل.')}
               </p>
               <Button variant="primary" onClick={() => setProjectModalOpen(true)}>
-                إنشاء مشروع جديد الآن
+                {t('إنشاء مشروع جديد الآن')}
               </Button>
             </Card>
           ) : (
@@ -339,16 +340,16 @@ export function DevelopmentPage() {
                           </div>
                         </div>
                         <span className={`badge ${isRunning ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
-                          {isRunning ? 'قيد التشغيل' : 'متوقف'}
+                          {isRunning ? t('قيد التشغيل') : t('متوقف')}
                         </span>
                       </div>
 
                       <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                        المسار: {p.path}
+                        {t('المسار')}: {p.path}
                       </div>
 
                       <div style={{ padding: '8px 12px', borderRadius: 6, background: 'var(--glass-tint)', border: '1px solid var(--glass-rim-low)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>المنفذ المحجوز (TCP):</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('المنفذ المحجوز (TCP):')}</span>
                         <span style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--accent)', fontSize: 13 }}>
                           :{p.port}
                         </span>
@@ -360,12 +361,12 @@ export function DevelopmentPage() {
                         {!isRunning ? (
                           <Button variant="primary" onClick={() => handleStartProject(p.id, p.name)} style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <Play size={13} />
-                            <span>تشغيل</span>
+                            <span>{t('تشغيل')}</span>
                           </Button>
                         ) : (
                           <Button variant="secondary" onClick={() => handleStopProject(p.id, p.name)} style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--status-danger)' }}>
                             <Square size={13} />
-                            <span>إيقاف</span>
+                            <span>{t('إيقاف')}</span>
                           </Button>
                         )}
                         {isRunning && (
@@ -388,7 +389,7 @@ export function DevelopmentPage() {
                             }}
                           >
                             <ExternalLink size={13} />
-                            <span>فتح التطبيق</span>
+                            <span>{t('فتح التطبيق')}</span>
                           </a>
                         )}
                       </div>
@@ -397,7 +398,7 @@ export function DevelopmentPage() {
                         variant="ghost"
                         onClick={() => handleDeleteProject(p.id, p.name)}
                         style={{ color: 'var(--status-danger)', padding: 6 }}
-                        title="حذف المشروع"
+                        title={t('حذف المشروع')}
                       >
                         <Trash2 size={15} />
                       </Button>
@@ -415,23 +416,23 @@ export function DevelopmentPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card style={{ padding: 20 }}>
             <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-1)', marginBottom: 6 }}>
-              فحص التوفر الذري وتخصيص المنافذ الخالية من التعارض (Atomic Socket Probe)
+              {t('فحص التوفر الذري وتخصيص المنافذ الخالية من التعارض (Atomic Socket Probe)')}
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 16px' }}>
-              يقوم المحرك بفحص جدول استماع TCP ومحاولة الربط الفعلي بمقبس النواة (Socket Bind). في حال انشغال المنفذ، يتم اقتراح وتخصيص منفذ بديل في نطاق المطورين (3000-3999).
+              {t('يقوم المحرك بفحص جدول استماع TCP ومحاولة الربط الفعلي بمقبس النواة (Socket Bind). في حال انشغال المنفذ، يتم اقتراح وتخصيص منفذ بديل في نطاق المطورين (3000-3999).')}
             </p>
 
             <form onSubmit={handleProbePort} style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>المنفذ المطلوب فحصه</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('المنفذ المطلوب فحصه')}</label>
                 <TextInput type="number" value={probePort} onChange={(e) => setProbePort(parseInt(e.target.value) || 3000)} />
               </div>
               <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>اسم المشروع المستهدف</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('اسم المشروع المستهدف')}</label>
                 <TextInput value={probeProjectName} onChange={(e) => setProbeProjectName(e.target.value)} />
               </div>
               <Button variant="primary" type="submit" disabled={probing} style={{ height: 40, padding: '0 20px' }}>
-                {probing ? 'جارٍ الفحص الذري...' : 'فحص وتخصيص المنفذ'}
+                {probing ? t('جارٍ الفحص الذري...') : t('فحص وتخصيص المنفذ')}
               </Button>
             </form>
 
@@ -441,14 +442,14 @@ export function DevelopmentPage() {
                   <ShieldCheck size={20} style={{ color: 'var(--status-safe)' }} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>
-                      المنفذ المخصص بنجاح: <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>:{probeResult.assigned_port}</span>
+                      {t('المنفذ المخصص بنجاح:')} <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>:{probeResult.assigned_port}</span>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                      {probeResult.available ? 'المنفذ الأصلي متاح وشاغر بالكامل' : `تم حل التعارض تلقائياً عبر تخصيص المنفذ البديل :${probeResult.assigned_port}`}
+                      {probeResult.available ? t('المنفذ الأصلي متاح وشاغر بالكامل') : `${t('تم حل التعارض تلقائياً عبر تخصيص المنفذ البديل :')}${probeResult.assigned_port}`}
                     </div>
                   </div>
                 </div>
-                <span className="badge badge--success">جاهز للربط والتوجيه</span>
+                <span className="badge badge--success">{t('جاهز للربط والتوجيه')}</span>
               </div>
             )}
           </Card>
@@ -456,21 +457,21 @@ export function DevelopmentPage() {
           {/* Conflict History */}
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-              سجل رصد التعارضات وإعادة التوجيه (Collision Detection Log)
+              {t('سجل رصد التعارضات وإعادة التوجيه (Collision Detection Log)')}
             </div>
             {conflicts.length === 0 ? (
               <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-                لم يتم تسجيل أي تعارضات غير محلولة في المنظومة.
+                {t('لم يتم تسجيل أي تعارضات غير محلولة في المنظومة.')}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                   <thead>
                     <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المنفذ المتنازع عليه</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المشروع</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>نوع التعارض</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المنفذ البديل المخصص</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المنفذ المتنازع عليه')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المشروع')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نوع التعارض')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المنفذ البديل المخصص')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -480,7 +481,7 @@ export function DevelopmentPage() {
                           :{c.requested_port}
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-1)' }}>
-                          {c.project_name || 'تطبيق مطور'}
+                          {c.project_name || t('تطبيق مطور')}
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
                           {c.conflict_type || 'TCP_LISTENER_COLLISION'}
@@ -502,15 +503,15 @@ export function DevelopmentPage() {
       {activeTab === 'quotas' && (
         <Card style={{ padding: 20 }}>
           <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-1)', marginBottom: 6 }}>
-            حوكمة حصص الموارد لمشاريع المطورين (Resource Quotas & Throttling)
+            {t('حوكمة حصص الموارد لمشاريع المطورين (Resource Quotas & Throttling)')}
           </div>
           <p style={{ fontSize: 13, color: 'var(--text-3)', margin: '0 0 16px' }}>
-            تحديد سقف الموارد الأقصى المسموح به لكل مساحة عمل مطور على Windows Server، لمنع استنزاف السيرفر وحماية العمليات الإنتاجية.
+            {t('تحديد سقف الموارد الأقصى المسموح به لكل مساحة عمل مطور على Windows Server، لمنع استنزاف السيرفر وحماية العمليات الإنتاجية.')}
           </p>
 
           <form onSubmit={handleSaveQuotas} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>الحد الأقصى لحصة المعالج (CPU Limit)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('الحد الأقصى لحصة المعالج (CPU Limit)')}</label>
               <TextInput
                 type="number"
                 value={quotas.cpu_limit}
@@ -519,7 +520,7 @@ export function DevelopmentPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>الحد الأقصى للذاكرة العشوائية (RAM MB)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('الحد الأقصى للذاكرة العشوائية (RAM MB)')}</label>
               <TextInput
                 type="number"
                 value={quotas.ram_limit_mb}
@@ -528,7 +529,7 @@ export function DevelopmentPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>الحد الأقصى للتخزين (Disk Space GB)</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('الحد الأقصى للتخزين (Disk Space GB)')}</label>
               <TextInput
                 type="number"
                 value={quotas.disk_limit_gb}
@@ -537,7 +538,7 @@ export function DevelopmentPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>الحد الأقصى للحاويات المتزامنة</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('الحد الأقصى للحاويات المتزامنة')}</label>
               <TextInput
                 type="number"
                 value={quotas.max_containers}
@@ -546,7 +547,7 @@ export function DevelopmentPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>الحد الأقصى لعدد المشاريع</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('الحد الأقصى لعدد المشاريع')}</label>
               <TextInput
                 type="number"
                 value={quotas.max_projects}
@@ -556,7 +557,7 @@ export function DevelopmentPage() {
 
             <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
               <Button variant="primary" type="submit" disabled={savingQuotas}>
-                {savingQuotas ? 'جارٍ الحفظ...' : 'حفظ وتطبيق سياسة الحصص'}
+                {savingQuotas ? t('جارٍ الحفظ...') : t('حفظ وتطبيق سياسة الحصص')}
               </Button>
             </div>
           </form>
@@ -567,16 +568,16 @@ export function DevelopmentPage() {
       {activeTab === 'gateway' && (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-            جدول الوصول المباشر لبيئات المطورين (Direct Port Routing Map)
+            {t('جدول الوصول المباشر لبيئات المطورين (Direct Port Routing Map)')}
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>رابط الوصول المباشر</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الهدف المحلي (Upstream)</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم المشروع</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>طريقة الوصول</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('رابط الوصول المباشر')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الهدف المحلي (Upstream)')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم المشروع')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('طريقة الوصول')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -596,7 +597,7 @@ export function DevelopmentPage() {
                             {directUrl}
                           </a>
                         ) : (
-                          <span style={{ color: 'var(--text-3)' }}>لم يتم تخصيص منفذ بعد</span>
+                          <span style={{ color: 'var(--text-3)' }}>{t('لم يتم تخصيص منفذ بعد')}</span>
                         )}
                       </td>
                       <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 13, color: 'var(--text-2)' }}>
@@ -620,15 +621,15 @@ export function DevelopmentPage() {
       )}
 
       {/* Modal: New Project Wizard */}
-      <Modal open={projectModalOpen} onClose={() => setProjectModalOpen(false)} title="معالج إنشاء بيئة مطور جديدة">
+      <Modal open={projectModalOpen} onClose={() => setProjectModalOpen(false)} title={t('معالج إنشاء بيئة مطور جديدة')}>
         <form onSubmit={handleCreateProject} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>اسم المشروع أو التطبيق</label>
-            <TextInput value={newProjName} onChange={(e) => setNewProjName(e.target.value)} placeholder="مثال: my-dashboard" required />
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('اسم المشروع أو التطبيق')}</label>
+            <TextInput value={newProjName} onChange={(e) => setNewProjName(e.target.value)} placeholder={t('مثال: my-dashboard')} required />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>بيئة التشغيل (Runtime / Framework)</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('بيئة التشغيل (Runtime / Framework)')}</label>
             <Select value={newProjRuntime} onChange={(e) => setNewProjRuntime(e.target.value)}>
               <option value="react">React / Vite</option>
               <option value="nextjs">Next.js (App Router)</option>
@@ -640,19 +641,19 @@ export function DevelopmentPage() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>المنفذ المفضل (اتركه فارغاً للتخصيص التلقائي الخالي من التعارض)</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('المنفذ المفضل (اتركه فارغاً للتخصيص التلقائي الخالي من التعارض)')}</label>
             <TextInput
               type="number"
               value={newProjPort || ''}
               onChange={(e) => setNewProjPort(e.target.value ? parseInt(e.target.value) : undefined)}
-              placeholder="تلقائي (نطاق 3000-3999)"
+              placeholder={t('تلقائي (نطاق 3000-3999)')}
             />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-            <Button variant="ghost" type="button" onClick={() => setProjectModalOpen(false)}>إلغاء</Button>
+            <Button variant="ghost" type="button" onClick={() => setProjectModalOpen(false)}>{t('إلغاء')}</Button>
             <Button variant="primary" type="submit" disabled={submittingProj}>
-              {submittingProj ? 'جارٍ الإنشاء والتخصيص...' : 'تأكيد وإنشاء البيئة'}
+              {submittingProj ? t('جارٍ الإنشاء والتخصيص...') : t('تأكيد وإنشاء البيئة')}
             </Button>
           </div>
         </form>

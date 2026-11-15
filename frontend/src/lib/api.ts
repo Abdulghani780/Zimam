@@ -1,3 +1,4 @@
+import { t } from './i18n';
 /**
  * ASAAS Server Control - Typed API Client & Real-time Live Telemetry.
  */
@@ -455,7 +456,7 @@ export const api = {
     const list = Array.isArray(res) ? res : (res?.assets || []);
     return list.map((a: any) => ({
       id: a.id || String(a.port || Math.random()),
-      name: a.name || 'خادم غير مسمى',
+      name: a.name || t('خادم غير مسمى'),
       host: a.host || a.address || '127.0.0.1',
       type: a.type || a.platform_display || a.platform || 'Windows Server',
       port: Number(a.port || 3389),
@@ -533,7 +534,7 @@ export const api = {
     const res = await request<any>('/api/storage/users');
     const list = res?.profiles || res?.users || (Array.isArray(res) ? res : []);
     return list.map((u: any) => ({
-      username: u.username || 'مستخدم',
+      username: u.username || t('مستخدم'),
       path: u.path || `C:\\Users\\${u.username}`,
       size_mb: u.total_mb ?? u.size_mb ?? 0,
       temp_size_mb: u.temp_mb ?? u.temp_size_mb ?? 0,

@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import { Card, Button, Modal, Field, Select, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { apiV1, type V1Agent, type V1AgentJob } from '../lib/apiV1';
 import { Bot, Play, RefreshCw, Terminal } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 const JOB_TYPES = [
-  { value: 'system.info', label: 'معلومات النظام' },
-  { value: 'process.list', label: 'قائمة العمليات' },
-  { value: 'service.list', label: 'قائمة الخدمات' },
-  { value: 'disk.list', label: 'الأقراص' },
-  { value: 'inventory.collect', label: 'جمع الجرد' },
-  { value: 'session.list', label: 'جلسات ويندوز النشطة' },
+  { value: 'system.info', label: t('معلومات النظام') },
+  { value: 'process.list', label: t('قائمة العمليات') },
+  { value: 'service.list', label: t('قائمة الخدمات') },
+  { value: 'disk.list', label: t('الأقراص') },
+  { value: 'inventory.collect', label: t('جمع الجرد') },
+  { value: 'session.list', label: t('جلسات ويندوز النشطة') },
 ];
 
 const asArray = <T,>(res: unknown): T[] =>
@@ -35,7 +36,7 @@ export function AgentsPage() {
       setAgents(asArray<V1Agent>(a));
       setJobs(asArray<V1AgentJob>(j));
     } catch (err: any) {
-      toast(err.message || 'فشل جلب بيانات الوكلاء', 'error');
+      toast(err.message || t('فشل جلب بيانات الوكلاء'), 'error');
     } finally {
       setLoading(false);
     }
@@ -49,11 +50,11 @@ export function AgentsPage() {
     setSubmitting(true);
     try {
       await apiV1.createJob({ agent_id: jobModalAgent.id, job_type: jobType, payload: {} });
-      toast('تم إرسال المهمة الموقعة إلى الوكيل — ستظهر النتيجة خلال ~15 ثانية.', 'success');
+      toast(t('تم إرسال المهمة الموقعة إلى الوكيل — ستظهر النتيجة خلال ~15 ثانية.'), 'success');
       setJobModalAgent(null);
       setTimeout(fetchAll, 20000);
     } catch (err: any) {
-      toast(err.message || 'فشل إرسال المهمة', 'error');
+      toast(err.message || t('فشل إرسال المهمة'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -64,32 +65,32 @@ export function AgentsPage() {
       <div className="page-hero" style={{ borderRadius: 16, padding: '24px 28px', background: 'linear-gradient(135deg, var(--glass-tint-strong), var(--surface-ground))', border: '1px solid var(--accent-soft)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: '0 0 8px' }}>وكلاء الأصول (ASAAS Agents)</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: '0 0 8px' }}>{t('وكلاء الأصول (ASAAS Agents)')}</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 800, lineHeight: 1.6 }}>
-              وكلاء Windows خروجية فقط يُسجَّلون عبر مفتاح لمرة واحدة، ويستلمون مهاماً موقعة Ed25519 للقراءة فقط — لا يوجد تنفيذ أوامر كتابية عن بُعد.
+              {t('وكلاء Windows خروجية فقط يُسجَّلون عبر مفتاح لمرة واحدة، ويستلمون مهاماً موقعة Ed25519 للقراءة فقط — لا يوجد تنفيذ أوامر كتابية عن بُعد.')}
             </p>
           </div>
           <Button size="sm" variant="glass" onClick={fetchAll} loading={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <RefreshCw size={13} /><span>تحديث</span>
+            <RefreshCw size={13} /><span>{t('تحديث')}</span>
           </Button>
         </div>
       </div>
 
-      <Card title={`الوكلاء المسجلون (${agents.length})`} icon="users">
+      <Card title={`${t('الوكلاء المسجلون (')}${agents.length})`} icon="users">
         <TableContainer>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>الاسم</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead>آخر ظهور</TableHead>
-                <TableHead>الجرد</TableHead>
-                <TableHead style={{ textAlign: 'end' }}>إجراء</TableHead>
+                <TableHead>{t('الاسم')}</TableHead>
+                <TableHead>{t('الحالة')}</TableHead>
+                <TableHead>{t('آخر ظهور')}</TableHead>
+                <TableHead>{t('الجرد')}</TableHead>
+                <TableHead style={{ textAlign: 'end' }}>{t('إجراء')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {agents.length === 0 ? (
-                <TableEmpty colSpan={5} message={loading ? 'جارٍ التحميل...' : 'لا يوجد وكلاء مسجلون. سجّل وكيلاً عبر POST /api/v1/agents/enroll.'} />
+                <TableEmpty colSpan={5} message={loading ? t('جارٍ التحميل...') : t('لا يوجد وكلاء مسجلون. سجّل وكيلاً عبر POST /api/v1/agents/enroll.')} />
               ) : agents.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-bold text-title">
@@ -108,7 +109,7 @@ export function AgentsPage() {
                   </TableCell>
                   <TableCell style={{ textAlign: 'end' }}>
                     <Button size="sm" variant="glass" onClick={() => setJobModalAgent(a)} style={{ fontSize: 11, padding: '3px 8px' }}>
-                      <Play size={11} style={{ marginInlineEnd: 4 }} />مهمة
+                      <Play size={11} style={{ marginInlineEnd: 4 }} />{t('مهمة')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -118,21 +119,21 @@ export function AgentsPage() {
         </TableContainer>
       </Card>
 
-      <Card title="سجل المهام الموقعة" icon="vault" actions={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>{jobs.length} مهمة</span>}>
+      <Card title={t('سجل المهام الموقعة')} icon="vault" actions={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>{jobs.length} مهمة</span>}>
         <TableContainer className="max-h-[380px]">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>المهمة</TableHead>
-                <TableHead>النوع</TableHead>
-                <TableHead>الحالة</TableHead>
-                <TableHead>النتيجة</TableHead>
-                <TableHead>الوقت</TableHead>
+                <TableHead>{t('المهمة')}</TableHead>
+                <TableHead>{t('النوع')}</TableHead>
+                <TableHead>{t('الحالة')}</TableHead>
+                <TableHead>{t('النتيجة')}</TableHead>
+                <TableHead>{t('الوقت')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {jobs.length === 0 ? (
-                <TableEmpty colSpan={5} message="لا توجد مهام بعد." />
+                <TableEmpty colSpan={5} message={t('لا توجد مهام بعد.')} />
               ) : jobs.map((j) => (
                 <TableRow key={j.id}>
                   <TableCell className="font-telemetry text-xs text-muted">{j.id.slice(0, 8)}…</TableCell>
@@ -156,9 +157,9 @@ export function AgentsPage() {
       </Card>
 
       {jobModalAgent && (
-        <Modal open onClose={() => setJobModalAgent(null)} title={`إرسال مهمة موقعة إلى ${jobModalAgent.name || jobModalAgent.id}`}>
+        <Modal open onClose={() => setJobModalAgent(null)} title={`${t('إرسال مهمة موقعة إلى ')}${jobModalAgent.name || jobModalAgent.id}`}>
           <form onSubmit={dispatchJob} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="نوع المهمة (قراءة فقط)">
+            <Field label={t('نوع المهمة (قراءة فقط)')}>
               {(id) => (
                 <Select id={id} value={jobType} onChange={(e) => setJobType(e.target.value)}>
                   {JOB_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label} ({t.value})</option>)}
@@ -166,11 +167,11 @@ export function AgentsPage() {
               )}
             </Field>
             <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-              تُوقَّع المهمة بتوقيع Ed25519 ولا ينفذها الوكيل إلا بعد التحقق من التوقيع. المهام الكتابية غير مدعومة.
+              {t('تُوقَّع المهمة بتوقيع Ed25519 ولا ينفذها الوكيل إلا بعد التحقق من التوقيع. المهام الكتابية غير مدعومة.')}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <Button type="button" variant="ghost" onClick={() => setJobModalAgent(null)}>إلغاء</Button>
-              <Button type="submit" variant="primary" loading={submitting}><Terminal size={13} style={{ marginInlineEnd: 4 }} />إرسال</Button>
+              <Button type="button" variant="ghost" onClick={() => setJobModalAgent(null)}>{t('إلغاء')}</Button>
+              <Button type="submit" variant="primary" loading={submitting}><Terminal size={13} style={{ marginInlineEnd: 4 }} />{t('إرسال')}</Button>
             </div>
           </form>
         </Modal>

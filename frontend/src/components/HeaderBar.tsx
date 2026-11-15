@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTheme, useToast } from '../asaas-ui';
 import { api, type HealthInfo, type AppUser } from '../lib/api';
+import { useLang, toggleLang } from '../lib/i18n';
 import {
   Bell,
   Settings,
@@ -15,7 +16,9 @@ import {
   Moon,
   Maximize,
   UserRound,
+  Languages,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface HeaderBarProps {
   isConnected: boolean;
@@ -39,6 +42,7 @@ export function HeaderBar({
   onOpenUserAccount,
 }: HeaderBarProps) {
   const [theme, toggleTheme] = useTheme();
+  const lang = useLang();
   const toast = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [trimming, setTrimming] = useState(false);
@@ -52,12 +56,12 @@ export function HeaderBar({
       const reclaimed = res.reclaimed_mb ?? res.result?.reclaimed_mb ?? 0;
       toast(
         reclaimed > 0
-          ? `تم استرداد ${reclaimed} MB من ذاكرة الجلسات الخاملة بنجاح.`
-          : 'السيرفر يعمل بكفاءة قصوى، لا توجد جلسات خاملة حالياً.',
+          ? `${t('تم استرداد ')}${reclaimed}${t(' MB من ذاكرة الجلسات الخاملة بنجاح.')}`
+          : t('السيرفر يعمل بكفاءة قصوى، لا توجد جلسات خاملة حالياً.'),
         'success',
       );
     } catch (err: any) {
-      toast(err.message || 'فشل تفريغ الذاكرة', 'error');
+      toast(err.message || t('فشل تفريغ الذاكرة'), 'error');
     } finally {
       setTrimming(false);
     }
@@ -68,9 +72,9 @@ export function HeaderBar({
     setElevating(true);
     try {
       const res = await api.requestElevation();
-      toast(res.message || 'تم إرسال طلب الترقية، يرجى الموافقة في شاشة السيرفر.', 'success');
+      toast(res.message || t('تم إرسال طلب الترقية، يرجى الموافقة في شاشة السيرفر.'), 'success');
     } catch (err: any) {
-      toast(err.message || 'فشل الترقية', 'error');
+      toast(err.message || t('فشل الترقية'), 'error');
     } finally {
       setElevating(false);
     }
@@ -85,18 +89,18 @@ export function HeaderBar({
     }
   };
 
-  const displayName = currentUser?.full_name || currentUser?.username || 'مدير النظام';
+  const displayName = currentUser?.full_name || currentUser?.username || t('مدير النظام');
   const roleLabel = currentUser?.role === 'operator'
-    ? 'مشغل عمليات'
+    ? t('مشغل عمليات')
     : currentUser?.role === 'viewer'
-      ? 'مراجع'
-      : 'مدير النظام';
+      ? t('مراجع')
+      : t('مدير النظام');
   const initials = (currentUser?.full_name || currentUser?.username || 'A').trim().charAt(0).toUpperCase();
 
   return (
     <header className="site-header">
       <div className="header-inner">
-        <NavLink to="/" className="header-brand header-brand--mobile" aria-label="منظومة أساس - لوحة القيادة">
+        <NavLink to="/" className="header-brand header-brand--mobile" aria-label={t('منظومة أساس - لوحة القيادة')}>
           <img className="header-brand__logo" src="/logo-light.png" alt="" width={36} height={36} />
           <span className="header-brand__text">
             <strong>ASAAS</strong>
@@ -108,7 +112,7 @@ export function HeaderBar({
           <NavLink
             to="/servers"
             className="server-select"
-            title={hostname ? `إدارة السيرفر ${hostname}` : 'إدارة السيرفرات'}
+            title={hostname ? `${t('إدارة السيرفر ')}${hostname}` : t('إدارة السيرفرات')}
           >
             <Server size={15} />
             <span className="server-select__name" dir="ltr">{hostname || 'SRV-LOCAL'}</span>
@@ -118,7 +122,7 @@ export function HeaderBar({
 
           <span className={`conn-pill ${isConnected ? '' : 'conn-pill--off'}`}>
             <span className="conn-dot" />
-            {isConnected ? 'متصل' : 'غير متصل'}
+            {isConnected ? t('متصل') : t('غير متصل')}
           </span>
         </div>
 
@@ -128,9 +132,9 @@ export function HeaderBar({
               type="button"
               className="header-icon-btn"
               onClick={() => setMenuOpen((open) => !open)}
-              aria-label="إعدادات سريعة"
+              aria-label={t('إعدادات سريعة')}
               aria-expanded={menuOpen}
-              title="إعدادات سريعة"
+              title={t('إعدادات سريعة')}
             >
               <Settings size={18} />
             </button>
@@ -140,34 +144,37 @@ export function HeaderBar({
                 <button
                   type="button"
                   className="header-menu-backdrop"
-                  aria-label="إغلاق القائمة"
+                  aria-label={t('إغلاق القائمة')}
                   onClick={() => setMenuOpen(false)}
                 />
                 <div className="header-menu" role="menu">
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onRefresh(); }}>
-                    <RefreshCw size={15} /> تحديث البيانات الآن
+                    <RefreshCw size={15} /> {t('تحديث البيانات الآن')}
                   </button>
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenAiDiag(); }}>
-                    <Sparkles size={15} /> رادار الذكاء الاصطناعي
+                    <Sparkles size={15} /> {t('رادار الذكاء الاصطناعي')}
                   </button>
                   <button type="button" role="menuitem" onClick={handleTrim} disabled={trimming}>
-                    <Zap size={15} /> {trimming ? 'جارٍ تفريغ الذاكرة…' : 'تفريغ ذاكرة الجلسات الخاملة'}
+                    <Zap size={15} /> {trimming ? t('جارٍ تفريغ الذاكرة…') : t('تفريغ ذاكرة الجلسات الخاملة')}
                   </button>
                   {health && !health.is_admin && (
                     <button type="button" role="menuitem" onClick={handleElevate} disabled={elevating}>
-                      <ShieldAlert size={15} /> {elevating ? 'جارٍ طلب الترقية…' : 'ترقية السيرفر كمسؤول'}
+                      <ShieldAlert size={15} /> {elevating ? t('جارٍ طلب الترقية…') : t('ترقية السيرفر كمسؤول')}
                     </button>
                   )}
                   <div className="header-menu__sep" />
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); toggleTheme(); }}>
                     {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-                    {theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
+                    {theme === 'dark' ? t('الوضع النهاري') : t('الوضع الليلي')}
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); toggleLang(); }}>
+                    <Languages size={15} /> {lang === 'ar' ? 'English' : 'العربية'}
                   </button>
                   <button type="button" role="menuitem" onClick={toggleFullScreen}>
-                    <Maximize size={15} /> ملء الشاشة
+                    <Maximize size={15} /> {t('ملء الشاشة')}
                   </button>
                   <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenUserAccount(); }}>
-                    <UserRound size={15} /> حساب المستخدم والصلاحيات
+                    <UserRound size={15} /> {t('حساب المستخدم والصلاحيات')}
                   </button>
                 </div>
               </>
@@ -178,8 +185,8 @@ export function HeaderBar({
             type="button"
             className="header-icon-btn"
             onClick={onOpenBroadcast}
-            aria-label="التنبيهات والبث الإداري"
-            title="التنبيهات والبث الإداري"
+            aria-label={t('التنبيهات والبث الإداري')}
+            title={t('التنبيهات والبث الإداري')}
           >
             <Bell size={18} />
             <span className="header-icon-btn__badge">3</span>
@@ -189,8 +196,8 @@ export function HeaderBar({
             type="button"
             className="header-user"
             onClick={onOpenUserAccount}
-            aria-label={`إدارة الحساب: ${displayName} (${roleLabel})`}
-            title="حساب المستخدم"
+            aria-label={`${t('إدارة الحساب: ')}${displayName} (${roleLabel})`}
+            title={t('حساب المستخدم')}
           >
             <span className="header-user__meta">
               <strong>{displayName}</strong>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Server Control v2.5 - Screen _7
  * إدارة سعة التخزين وتطهير السيرفر وفك أقفال العمليات (Storage & Handle Locks)
  * Strict implementation of Stitch Prototype _7
@@ -16,6 +16,7 @@ import {
   Lock,
   Unlock,
         } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function StoragePage() {
   const toast = useToast();
@@ -43,7 +44,7 @@ export function StoragePage() {
         // lf overview
       }
     } catch (err: any) {
-      toast(err.message || 'فشل فحص التخزين', 'error');
+      toast(err.message || t('فشل فحص التخزين'), 'error');
     }
   };
 
@@ -56,13 +57,13 @@ export function StoragePage() {
     try {
       const res = await api.cleanSystemJunk();
       if (res.ok) {
-        toast(`تم تطهير مخلفات السيرفر: تم تحرير ${res.reclaimed_mb || 0} MB بنجاح.`, 'success');
+        toast(`${t('تم تطهير مخلفات السيرفر: تم تحرير ')}${res.reclaimed_mb || 0}${t(' MB بنجاح.')}`, 'success');
         fetchStorage();
       } else {
-        toast((res as any).error || 'تعذر استكمال التطهير', 'error');
+        toast((res as any).error || t('تعذر استكمال التطهير'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ في عملية التطهير', 'error');
+      toast(err.message || t('خطأ في عملية التطهير'), 'error');
     } finally {
       setCleaningJunk(false);
     }
@@ -73,13 +74,13 @@ export function StoragePage() {
     try {
       const res = await api.cleanUserTemp(username);
       if (res.ok) {
-        toast(`تم تطهير مجلد المستخدم [${username}]: تم استرجاع ${res.reclaimed_mb || 0} MB.`, 'success');
+        toast(`${t('تم تطهير مجلد المستخدم [')}${username}${t(']: تم استرجاع ')}${res.reclaimed_mb || 0} MB.`, 'success');
         fetchStorage();
       } else {
-        toast((res as any).error || 'فشل تنظيف مجلد المستخدم', 'error');
+        toast((res as any).error || t('فشل تنظيف مجلد المستخدم'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setCleaningUser(null);
     }
@@ -94,12 +95,12 @@ export function StoragePage() {
       const res = await api.checkFileLock(customFilePath.trim());
       setCustomCheckResult(res);
       if (res.is_locked) {
-        toast(`الملف مقفول بواسطة ${res.lockers_count || 1} عملية!`, 'error');
+        toast(`${t('الملف مقفول بواسطة ')}${res.lockers_count || 1}${t(' عملية!')}`, 'error');
       } else {
-        toast('الملف سليم ومتاح للوصول الكامل دون أي أقفال.', 'success');
+        toast(t('الملف سليم ومتاح للوصول الكامل دون أي أقفال.'), 'success');
       }
     } catch (err: any) {
-      toast(err.message || 'فشل فحص قفل الملف', 'error');
+      toast(err.message || t('فشل فحص قفل الملف'), 'error');
     } finally {
       setCheckingLock(false);
     }
@@ -110,13 +111,13 @@ export function StoragePage() {
     try {
       const res = await api.terminateProcess(pid);
       if (res.ok) {
-        toast(`تم فك القفل وإنهاء العملية القافلة [${procName}] (PID: ${pid}) بنجاح.`, 'success');
+        toast(`${t('تم فك القفل وإنهاء العملية القافلة [')}${procName}] (PID: ${pid}${t(') بنجاح.')}`, 'success');
         handleCheckFileLock();
       } else {
-        toast((res as any).error || 'تعذر إنهاء العملية', 'error');
+        toast((res as any).error || t('تعذر إنهاء العملية'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء فك القفل', 'error');
+      toast(err.message || t('خطأ أثناء فك القفل'), 'error');
     } finally {
       setUnlocking(false);
     }
@@ -175,11 +176,10 @@ export function StoragePage() {
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              إدارة سعة التخزين وتطهير السيرفر وفك أقفال العمليات (Storage &amp; Handle Locks)
+              {t('إدارة سعة التخزين وتطهير السيرفر وفك أقفال العمليات')} (Storage &amp; Handle Locks)
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              مراقبة مساحات الأقراص السريعة، تحليل استهلاك مجلدات المستخدمين وقواعد البيانات، وتطهير المخلفات مع كاشف فك أقفال
-              الملفات التلقائي عبر مكتبة ويندوز الأصلية Restart Manager (rstrtmgr.dll).
+              {t('مراقبة مساحات الأقراص السريعة، تحليل استهلاك مجلدات المستخدمين وقواعد البيانات، وتطهير المخلفات مع كاشف فك أقفال الملفات التلقائي عبر مكتبة ويندوز الأصلية Restart Manager (rstrtmgr.dll).')}
             </p>
           </div>
 
@@ -191,19 +191,19 @@ export function StoragePage() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
           >
             <Sparkles size={16} />
-            <span>تطهير شامل لمخلفات السيرفر</span>
+            <span>{t('تطهير شامل لمخلفات السيرفر')}</span>
           </Button>
         </div>
       </div>
 
       {/* 2. Primary NVMe Matrix & Breakdown Bar (Stitch _7 L51) */}
       <Card
-        title="مصفوفة التخزين الأساسية C:\ (Samsung PM9A3 NVMe Gen4)"
+        title={t('مصفوفة التخزين الأساسية C:\\ (Samsung PM9A3 NVMe Gen4)')}
         icon="dashboard"
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font)' }}>
-              <span dir="ltr">{usedGb} GB</span> من <span dir="ltr">{totalGb} GB</span>
+              <span dir="ltr">{usedGb} GB</span> {t('من')} <span dir="ltr">{totalGb} GB</span>
             </span>
             <span
               style={{
@@ -215,7 +215,7 @@ export function StoragePage() {
                 fontWeight: 700,
               }}
             >
-              <span dir="ltr">{usedPct}%</span> مستخدم
+              <span dir="ltr">{usedPct}%</span> {t('مستخدم')}
             </span>
           </div>
         }
@@ -255,7 +255,7 @@ export function StoragePage() {
             {/* Free Space */}
             <div
               style={{ width: '29%', background: 'var(--glass-rim-low)', height: '100%' }}
-              title="المساحة الحرة الشاغرة: 137.7 GB (29%)"
+              title={t('المساحة الحرة الشاغرة: 137.7 GB (29%)')}
             />
           </div>
 
@@ -272,7 +272,7 @@ export function StoragePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--accent)' }} />
               <div>
-                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>مجلدات المستخدمين</span>
+                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>{t('مجلدات المستخدمين')}</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">142.6 GB</span>
               </div>
             </div>
@@ -280,7 +280,7 @@ export function StoragePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--paid)' }} />
               <div>
-                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>قواعد البيانات SQL</span>
+                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>{t('قواعد البيانات SQL')}</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">86.4 GB</span>
               </div>
             </div>
@@ -288,7 +288,7 @@ export function StoragePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--partial)' }} />
               <div>
-                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>المخلفات والملفات المؤقتة</span>
+                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>{t('المخلفات والملفات المؤقتة')}</span>
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }} dir="ltr">18.6 GB</span>
               </div>
             </div>
@@ -296,8 +296,8 @@ export function StoragePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
               <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--glass-rim-low)' }} />
               <div>
-                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>المساحة الحرة</span>
-                <span style={{ color: 'var(--paid)', fontSize: 11, fontWeight: 700 }} dir="ltr">{freeGb} GB شاغر</span>
+                <span style={{ color: 'var(--text-1)', fontWeight: 700, display: 'block' }}>{t('المساحة الحرة')}</span>
+                <span style={{ color: 'var(--paid)', fontSize: 11, fontWeight: 700 }} dir="ltr">{freeGb} GB {t('شاغر')}</span>
               </div>
             </div>
           </div>
@@ -306,13 +306,12 @@ export function StoragePage() {
 
       {/* 3. Locked File Handles & Process Unlocker (Stitch _7 L214) */}
       <Card
-        title="كاشف ومحرر الملفات وقواعد البيانات المقفولة (Locked File Handles &amp; Process Unlocker)"
+        title={t('كاشف ومحرر الملفات وقواعد البيانات المقفولة (Locked File Handles &amp; Process Unlocker)')}
         icon="vault"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>
-            استعلام لحظي عن المقابض النشطة (Open File Handles) عبر واجهة ويندوز الأصلية <code>rstrtmgr.dll</code> لكشف العمليات
-            التي تمنع حذف أو ترحيل أو نسخ قواعد البيانات وملفات النظام المقفلة مع إمكانية تحريرها فوراً.
+            {t('استعلام لحظي عن المقابض النشطة (Open File Handles) عبر واجهة ويندوز الأصلية')} <code>rstrtmgr.dll</code> {t('لكشف العمليات التي تمنع حذف أو ترحيل أو نسخ قواعد البيانات وملفات النظام المقفلة مع إمكانية تحريرها فوراً.')}
           </p>
 
           <form onSubmit={handleCheckFileLock} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -320,7 +319,7 @@ export function StoragePage() {
               <Search size={16} color="var(--text-3)" style={{ position: 'absolute', insetInlineStart: 12, top: 12 }} />
               <input
                 type="text"
-                placeholder="أدخل المسار الكامل للملف (مثال: C:\Data\ASAAS_PROD.mdf)..."
+                placeholder={t('أدخل المسار الكامل للملف (مثال: C:\\Data\\ASAAS_PROD.mdf)...')}
                 value={customFilePath}
                 onChange={(e) => setCustomFilePath(e.target.value)}
                 className="text-input"
@@ -335,7 +334,7 @@ export function StoragePage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Search size={14} />
-              <span>كشف العملية القافلة</span>
+              <span>{t('كشف العملية القافلة')}</span>
             </Button>
           </form>
 
@@ -361,8 +360,8 @@ export function StoragePage() {
                   )}
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>
                     {customCheckResult.is_locked
-                      ? `الملف مقفول حالياً بواسطة ${customCheckResult.lockers_count || 1} عملية!`
-                      : 'الملف متاح للوصول وغير مقفول.'}
+                      ? `${t('الملف مقفول حالياً بواسطة ')}${customCheckResult.lockers_count || 1}${t(' عملية!')}`
+                      : t('الملف متاح للوصول وغير مقفول.')}
                   </span>
                 </div>
                 <span
@@ -402,7 +401,7 @@ export function StoragePage() {
                           PID: {locker.pid}
                         </span>
                         <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                          المستخدم: {locker.user || 'NT AUTHORITY\\SYSTEM'}
+                          {t('المستخدم')}: {locker.user || 'NT AUTHORITY\\SYSTEM'}
                         </span>
                       </div>
 
@@ -414,7 +413,7 @@ export function StoragePage() {
                         style={{ padding: '4px 10px', fontSize: 11, color: 'var(--unpaid)' }}
                       >
                         <Unlock size={12} />
-                        <span>فك القفل الفوري / إنهاء العملية</span>
+                        <span>{t('فك القفل الفوري / إنهاء العملية')}</span>
                       </Button>
                     </div>
                   ))}
@@ -427,11 +426,11 @@ export function StoragePage() {
 
       {/* 4. User Profile Disk Quotas & Folder Telemetry (Stitch _7 L305) */}
       <Card
-        title="جدول استهلاك مساحات مجلدات المستخدمين (User Profile Disk Quotas)"
+        title={t('جدول استهلاك مساحات مجلدات المستخدمين (User Profile Disk Quotas)')}
         icon="list"
         actions={
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            إجمالي الحسابات المفحوصة: {userProfiles.length} مستخدم
+            {t('إجمالي الحسابات المفحوصة')}: {userProfiles.length} {t('مستخدم')}
           </span>
         }
       >
@@ -439,18 +438,18 @@ export function StoragePage() {
           <table className="app-table">
             <thead>
               <tr>
-                <th>اسم المستخدم</th>
-                <th>مسار المجلد (Profile Path)</th>
-                <th>إجمالي المساحة المستخدمة</th>
-                <th>حجم الملفات المؤقتة (Temp)</th>
-                <th style={{ textAlign: 'end' }}>تطهير مساحة المستخدم</th>
+                <th>{t('اسم المستخدم')}</th>
+                <th>{t('مسار المجلد (Profile Path)')}</th>
+                <th>{t('إجمالي المساحة المستخدمة')}</th>
+                <th>{t('حجم الملفات المؤقتة (Temp)')}</th>
+                <th style={{ textAlign: 'end' }}>{t('تطهير مساحة المستخدم')}</th>
               </tr>
             </thead>
             <tbody>
               {userProfiles.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ textAlign: 'center', padding: 28, color: 'var(--text-3)' }}>
-                    جارٍ حساب مساحات مجلدات المستخدمين...
+                    {t('جارٍ حساب مساحات مجلدات المستخدمين...')}
                   </td>
                 </tr>
               ) : (
@@ -480,7 +479,7 @@ export function StoragePage() {
                         style={{ padding: '4px 10px', fontSize: 11 }}
                       >
                         <Trash2 size={12} color="var(--accent)" />
-                        <span>تطهير Temp للمستخدم</span>
+                        <span>{t('تطهير Temp للمستخدم')}</span>
                       </Button>
                     </td>
                   </tr>

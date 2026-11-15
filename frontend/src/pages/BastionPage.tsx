@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../asaas-ui';
 import { api, type AssetItem, type JitGrant, type LocalUser } from '../lib/api';
@@ -33,6 +33,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 type PamTab = 'requests' | 'assets';
 type GrantStatusFilter = 'all' | 'PENDING' | 'ACTIVE' | 'REJECTED' | 'EXPIRED' | 'REVOKED';
@@ -72,45 +73,45 @@ const INITIAL_ASSET_FORM: AssetFormState = {
 };
 
 const ROLE_OPTIONS = [
-  { value: 'ServerAdmin', label: 'مدير السيرفر' },
-  { value: 'Local Administrator', label: 'مسؤول محلي' },
-  { value: 'Network Operator', label: 'مشغل شبكة' },
-  { value: 'Security Auditor', label: 'مدقق أمني' },
-  { value: 'Database Operator', label: 'مشغل قواعد بيانات' },
+  { value: 'ServerAdmin', label: t('مدير السيرفر') },
+  { value: 'Local Administrator', label: t('مسؤول محلي') },
+  { value: 'Network Operator', label: t('مشغل شبكة') },
+  { value: 'Security Auditor', label: t('مدقق أمني') },
+  { value: 'Database Operator', label: t('مشغل قواعد بيانات') },
 ];
 
 const DURATION_OPTIONS = [5, 15, 30, 60, 120, 240, 480];
 
 const POLICY_RULES = [
-  { label: 'تنسيق أو الكتابة فوق الأقراص', pattern: 'Format / DiskPart' },
-  { label: 'حذف عشوائي أو تدمير نظام الملفات', pattern: 'rm -rf /' },
-  { label: 'حذف أو تفريغ قواعد البيانات', pattern: 'DROP / TRUNCATE' },
-  { label: 'إيقاف تشغيل السيرفر أو خدماته', pattern: 'shutdown /s' },
+  { label: t('تنسيق أو الكتابة فوق الأقراص'), pattern: 'Format / DiskPart' },
+  { label: t('حذف عشوائي أو تدمير نظام الملفات'), pattern: 'rm -rf /' },
+  { label: t('حذف أو تفريغ قواعد البيانات'), pattern: 'DROP / TRUNCATE' },
+  { label: t('إيقاف تشغيل السيرفر أو خدماته'), pattern: 'shutdown /s' },
 ];
 
 const CONNECT_PROTOCOLS = new Set(['RDP', 'SSH', 'SFTP']);
 
 const ROLE_LABELS: Record<string, string> = {
-  ServerAdmin: 'مدير السيرفر',
-  'Local Administrator': 'مسؤول محلي',
-  'Network Operator': 'مشغل شبكة',
-  'Security Auditor': 'مدقق أمني',
-  'Database Operator': 'مشغل قواعد بيانات',
+  ServerAdmin: t('مدير السيرفر'),
+  'Local Administrator': t('مسؤول محلي'),
+  'Network Operator': t('مشغل شبكة'),
+  'Security Auditor': t('مدقق أمني'),
+  'Database Operator': t('مشغل قواعد بيانات'),
 };
 
 const GRANT_STATUS_META: Record<string, { label: string; className: string }> = {
-  PENDING: { label: 'قيد المراجعة', className: 'pill-status--idle' },
-  ACTIVE: { label: 'نشط', className: 'pill-status--on' },
-  REJECTED: { label: 'مرفوض', className: 'pill-status--off' },
-  REVOKED: { label: 'ملغى', className: 'pill-status--off' },
-  EXPIRED: { label: 'منتهي', className: 'pill-status--muted' },
+  PENDING: { label: t('قيد المراجعة'), className: 'pill-status--idle' },
+  ACTIVE: { label: t('نشط'), className: 'pill-status--on' },
+  REJECTED: { label: t('مرفوض'), className: 'pill-status--off' },
+  REVOKED: { label: t('ملغى'), className: 'pill-status--off' },
+  EXPIRED: { label: t('منتهي'), className: 'pill-status--muted' },
 };
 
 const PROTOCOLS = [
-  { key: 'RDP', label: 'RDP', description: 'سطح المكتب البعيد', icon: Monitor },
-  { key: 'SSH', label: 'SSH', description: 'طرفية آمنة', icon: Terminal },
-  { key: 'SFTP', label: 'SFTP', description: 'نقل ملفات آمن', icon: FolderOpen },
-  { key: 'DATABASE', label: 'SQL', description: 'قواعد البيانات', icon: Database },
+  { key: 'RDP', label: 'RDP', description: t('سطح المكتب البعيد'), icon: Monitor },
+  { key: 'SSH', label: 'SSH', description: t('طرفية آمنة'), icon: Terminal },
+  { key: 'SFTP', label: 'SFTP', description: t('نقل ملفات آمن'), icon: FolderOpen },
+  { key: 'DATABASE', label: 'SQL', description: t('قواعد البيانات'), icon: Database },
 ];
 
 function roleLabel(role?: string | null): string {
@@ -120,14 +121,14 @@ function roleLabel(role?: string | null): string {
 
 function statusMeta(status?: string | null) {
   const key = (status || '').toUpperCase();
-  return GRANT_STATUS_META[key] ?? { label: status || 'غير معروف', className: 'pill-status--muted' };
+  return GRANT_STATUS_META[key] ?? { label: status || t('غير معروف'), className: 'pill-status--muted' };
 }
 
 function assetStatusMeta(status?: string | null) {
   const value = (status || '').toLowerCase();
-  if (value === 'online') return { label: 'متصل', className: 'pill-status--on' };
-  if (value === 'offline') return { label: 'غير متصل', className: 'pill-status--off' };
-  return { label: status || 'غير معروف', className: 'pill-status--muted' };
+  if (value === 'online') return { label: t('متصل'), className: 'pill-status--on' };
+  if (value === 'offline') return { label: t('غير متصل'), className: 'pill-status--off' };
+  return { label: status || t('غير معروف'), className: 'pill-status--muted' };
 }
 
 function protocolKey(protocol?: string | null): string {
@@ -157,12 +158,12 @@ function formatSeconds(totalSeconds: number): string {
 
 function durationLabel(minutes: number): string {
   if (!Number.isFinite(minutes) || minutes <= 0) return '—';
-  if (minutes % 60 !== 0) return `${minutes} دقيقة`;
+  if (minutes % 60 !== 0) return `${minutes}${t(' دقيقة')}`;
   const hours = minutes / 60;
-  if (hours === 1) return 'ساعة واحدة';
-  if (hours === 2) return 'ساعتان';
-  if (hours <= 10) return `${hours} ساعات`;
-  return `${hours} ساعة`;
+  if (hours === 1) return t('ساعة واحدة');
+  if (hours === 2) return t('ساعتان');
+  if (hours <= 10) return `${hours}${t(' ساعات')}`;
+  return `${hours}${t(' ساعة')}`;
 }
 
 function grantRemainingSeconds(grant: JitGrant, nowMs: number): number {
@@ -175,9 +176,9 @@ function grantRemainingSeconds(grant: JitGrant, nowMs: number): number {
 function sessionMessage(protocol: string, name: string, host: string, port: number): string {
   const upper = protocol.toUpperCase();
   if (upper.startsWith('RDP')) {
-    return `تم توليد ملف اتصال RDP (.rdp) للأصل [${name}] على ${host}:${port}. افتح الملف لتشغيل mstsc.`;
+    return `${t('تم توليد ملف اتصال RDP (.rdp) للأصل [')}${name}${t('] على ')}${host}:${port}${t('. افتح الملف لتشغيل mstsc.')}`;
   }
-  return `تم فتح صفحة مشغل ${upper} للأصل [${name}] على ${host}:${port}.`;
+  return `${t('تم فتح صفحة مشغل ')}${upper}${t(' للأصل [')}${name}${t('] على ')}${host}:${port}.`;
 }
 
 function DetailRow({
@@ -255,7 +256,7 @@ export function BastionPage() {
         setGrants(Array.isArray(res.grants) ? res.grants : []);
       } catch (err) {
         if (!silent) {
-          toast(err instanceof Error ? err.message : 'تعذر تحميل طلبات الوصول.', 'error');
+          toast(err instanceof Error ? err.message : t('تعذر تحميل طلبات الوصول.'), 'error');
         }
       } finally {
         if (!silent) setGrantLoading(false);
@@ -270,7 +271,7 @@ export function BastionPage() {
       const items = await api.getAssets();
       setAssets(items);
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'تعذر تحميل الأصول المسجلة.', 'error');
+      toast(err instanceof Error ? err.message : t('تعذر تحميل الأصول المسجلة.'), 'error');
     } finally {
       setAssetsLoading(false);
     }
@@ -400,45 +401,45 @@ export function BastionPage() {
         const approved = !isPending && !isRejected;
         return [
           {
-            label: 'إنشاء الطلب',
+            label: t('إنشاء الطلب'),
             meta: formatDateTime(selectedGrant.created_at),
             state: 'done',
             icon: <Plus size={15} />,
           },
           {
-            label: 'مراجعة السياسة',
-            meta: 'التحقق من الدور والمدة',
+            label: t('مراجعة السياسة'),
+            meta: t('التحقق من الدور والمدة'),
             state: 'done',
             icon: <ShieldCheck size={15} />,
           },
           {
-            label: 'اعتماد المدير',
+            label: t('اعتماد المدير'),
             meta: isRejected
-              ? `رفضه ${selectedGrant.approver || 'مدير النظام'}`
+              ? `${t('رفضه ')}${selectedGrant.approver || t('مدير النظام')}`
               : isPending
-                ? 'بانتظار موافقة مدير النظام'
-                : `اعتمده ${selectedGrant.approver || 'مدير النظام'}`,
+                ? t('بانتظار موافقة مدير النظام')
+                : `${t('اعتمده ')}${selectedGrant.approver || t('مدير النظام')}`,
             state: isRejected ? 'failed' : isPending ? 'current' : 'done',
             icon: isRejected ? <X size={15} /> : <UserCheck size={15} />,
           },
           {
-            label: 'تفعيل الصلاحية',
+            label: t('تفعيل الصلاحية'),
             meta: isActive
-              ? `سارية حتى ${formatDateTime(selectedGrant.expires_at)}`
+              ? `${t('سارية حتى ')}${formatDateTime(selectedGrant.expires_at)}`
               : approved
-                ? 'تم التفعيل بعد الاعتماد'
-                : 'تبدأ بعد الاعتماد',
+                ? t('تم التفعيل بعد الاعتماد')
+                : t('تبدأ بعد الاعتماد'),
             state: isActive ? 'current' : approved ? 'done' : 'pending',
             icon: <KeyRound size={15} />,
           },
           {
-            label: isRevoked ? 'سحب الصلاحية' : 'انتهاء الطلب',
+            label: isRevoked ? t('سحب الصلاحية') : t('انتهاء الطلب'),
             meta: isRevoked
-              ? 'سُحبت الصلاحية بواسطة المدير'
+              ? t('سُحبت الصلاحية بواسطة المدير')
               : isExpired
-                ? 'انتهت المدة المحددة'
+                ? t('انتهت المدة المحددة')
                 : isActive
-                  ? `متبقي ${formatSeconds(selectedRemaining)}`
+                  ? `${t('متبقي ')}${formatSeconds(selectedRemaining)}`
                   : '—',
             state: isRevoked || isExpired ? 'done' : 'pending',
             icon: <Flag size={15} />,
@@ -475,7 +476,7 @@ export function BastionPage() {
     event.preventDefault();
     const reason = requestForm.reason.trim();
     if (reason.length < 5) {
-      setRequestError('يرجى كتابة سبب واضح للطلب (5 أحرف على الأقل).');
+      setRequestError(t('يرجى كتابة سبب واضح للطلب (5 أحرف على الأقل).'));
       return;
     }
 
@@ -488,13 +489,13 @@ export function BastionPage() {
         duration_mins: Number(requestForm.duration),
         ...(requestForm.user.trim() ? { user: requestForm.user.trim() } : {}),
       });
-      toast(res.message || 'تم تسجيل طلب الصلاحية بنجاح.', 'success');
+      toast(res.message || t('تم تسجيل طلب الصلاحية بنجاح.'), 'success');
       setRequestOpen(false);
       setTab('requests');
       await fetchGrants(true);
       if (res.id) setSelectedId(res.id);
     } catch (err) {
-      setRequestError(err instanceof Error ? err.message : 'تعذر تسجيل طلب الصلاحية.');
+      setRequestError(err instanceof Error ? err.message : t('تعذر تسجيل طلب الصلاحية.'));
     } finally {
       setRequestSubmitting(false);
     }
@@ -504,10 +505,10 @@ export function BastionPage() {
     setBusyAction(`${grant.id}:approve`);
     try {
       const res = await api.approveJitElevation(grant.id, true);
-      toast(res.message || 'تم اعتماد الطلب بنجاح.', 'success');
+      toast(res.message || t('تم اعتماد الطلب بنجاح.'), 'success');
       await fetchGrants(true);
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'تعذر اعتماد الطلب.', 'error');
+      toast(err instanceof Error ? err.message : t('تعذر اعتماد الطلب.'), 'error');
     } finally {
       setBusyAction(null);
     }
@@ -523,13 +524,13 @@ export function BastionPage() {
           ? await api.approveJitElevation(grant.id, false)
           : await api.revokeJitElevation(grant.id);
       toast(
-        res.message || (kind === 'reject' ? 'تم رفض طلب الوصول.' : 'تم سحب الصلاحية المؤقتة.'),
+        res.message || (kind === 'reject' ? t('تم رفض طلب الوصول.') : t('تم سحب الصلاحية المؤقتة.')),
         'success',
       );
       setConfirmState(null);
       await fetchGrants(true);
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'تعذر تنفيذ الإجراء.', 'error');
+      toast(err instanceof Error ? err.message : t('تعذر تنفيذ الإجراء.'), 'error');
     } finally {
       setBusyAction(null);
     }
@@ -538,22 +539,22 @@ export function BastionPage() {
   const handleCopyId = async (id: string) => {
     try {
       await navigator.clipboard.writeText(id);
-      toast('تم نسخ معرّف الطلب إلى الحافظة.', 'success');
+      toast(t('تم نسخ معرّف الطلب إلى الحافظة.'), 'success');
     } catch {
-      toast('تعذر النسخ إلى الحافظة.', 'error');
+      toast(t('تعذر النسخ إلى الحافظة.'), 'error');
     }
   };
 
   const handleAssetConnect = (asset: AssetItem) => {
     const protocol = protocolKey(asset.protocol);
     if (!CONNECT_PROTOCOLS.has(protocol)) {
-      toast('الاتصال المباشر متاح عبر RDP أو SSH أو SFTP فقط لهذا الأصل.', 'error');
+      toast(t('الاتصال المباشر متاح عبر RDP أو SSH أو SFTP فقط لهذا الأصل.'), 'error');
       return;
     }
     const url = `/api/bastion/connect?host=${encodeURIComponent(asset.host)}&username=${encodeURIComponent('Administrator')}&name=${encodeURIComponent(asset.name)}&protocol=${encodeURIComponent(protocol)}&port=${encodeURIComponent(String(asset.port))}`;
     const popup = window.open(url, '_blank');
     if (!popup) {
-      toast('تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.', 'error');
+      toast(t('تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.'), 'error');
       return;
     }
     toast(sessionMessage(protocol, asset.name, asset.host, asset.port), 'success');
@@ -564,12 +565,12 @@ export function BastionPage() {
     try {
       const res = await api.testAsset(asset.id, asset.host, asset.port);
       toast(
-        res?.message || (res?.ok ? `تم اختبار الاتصال بالأصل ${asset.name} بنجاح.` : `تعذر الاتصال بالأصل ${asset.name}.`),
+        res?.message || (res?.ok ? `${t('تم اختبار الاتصال بالأصل ')}${asset.name}${t(' بنجاح.')}` : `${t('تعذر الاتصال بالأصل ')}${asset.name}.`),
         res?.ok ? 'success' : 'error',
       );
       await loadAssets();
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'تعذر اختبار الاتصال بالأصل.', 'error');
+      toast(err instanceof Error ? err.message : t('تعذر اختبار الاتصال بالأصل.'), 'error');
     } finally {
       setAssetBusyId(null);
     }
@@ -578,7 +579,7 @@ export function BastionPage() {
   const handleQuickLaunch = (event: React.FormEvent) => {
     event.preventDefault();
     if (!quick.host.trim()) {
-      toast('يرجى إدخال عنوان السيرفر.', 'error');
+      toast(t('يرجى إدخال عنوان السيرفر.'), 'error');
       return;
     }
     const protocol = quick.protocol.toUpperCase();
@@ -586,7 +587,7 @@ export function BastionPage() {
     const url = `/api/bastion/connect?host=${encodeURIComponent(quick.host.trim())}&username=${encodeURIComponent(quick.user.trim() || 'Administrator')}&name=${encodeURIComponent(quick.host.trim())}&protocol=${encodeURIComponent(protocol)}&port=${encodeURIComponent(String(port))}`;
     const popup = window.open(url, '_blank');
     if (!popup) {
-      toast('تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.', 'error');
+      toast(t('تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.'), 'error');
       return;
     }
     setQuickMessage(sessionMessage(protocol, quick.host.trim(), quick.host.trim(), port));
@@ -600,7 +601,7 @@ export function BastionPage() {
       const res = await api.checkCommandRisk(command.trim());
       setCommandResult(res);
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'تعذر فحص الأمر.', 'error');
+      toast(err instanceof Error ? err.message : t('تعذر فحص الأمر.'), 'error');
     } finally {
       setCommandBusy(false);
     }
@@ -609,12 +610,12 @@ export function BastionPage() {
   const handleAssetSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!assetForm.name.trim() || !assetForm.host.trim()) {
-      setAssetError('اسم الأصل وعنوان المضيف مطلوبان.');
+      setAssetError(t('اسم الأصل وعنوان المضيف مطلوبان.'));
       return;
     }
     const port = Number(assetForm.port);
     if (!Number.isFinite(port) || port < 1 || port > 65535) {
-      setAssetError('رقم المنفذ يجب أن يكون بين 1 و 65535.');
+      setAssetError(t('رقم المنفذ يجب أن يكون بين 1 و 65535.'));
       return;
     }
 
@@ -628,12 +629,12 @@ export function BastionPage() {
         port,
         protocol: assetForm.protocol,
       });
-      toast('تمت إضافة الأصل إلى بوابة الوصول.', 'success');
+      toast(t('تمت إضافة الأصل إلى بوابة الوصول.'), 'success');
       setAssetModalOpen(false);
       setAssetForm(INITIAL_ASSET_FORM);
       await loadAssets();
     } catch (err) {
-      setAssetError(err instanceof Error ? err.message : 'تعذر إضافة الأصل.');
+      setAssetError(err instanceof Error ? err.message : t('تعذر إضافة الأصل.'));
     } finally {
       setAssetSubmitting(false);
     }
@@ -647,13 +648,13 @@ export function BastionPage() {
         <div className="page-head__title">
           <span className="page-head__icon"><ShieldCheck size={20} /></span>
           <div>
-            <h1>طلبات الوصول الآمن</h1>
-            <p>إدارة ومراجعة طلبات الوصول إلى السيرفرات عبر بوابة PAM مع تطبيق السياسات الأمنية.</p>
+            <h1>{t('طلبات الوصول الآمن')}</h1>
+            <p>{t('إدارة ومراجعة طلبات الوصول إلى السيرفرات عبر بوابة PAM مع تطبيق السياسات الأمنية.')}</p>
           </div>
         </div>
 
         <div className="page-head__actions">
-          <div className="pam-tabs" role="tablist" aria-label="أقسام بوابة الوصول الآمن">
+          <div className="pam-tabs" role="tablist" aria-label={t('أقسام بوابة الوصول الآمن')}>
             <button
               type="button"
               role="tab"
@@ -661,7 +662,7 @@ export function BastionPage() {
               data-active={tab === 'requests' ? 'true' : undefined}
               onClick={() => setTab('requests')}
             >
-              طلبات الوصول
+              {t('طلبات الوصول')}
               <span className="pam-tabs__count">{grants.length}</span>
             </button>
             <button
@@ -671,32 +672,32 @@ export function BastionPage() {
               data-active={tab === 'assets' ? 'true' : undefined}
               onClick={() => setTab('assets')}
             >
-              الأصول والبروتوكولات
+              {t('الأصول والبروتوكولات')}
               <span className="pam-tabs__count">{assets.length}</span>
             </button>
           </div>
 
-          <button type="button" className="icon-btn" onClick={handleRefresh} disabled={refreshing} aria-label="تحديث البيانات">
+          <button type="button" className="icon-btn" onClick={handleRefresh} disabled={refreshing} aria-label={t('تحديث البيانات')}>
             <RefreshCw size={15} className={refreshing ? 'spin' : ''} />
           </button>
 
           <button type="button" className="btn-gold-solid" onClick={() => openNewRequest()}>
             <Plus size={15} />
-            طلب وصول جديد
+            {t('طلب وصول جديد')}
           </button>
         </div>
       </div>
 
       {tab === 'requests' ? (
         <div className="pam-stack">
-          <section className="pam-filters" aria-label="عوامل تصفية طلبات الوصول">
+          <section className="pam-filters" aria-label={t('عوامل تصفية طلبات الوصول')}>
             <div className="ui-select">
               <select
-                aria-label="تصفية حسب الدور"
+                aria-label={t('تصفية حسب الدور')}
                 value={roleFilter}
                 onChange={(event) => setRoleFilter(event.target.value)}
               >
-                <option value="all">كل الأدوار</option>
+                <option value="all">{t('كل الأدوار')}</option>
                 {roleOptions.map((role) => (
                   <option key={role} value={role}>{roleLabel(role)}</option>
                 ))}
@@ -705,28 +706,28 @@ export function BastionPage() {
 
             <div className="ui-select">
               <select
-                aria-label="تصفية حسب حالة الطلب"
+                aria-label={t('تصفية حسب حالة الطلب')}
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value as GrantStatusFilter)}
               >
-                <option value="all">كل الحالات</option>
-                <option value="PENDING">قيد المراجعة</option>
-                <option value="ACTIVE">نشط</option>
-                <option value="REJECTED">مرفوض</option>
-                <option value="EXPIRED">منتهي</option>
-                <option value="REVOKED">ملغى</option>
+                <option value="all">{t('كل الحالات')}</option>
+                <option value="PENDING">{t('قيد المراجعة')}</option>
+                <option value="ACTIVE">{t('نشط')}</option>
+                <option value="REJECTED">{t('مرفوض')}</option>
+                <option value="EXPIRED">{t('منتهي')}</option>
+                <option value="REVOKED">{t('ملغى')}</option>
               </select>
             </div>
 
             <div className="ui-select">
               <select
-                aria-label="تصفية حسب تاريخ الطلب"
+                aria-label={t('تصفية حسب تاريخ الطلب')}
                 value={rangeFilter}
                 onChange={(event) => setRangeFilter(event.target.value as RangeFilter)}
               >
-                <option value="7d">آخر 7 أيام</option>
-                <option value="30d">آخر 30 يوماً</option>
-                <option value="all">كل الفترات</option>
+                <option value="7d">{t('آخر 7 أيام')}</option>
+                <option value="30d">{t('آخر 30 يوماً')}</option>
+                <option value="all">{t('كل الفترات')}</option>
               </select>
             </div>
 
@@ -736,26 +737,26 @@ export function BastionPage() {
                 type="text"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="بحث في الطلبات (المستخدم، الدور، السبب…)"
-                aria-label="البحث في طلبات الوصول"
+                placeholder={t('بحث في الطلبات (المستخدم، الدور، السبب…)')}
+                aria-label={t('البحث في طلبات الوصول')}
               />
             </label>
           </section>
 
           <div className="pam-grid pam-grid--requests">
-            <section className="panel pam-table-panel" aria-label="قائمة طلبات الوصول">
+            <section className="panel pam-table-panel" aria-label={t('قائمة طلبات الوصول')}>
               <div className="table-shell">
                 <table className="data-table pam-table">
                   <thead>
                     <tr>
-                      <th>رقم الطلب</th>
-                      <th>المستخدم</th>
-                      <th>الدور المستهدف</th>
-                      <th>المدة</th>
-                      <th>السبب</th>
-                      <th>حالة الطلب</th>
-                      <th>المعتمد</th>
-                      <th>تاريخ الطلب</th>
+                      <th>{t('رقم الطلب')}</th>
+                      <th>{t('المستخدم')}</th>
+                      <th>{t('الدور المستهدف')}</th>
+                      <th>{t('المدة')}</th>
+                      <th>{t('السبب')}</th>
+                      <th>{t('حالة الطلب')}</th>
+                      <th>{t('المعتمد')}</th>
+                      <th>{t('تاريخ الطلب')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -764,7 +765,7 @@ export function BastionPage() {
                         <td colSpan={8}>
                           <div className="pam-empty">
                             <RefreshCw size={24} className="spin" />
-                            <strong>جارٍ تحميل طلبات الوصول…</strong>
+                            <strong>{t('جارٍ تحميل طلبات الوصول…')}</strong>
                           </div>
                         </td>
                       </tr>
@@ -775,8 +776,8 @@ export function BastionPage() {
                         <td colSpan={8}>
                           <div className="pam-empty">
                             <Inbox size={26} />
-                            <strong>لا توجد طلبات مطابقة</strong>
-                            <span>جرّب تغيير عوامل التصفية أو أنشئ طلب وصول جديد.</span>
+                            <strong>{t('لا توجد طلبات مطابقة')}</strong>
+                            <span>{t('جرّب تغيير عوامل التصفية أو أنشئ طلب وصول جديد.')}</span>
                           </div>
                         </td>
                       </tr>
@@ -824,13 +825,13 @@ export function BastionPage() {
               </div>
 
               <div className="pagination">
-                <span>إظهار {visibleFrom} - {visibleTo} من {filteredGrants.length} طلب</span>
+                <span>{t('إظهار')} {visibleFrom} - {visibleTo} {t('من')} {filteredGrants.length} {t('طلب')}</span>
 
                 <span className="pagination__size">
-                  طلبات في الصفحة
+                  {t('طلبات في الصفحة')}
                   <span className="ui-select">
                     <select
-                      aria-label="عدد الطلبات في الصفحة"
+                      aria-label={t('عدد الطلبات في الصفحة')}
                       value={pageSize}
                       onChange={(event) => setPageSize(Number(event.target.value))}
                     >
@@ -847,7 +848,7 @@ export function BastionPage() {
                       type="button"
                       onClick={() => setPage(Math.max(1, currentPage - 1))}
                       disabled={currentPage <= 1}
-                      aria-label="الصفحة السابقة"
+                      aria-label={t('الصفحة السابقة')}
                     >
                       <ChevronRight size={13} />
                     </button>
@@ -865,7 +866,7 @@ export function BastionPage() {
                       type="button"
                       onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
                       disabled={currentPage >= totalPages}
-                      aria-label="الصفحة التالية"
+                      aria-label={t('الصفحة التالية')}
                     >
                       <ChevronLeft size={13} />
                     </button>
@@ -874,11 +875,11 @@ export function BastionPage() {
               </div>
             </section>
 
-            <aside className="pam-detail" aria-label="تفاصيل طلب الوصول">
+            <aside className="pam-detail" aria-label={t('تفاصيل طلب الوصول')}>
               <header className="pam-detail__head">
                 <span className="pam-detail__title">
                   <ShieldCheck size={17} />
-                  تفاصيل الطلب
+                  {t('تفاصيل الطلب')}
                 </span>
                 {selectedGrant && (
                   <span className={`pill-status ${selectedStatus.className}`}>
@@ -894,33 +895,33 @@ export function BastionPage() {
                     <span className="pam-request-record" dir="ltr">{selectedGrant.id}</span>
 
                     <dl className="detail-rows">
-                      <DetailRow icon={<UserRound size={13} />} label="المستخدم">
+                      <DetailRow icon={<UserRound size={13} />} label={t('المستخدم')}>
                         <span dir="ltr">{selectedGrant.user}</span>
                       </DetailRow>
-                      <DetailRow icon={<KeyRound size={13} />} label="الدور المستهدف">
+                      <DetailRow icon={<KeyRound size={13} />} label={t('الدور المستهدف')}>
                         <span title={selectedGrant.target_role}>{roleLabel(selectedGrant.target_role)}</span>
                       </DetailRow>
-                      <DetailRow icon={<Timer size={13} />} label="المدة المطلوبة">
+                      <DetailRow icon={<Timer size={13} />} label={t('المدة المطلوبة')}>
                         {durationLabel(selectedGrant.duration_mins)}
                       </DetailRow>
                       <DetailRow
                         icon={<MessageSquare size={13} />}
-                        label="السبب"
+                        label={t('السبب')}
                         className="pam-detail__reason"
                       >
                         {selectedGrant.reason || '—'}
                       </DetailRow>
-                      <DetailRow icon={<UserCheck size={13} />} label="المعتمد">
+                      <DetailRow icon={<UserCheck size={13} />} label={t('المعتمد')}>
                         <span title={selectedGrant.approver}>{selectedGrant.approver || '—'}</span>
                       </DetailRow>
-                      <DetailRow icon={<CalendarDays size={13} />} label="تاريخ الإنشاء">
+                      <DetailRow icon={<CalendarDays size={13} />} label={t('تاريخ الإنشاء')}>
                         <span className="ltr">{formatDateTime(selectedGrant.created_at)}</span>
                       </DetailRow>
-                      <DetailRow icon={<Clock3 size={13} />} label="صلاحية حتى">
+                      <DetailRow icon={<Clock3 size={13} />} label={t('صلاحية حتى')}>
                         <span className="ltr">{formatDateTime(selectedGrant.expires_at)}</span>
                       </DetailRow>
                       {(selectedGrant.status || '').toUpperCase() === 'ACTIVE' && (
-                        <DetailRow icon={<Timer size={13} />} label="الوقت المتبقي">
+                        <DetailRow icon={<Timer size={13} />} label={t('الوقت المتبقي')}>
                           <span className="ltr gold">{formatSeconds(selectedRemaining)}</span>
                         </DetailRow>
                       )}
@@ -928,17 +929,17 @@ export function BastionPage() {
 
                     <div className="pam-checks">
                       <div className="pam-check">
-                        <span>سياسة المدة</span>
+                        <span>{t('سياسة المدة')}</span>
                         <span className="pam-check__state pam-check__state--ok">
                           <CheckCircle2 size={12} />
-                          ضمن الحد المسموح
+                          {t('ضمن الحد المسموح')}
                         </span>
                       </div>
                       <div className="pam-check">
-                        <span>سجل التدقيق</span>
+                        <span>{t('سجل التدقيق')}</span>
                         <span className="pam-check__state pam-check__state--rec">
                           <span className="badge-dot" />
-                          الطلب مسجّل أمنياً
+                          {t('الطلب مسجّل أمنياً')}
                         </span>
                       </div>
                     </div>
@@ -954,7 +955,7 @@ export function BastionPage() {
                           disabled={busyAction !== null}
                         >
                           <UserCheck size={15} />
-                          {busyAction === `${selectedGrant.id}:approve` ? 'جارٍ الاعتماد…' : 'اعتماد الطلب'}
+                          {busyAction === `${selectedGrant.id}:approve` ? t('جارٍ الاعتماد…') : t('اعتماد الطلب')}
                         </button>
                         <button
                           type="button"
@@ -963,7 +964,7 @@ export function BastionPage() {
                           disabled={busyAction !== null}
                         >
                           <X size={15} />
-                          رفض الطلب
+                          {t('رفض الطلب')}
                         </button>
                       </div>
                     )}
@@ -977,7 +978,7 @@ export function BastionPage() {
                           disabled={busyAction !== null}
                         >
                           <RefreshCw size={15} />
-                          تجديد الطلب
+                          {t('تجديد الطلب')}
                         </button>
                         <button
                           type="button"
@@ -986,7 +987,7 @@ export function BastionPage() {
                           disabled={busyAction !== null}
                         >
                           <ShieldX size={15} />
-                          سحب الصلاحية
+                          {t('سحب الصلاحية')}
                         </button>
                       </div>
                     )}
@@ -999,7 +1000,7 @@ export function BastionPage() {
                           onClick={() => openNewRequest(selectedGrant)}
                         >
                           <RefreshCw size={15} />
-                          تجديد الطلب
+                          {t('تجديد الطلب')}
                         </button>
                         <button
                           type="button"
@@ -1007,7 +1008,7 @@ export function BastionPage() {
                           onClick={() => void handleCopyId(selectedGrant.id)}
                         >
                           <Copy size={15} />
-                          نسخ المعرّف
+                          {t('نسخ المعرّف')}
                         </button>
                       </div>
                     ) : (
@@ -1017,7 +1018,7 @@ export function BastionPage() {
                         onClick={() => void handleCopyId(selectedGrant.id)}
                       >
                         <Copy size={15} />
-                        نسخ معرّف الطلب
+                        {t('نسخ معرّف الطلب')}
                       </button>
                     )}
                   </div>
@@ -1025,8 +1026,8 @@ export function BastionPage() {
               ) : (
                 <div className="pam-empty pam-empty--panel">
                   <Inbox size={28} />
-                  <strong>لا يوجد طلب محدد</strong>
-                  <span>اختر طلباً من القائمة لعرض تفاصيله وإجراءات الاعتماد.</span>
+                  <strong>{t('لا يوجد طلب محدد')}</strong>
+                  <span>{t('اختر طلباً من القائمة لعرض تفاصيله وإجراءات الاعتماد.')}</span>
                 </div>
               )}
             </aside>
@@ -1034,14 +1035,14 @@ export function BastionPage() {
 
           <div className="pam-bottom">
             <div className="pam-bottom__main">
-              <section className="panel" aria-label="مسار اعتماد الطلب">
+              <section className="panel" aria-label={t('مسار اعتماد الطلب')}>
                 <header className="panel__head">
                   <h2 className="panel__title">
                     <Route size={17} />
-                    مسار اعتماد الطلب
+                    {t('مسار اعتماد الطلب')}
                   </h2>
                   <span className="panel__action">
-                    {selectedGrant ? <span dir="ltr">{selectedGrant.id}</span> : 'لا يوجد طلب محدد'}
+                    {selectedGrant ? <span dir="ltr">{selectedGrant.id}</span> : t('لا يوجد طلب محدد')}
                   </span>
                 </header>
 
@@ -1058,7 +1059,7 @@ export function BastionPage() {
                 ) : (
                   <div className="pam-empty pam-empty--compact">
                     <Inbox size={22} />
-                    <span>اختر طلباً لعرض مسار الاعتماد.</span>
+                    <span>{t('اختر طلباً لعرض مسار الاعتماد.')}</span>
                   </div>
                 )}
               </section>
@@ -1066,28 +1067,28 @@ export function BastionPage() {
               <div className="pam-stats">
                 <div className="pam-stat">
                   <div className="pam-stat__copy">
-                    <div className="pam-stat__label">مستوى الأمان</div>
-                    <div className="pam-stat__value">{pendingCount === 0 ? 'مرتفع' : 'يتطلب مراجعة'}</div>
+                    <div className="pam-stat__label">{t('مستوى الأمان')}</div>
+                    <div className="pam-stat__value">{pendingCount === 0 ? t('مرتفع') : t('يتطلب مراجعة')}</div>
                   </div>
                   <span className="pam-stat__icon"><ShieldCheck size={14} /></span>
                 </div>
                 <div className="pam-stat">
                   <div className="pam-stat__copy">
-                    <div className="pam-stat__label">طلبات نشطة</div>
+                    <div className="pam-stat__label">{t('طلبات نشطة')}</div>
                     <div className="pam-stat__value">{activeCount}</div>
                   </div>
                   <span className="pam-stat__icon"><KeyRound size={14} /></span>
                 </div>
                 <div className="pam-stat">
                   <div className="pam-stat__copy">
-                    <div className="pam-stat__label">بانتظار الاعتماد</div>
+                    <div className="pam-stat__label">{t('بانتظار الاعتماد')}</div>
                     <div className="pam-stat__value">{pendingCount}</div>
                   </div>
                   <span className="pam-stat__icon"><Clock3 size={14} /></span>
                 </div>
                 <div className="pam-stat">
                   <div className="pam-stat__copy">
-                    <div className="pam-stat__label">أنماط الأوامر المحظورة</div>
+                    <div className="pam-stat__label">{t('أنماط الأوامر المحظورة')}</div>
                     <div className="pam-stat__value">{POLICY_RULES.length}</div>
                   </div>
                   <span className="pam-stat__icon"><ShieldAlert size={14} /></span>
@@ -1095,15 +1096,15 @@ export function BastionPage() {
               </div>
             </div>
 
-            <section className="panel policy-panel" aria-label="سياسة الأوامر المسموحة والمحظورة">
+            <section className="panel policy-panel" aria-label={t('سياسة الأوامر المسموحة والمحظورة')}>
               <header className="panel__head panel__head--stack">
                 <div>
                   <h2 className="panel__title">
                     <ShieldAlert size={17} />
-                    سياسة الأوامر المسموحة والمحظورة
+                    {t('سياسة الأوامر المسموحة والمحظورة')}
                   </h2>
                   <p className="panel__subtitle">
-                    تُطبَّق حماية الأوامر لمنع العمليات التدميرية أثناء جلسات الوصول.
+                    {t('تُطبَّق حماية الأوامر لمنع العمليات التدميرية أثناء جلسات الوصول.')}
                   </p>
                 </div>
               </header>
@@ -1123,7 +1124,7 @@ export function BastionPage() {
               <div className="policy-foot">
                 <Link to="/security">
                   <Settings2 size={13} />
-                  إدارة السياسات التفصيلية
+                  {t('إدارة السياسات التفصيلية')}
                 </Link>
               </div>
             </section>
@@ -1155,17 +1156,17 @@ export function BastionPage() {
           </div>
 
           <div className="pam-grid">
-            <section className="panel pam-table-panel" aria-label="الأصول المسجلة في بوابة الوصول">
+            <section className="panel pam-table-panel" aria-label={t('الأصول المسجلة في بوابة الوصول')}>
               <header className="panel__head">
                 <h2 className="panel__title">
                   <Server size={17} />
-                  الأصول المُدارة
+                  {t('الأصول المُدارة')}
                   <span className="panel__count">{filteredAssets.length}</span>
                 </h2>
                 <div className="panel__action">
                   <button type="button" className="btn-gold-solid btn--sm" onClick={() => setAssetModalOpen(true)}>
                     <Plus size={14} />
-                    إضافة أصل
+                    {t('إضافة أصل')}
                   </button>
                 </div>
               </header>
@@ -1177,18 +1178,18 @@ export function BastionPage() {
                     type="text"
                     value={assetQuery}
                     onChange={(event) => setAssetQuery(event.target.value)}
-                    placeholder="بحث باسم الأصل أو المضيف أو المنفذ…"
-                    aria-label="البحث في الأصول"
+                    placeholder={t('بحث باسم الأصل أو المضيف أو المنفذ…')}
+                    aria-label={t('البحث في الأصول')}
                   />
                 </label>
 
                 <div className="ui-select">
                   <select
-                    aria-label="تصفية حسب البروتوكول"
+                    aria-label={t('تصفية حسب البروتوكول')}
                     value={assetProtocolFilter}
                     onChange={(event) => setAssetProtocolFilter(event.target.value)}
                   >
-                    <option value="all">كل البروتوكولات</option>
+                    <option value="all">{t('كل البروتوكولات')}</option>
                     {PROTOCOLS.map((protocol) => (
                       <option key={protocol.key} value={protocol.key}>{protocol.label}</option>
                     ))}
@@ -1200,13 +1201,13 @@ export function BastionPage() {
                 <table className="data-table pam-assets-table">
                   <thead>
                     <tr>
-                      <th>الأصل</th>
-                      <th>المضيف</th>
-                      <th>البروتوكول</th>
-                      <th>النوع</th>
-                      <th>الحالة</th>
-                      <th>الاستجابة</th>
-                      <th>إجراءات</th>
+                      <th>{t('الأصل')}</th>
+                      <th>{t('المضيف')}</th>
+                      <th>{t('البروتوكول')}</th>
+                      <th>{t('النوع')}</th>
+                      <th>{t('الحالة')}</th>
+                      <th>{t('الاستجابة')}</th>
+                      <th>{t('إجراءات')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1215,7 +1216,7 @@ export function BastionPage() {
                         <td colSpan={7}>
                           <div className="pam-empty">
                             <RefreshCw size={24} className="spin" />
-                            <strong>جارٍ تحميل الأصول…</strong>
+                            <strong>{t('جارٍ تحميل الأصول…')}</strong>
                           </div>
                         </td>
                       </tr>
@@ -1226,8 +1227,8 @@ export function BastionPage() {
                         <td colSpan={7}>
                           <div className="pam-empty">
                             <Server size={26} />
-                            <strong>لا توجد أصول مطابقة</strong>
-                            <span>أضف أصلاً جديداً أو غيّر عوامل التصفية.</span>
+                            <strong>{t('لا توجد أصول مطابقة')}</strong>
+                            <span>{t('أضف أصلاً جديداً أو غيّر عوامل التصفية.')}</span>
                           </div>
                         </td>
                       </tr>
@@ -1263,8 +1264,8 @@ export function BastionPage() {
                                 className="icon-btn icon-btn--xs"
                                 onClick={() => void handleTestAsset(asset)}
                                 disabled={assetBusyId === asset.id}
-                                title="اختبار الاتصال بالأصل"
-                                aria-label={`اختبار الاتصال بالأصل ${asset.name}`}
+                                title={t('اختبار الاتصال بالأصل')}
+                                aria-label={`${t('اختبار الاتصال بالأصل ')}${asset.name}`}
                               >
                                 <Activity size={13} className={assetBusyId === asset.id ? 'spin' : ''} />
                               </button>
@@ -1273,10 +1274,10 @@ export function BastionPage() {
                                 className="btn-gold-outline btn--sm"
                                 onClick={() => handleAssetConnect(asset)}
                                 disabled={!connectable}
-                                title={connectable ? `فتح جلسة ${protocol}` : 'الاتصال المباشر متاح عبر RDP أو SSH أو SFTP فقط'}
+                                title={connectable ? `${t('فتح جلسة ')}${protocol}` : t('الاتصال المباشر متاح عبر RDP أو SSH أو SFTP فقط')}
                               >
                                 <Terminal size={13} />
-                                اتصال
+                                {t('اتصال')}
                               </button>
                             </div>
                           </td>
@@ -1289,17 +1290,17 @@ export function BastionPage() {
             </section>
 
             <div className="pam-assets-side">
-              <section className="panel" aria-label="الاتصال السريع">
+              <section className="panel" aria-label={t('الاتصال السريع')}>
                 <header className="panel__head">
                   <h2 className="panel__title">
                     <Monitor size={17} />
-                    الاتصال السريع
+                    {t('الاتصال السريع')}
                   </h2>
                 </header>
                 <div className="panel__body">
                   <form className="form-grid" onSubmit={handleQuickLaunch}>
                     <label className="ui-label">
-                      عنوان السيرفر
+                      {t('عنوان السيرفر')}
                       <input
                         className="ui-input"
                         dir="ltr"
@@ -1312,7 +1313,7 @@ export function BastionPage() {
 
                     <div className="form-grid form-grid--2">
                       <label className="ui-label">
-                        المستخدم
+                        {t('المستخدم')}
                         <input
                           className="ui-input"
                           dir="ltr"
@@ -1323,7 +1324,7 @@ export function BastionPage() {
                       </label>
 
                       <label className="ui-label">
-                        البروتوكول
+                        {t('البروتوكول')}
                         <span className="ui-select ui-select--block">
                           <select
                             value={quick.protocol}
@@ -1339,7 +1340,7 @@ export function BastionPage() {
 
                     <button type="submit" className="btn-gold-solid">
                       <Terminal size={15} />
-                      فتح جلسة عبر الحصن
+                      {t('فتح جلسة عبر الحصن')}
                     </button>
                   </form>
 
@@ -1349,11 +1350,11 @@ export function BastionPage() {
                 </div>
               </section>
 
-              <section className="panel" aria-label="فحص مخاطر الأوامر">
+              <section className="panel" aria-label={t('فحص مخاطر الأوامر')}>
                 <header className="panel__head">
                   <h2 className="panel__title">
                     <ShieldAlert size={17} />
-                    فحص مخاطر الأوامر
+                    {t('فحص مخاطر الأوامر')}
                   </h2>
                 </header>
                 <div className="panel__body">
@@ -1365,11 +1366,11 @@ export function BastionPage() {
                         value={command}
                         onChange={(event) => setCommand(event.target.value)}
                         placeholder="netstat -ano"
-                        aria-label="الأمر المراد فحصه"
+                        aria-label={t('الأمر المراد فحصه')}
                       />
                       <button type="submit" className="btn-gold-outline" disabled={commandBusy || !command.trim()}>
                         {commandBusy ? <RefreshCw size={14} className="spin" /> : <ShieldCheck size={14} />}
-                        فحص
+                        {t('فحص')}
                       </button>
                     </div>
                   </form>
@@ -1379,7 +1380,7 @@ export function BastionPage() {
                       {commandResult.safe ? <CheckCircle2 size={14} /> : <ShieldX size={14} />}
                       <span>
                         <strong>
-                          {commandResult.safe ? 'الأمر آمن وفق السياسة' : 'الأمر محظور ومرفوض أمنياً'}
+                          {commandResult.safe ? t('الأمر آمن وفق السياسة') : t('الأمر محظور ومرفوض أمنياً')}
                         </strong>
                         <span className="command-result__reason">{commandResult.reason}</span>
                         {commandResult.risk_level && (
@@ -1392,7 +1393,7 @@ export function BastionPage() {
                   )}
 
                   <p className="pam-hint">
-                    تُسجَّل الأوامر عالية الخطورة تلقائياً في سجل التدقيق الأمني.
+                    {t('تُسجَّل الأوامر عالية الخطورة تلقائياً في سجل التدقيق الأمني.')}
                   </p>
                 </div>
               </section>
@@ -1411,21 +1412,21 @@ export function BastionPage() {
             className="modal-panel"
             role="dialog"
             aria-modal="true"
-            aria-label="طلب وصول جديد"
+            aria-label={t('طلب وصول جديد')}
             onSubmit={handleRequestSubmit}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-panel__head">
               <span className="modal-panel__title">
                 <KeyRound size={18} />
-                طلب وصول جديد
+                {t('طلب وصول جديد')}
               </span>
               <button
                 type="button"
                 className="modal-panel__close"
                 onClick={() => setRequestOpen(false)}
                 disabled={requestSubmitting}
-                aria-label="إغلاق نافذة طلب الوصول"
+                aria-label={t('إغلاق نافذة طلب الوصول')}
               >
                 <X size={16} />
               </button>
@@ -1436,14 +1437,14 @@ export function BastionPage() {
 
               <div className="form-grid">
                 <label className="ui-label">
-                  المستخدم
+                  {t('المستخدم')}
                   <input
                     className="ui-input"
                     dir="ltr"
                     list="pam-local-users"
                     value={requestForm.user}
                     onChange={(event) => setRequestForm((current) => ({ ...current, user: event.target.value }))}
-                    placeholder="اتركه فارغاً لطلب الصلاحية لحسابك"
+                    placeholder={t('اتركه فارغاً لطلب الصلاحية لحسابك')}
                   />
                   <datalist id="pam-local-users">
                     {localUsers.map((user) => (
@@ -1451,13 +1452,13 @@ export function BastionPage() {
                     ))}
                   </datalist>
                   <span className="pam-hint">
-                    طلب المسؤول لنفسه يُعتمد فوراً، وطلب مستخدم آخر يُحوَّل لمراجعة مدير النظام.
+                    {t('طلب المسؤول لنفسه يُعتمد فوراً، وطلب مستخدم آخر يُحوَّل لمراجعة مدير النظام.')}
                   </span>
                 </label>
 
                 <div className="form-grid form-grid--2">
                   <label className="ui-label">
-                    الدور المطلوب
+                    {t('الدور المطلوب')}
                     <span className="ui-select ui-select--block">
                       <select
                         value={requestForm.role}
@@ -1471,7 +1472,7 @@ export function BastionPage() {
                   </label>
 
                   <label className="ui-label">
-                    المدة
+                    {t('المدة')}
                     <span className="ui-select ui-select--block">
                       <select
                         value={requestForm.duration}
@@ -1486,12 +1487,12 @@ export function BastionPage() {
                 </div>
 
                 <label className="ui-label">
-                  سبب الطلب
+                  {t('سبب الطلب')}
                   <textarea
                     className="ui-input"
                     value={requestForm.reason}
                     onChange={(event) => setRequestForm((current) => ({ ...current, reason: event.target.value }))}
-                    placeholder="اشرح سبب الحاجة للوصول المؤقت والعمليات المطلوبة…"
+                    placeholder={t('اشرح سبب الحاجة للوصول المؤقت والعمليات المطلوبة…')}
                     required
                   />
                 </label>
@@ -1501,7 +1502,7 @@ export function BastionPage() {
             <div className="modal-panel__actions">
               <button type="submit" className="btn-gold-solid" disabled={requestSubmitting}>
                 {requestSubmitting ? <RefreshCw size={15} className="spin" /> : <Plus size={15} />}
-                {requestSubmitting ? 'جارٍ إرسال الطلب…' : 'إرسال طلب الوصول'}
+                {requestSubmitting ? t('جارٍ إرسال الطلب…') : t('إرسال طلب الوصول')}
               </button>
               <button
                 type="button"
@@ -1509,7 +1510,7 @@ export function BastionPage() {
                 onClick={() => setRequestOpen(false)}
                 disabled={requestSubmitting}
               >
-                إلغاء
+                {t('إلغاء')}
               </button>
             </div>
           </form>
@@ -1526,21 +1527,21 @@ export function BastionPage() {
             className="modal-panel"
             role="dialog"
             aria-modal="true"
-            aria-label="إضافة أصل جديد"
+            aria-label={t('إضافة أصل جديد')}
             onSubmit={handleAssetSubmit}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-panel__head">
               <span className="modal-panel__title">
                 <Server size={18} />
-                إضافة أصل جديد
+                {t('إضافة أصل جديد')}
               </span>
               <button
                 type="button"
                 className="modal-panel__close"
                 onClick={() => setAssetModalOpen(false)}
                 disabled={assetSubmitting}
-                aria-label="إغلاق نافذة إضافة أصل"
+                aria-label={t('إغلاق نافذة إضافة أصل')}
               >
                 <X size={16} />
               </button>
@@ -1551,19 +1552,19 @@ export function BastionPage() {
 
               <div className="form-grid">
                 <label className="ui-label">
-                  اسم الأصل
+                  {t('اسم الأصل')}
                   <input
                     className="ui-input"
                     value={assetForm.name}
                     onChange={(event) => setAssetForm((current) => ({ ...current, name: event.target.value }))}
-                    placeholder="مثال: خادم التطبيقات"
+                    placeholder={t('مثال: خادم التطبيقات')}
                     required
                   />
                 </label>
 
                 <div className="form-grid form-grid--2">
                   <label className="ui-label">
-                    المضيف / IP
+                    {t('المضيف / IP')}
                     <input
                       className="ui-input"
                       dir="ltr"
@@ -1575,7 +1576,7 @@ export function BastionPage() {
                   </label>
 
                   <label className="ui-label">
-                    المنفذ
+                    {t('المنفذ')}
                     <input
                       className="ui-input"
                       dir="ltr"
@@ -1590,7 +1591,7 @@ export function BastionPage() {
 
                 <div className="form-grid form-grid--2">
                   <label className="ui-label">
-                    البروتوكول
+                    {t('البروتوكول')}
                     <span className="ui-select ui-select--block">
                       <select
                         value={assetForm.protocol}
@@ -1609,7 +1610,7 @@ export function BastionPage() {
                   </label>
 
                   <label className="ui-label">
-                    نوع النظام
+                    {t('نوع النظام')}
                     <input
                       className="ui-input"
                       value={assetForm.type}
@@ -1624,7 +1625,7 @@ export function BastionPage() {
             <div className="modal-panel__actions">
               <button type="submit" className="btn-gold-solid" disabled={assetSubmitting}>
                 {assetSubmitting ? <RefreshCw size={15} className="spin" /> : <Plus size={15} />}
-                {assetSubmitting ? 'جارٍ الإضافة…' : 'إضافة الأصل'}
+                {assetSubmitting ? t('جارٍ الإضافة…') : t('إضافة الأصل')}
               </button>
               <button
                 type="button"
@@ -1632,7 +1633,7 @@ export function BastionPage() {
                 onClick={() => setAssetModalOpen(false)}
                 disabled={assetSubmitting}
               >
-                إلغاء
+                {t('إلغاء')}
               </button>
             </div>
           </form>
@@ -1649,20 +1650,20 @@ export function BastionPage() {
             className="modal-panel"
             role="dialog"
             aria-modal="true"
-            aria-label={confirmState.kind === 'reject' ? 'تأكيد رفض الطلب' : 'تأكيد سحب الصلاحية'}
+            aria-label={confirmState.kind === 'reject' ? t('تأكيد رفض الطلب') : t('تأكيد سحب الصلاحية')}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-panel__head">
               <span className="modal-panel__title">
                 <AlertCircle size={18} />
-                {confirmState.kind === 'reject' ? 'تأكيد رفض الطلب' : 'تأكيد سحب الصلاحية'}
+                {confirmState.kind === 'reject' ? t('تأكيد رفض الطلب') : t('تأكيد سحب الصلاحية')}
               </span>
               <button
                 type="button"
                 className="modal-panel__close"
                 onClick={() => setConfirmState(null)}
                 disabled={confirmBusy}
-                aria-label="إغلاق نافذة التأكيد"
+                aria-label={t('إغلاق نافذة التأكيد')}
               >
                 <X size={16} />
               </button>
@@ -1671,8 +1672,8 @@ export function BastionPage() {
             <div className="modal-panel__body">
               <p style={{ margin: 0 }}>
                 {confirmState.kind === 'reject'
-                  ? 'هل أنت متأكد من رفض طلب الوصول؟'
-                  : 'هل أنت متأكد من سحب الصلاحية المؤقتة فوراً؟'}
+                  ? t('هل أنت متأكد من رفض طلب الوصول؟')
+                  : t('هل أنت متأكد من سحب الصلاحية المؤقتة فوراً؟')}
               </p>
 
               <div className="modal-kv">
@@ -1680,7 +1681,7 @@ export function BastionPage() {
                   <UserRound size={15} />
                   <span>
                     <strong dir="ltr">{confirmState.grant.user}</strong>
-                    <small>المستخدم</small>
+                    <small>{t('المستخدم')}</small>
                   </span>
                 </span>
                 <span className="modal-kv__divider" />
@@ -1688,7 +1689,7 @@ export function BastionPage() {
                   <KeyRound size={15} />
                   <span>
                     <strong>{roleLabel(confirmState.grant.target_role)}</strong>
-                    <small>الدور المطلوب</small>
+                    <small>{t('الدور المطلوب')}</small>
                   </span>
                 </span>
               </div>
@@ -1696,8 +1697,8 @@ export function BastionPage() {
               <div className="modal-warning">
                 <AlertCircle size={14} />
                 {confirmState.kind === 'reject'
-                  ? 'سيُغلق الطلب نهائياً ولن تُمنح الصلاحية المؤقتة للمستخدم.'
-                  : 'سيتم إلغاء الصلاحية المؤقتة فوراً وإعادتها إلى حالة القيد.'}
+                  ? t('سيُغلق الطلب نهائياً ولن تُمنح الصلاحية المؤقتة للمستخدم.')
+                  : t('سيتم إلغاء الصلاحية المؤقتة فوراً وإعادتها إلى حالة القيد.')}
               </div>
             </div>
 
@@ -1709,10 +1710,10 @@ export function BastionPage() {
                 disabled={confirmBusy}
               >
                 {confirmBusy
-                  ? 'جارٍ التنفيذ…'
+                  ? t('جارٍ التنفيذ…')
                   : confirmState.kind === 'reject'
-                    ? 'تأكيد الرفض'
-                    : 'تأكيد السحب'}
+                    ? t('تأكيد الرفض')
+                    : t('تأكيد السحب')}
               </button>
               <button
                 type="button"
@@ -1720,7 +1721,7 @@ export function BastionPage() {
                 onClick={() => setConfirmState(null)}
                 disabled={confirmBusy}
               >
-                إلغاء
+                {t('إلغاء')}
               </button>
             </div>
           </div>

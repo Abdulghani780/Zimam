@@ -73,8 +73,8 @@
   --unpaid-bg: rgba(176, 52, 44, 0.1);
 
   /* validated chart pair (dataviz validator: all checks pass) */
-  --chart-in: #a8771f;
-  --chart-out: #00849e;
+  --chart-in: var(--chart-1, #a8771f);
+  --chart-out: var(--chart-2, #3e8a7d);
   --chart-grid: rgba(34, 31, 31, 0.08);
 }
 
@@ -113,7 +113,7 @@
   --partial-bg: rgba(224, 178, 92, 0.14);
   --unpaid: #e07a6a;
   --unpaid-bg: rgba(224, 122, 106, 0.12);
-  --chart-in: #d4af6a;
-  --chart-out: #8a7f6a;
+  --chart-in: var(--chart-1, #d4af6a);
+  --chart-out: var(--chart-2, #7fae9e);
   --chart-grid: rgba(245, 239, 228, 0.07);
 }

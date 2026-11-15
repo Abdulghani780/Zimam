@@ -26,6 +26,7 @@ import {
   sessionRamLabel,
   sessionStatus,
 } from '../lib/sessionUtils';
+import { t } from '../lib/i18n';
 
 interface SessionDrawerProps {
   session: UserSession;
@@ -70,13 +71,13 @@ export function SessionDrawer({
   const status = sessionStatus(session);
 
   return (
-    <aside className="session-panel" aria-label={`تفاصيل جلسة المستخدم ${session.user}`}>
+    <aside className="session-panel" aria-label={`${t('تفاصيل جلسة المستخدم ')}${session.user}`}>
       <header className="session-panel__head">
         <h2 className="session-panel__title">
           <Monitor size={17} />
-          تفاصيل الجلسة
+          {t('تفاصيل الجلسة')}
         </h2>
-        <button type="button" className="modal-panel__close" onClick={onClose} aria-label="إغلاق تفاصيل الجلسة">
+        <button type="button" className="modal-panel__close" onClick={onClose} aria-label={t('إغلاق تفاصيل الجلسة')}>
           <X size={16} />
         </button>
       </header>
@@ -95,46 +96,46 @@ export function SessionDrawer({
         </div>
 
         <dl className="detail-rows">
-          <DetailRow icon={<UserRound size={13} />} label="اسم المستخدم">
+          <DetailRow icon={<UserRound size={13} />} label={t('اسم المستخدم')}>
             <span dir="ltr">{session.user}</span>
           </DetailRow>
-          <DetailRow icon={<Server size={13} />} label="الخادم">
+          <DetailRow icon={<Server size={13} />} label={t('الخادم')}>
             <span dir="ltr">{hostname}</span>
           </DetailRow>
-          <DetailRow icon={<Globe size={13} />} label="عنوان المصدر (IP)">
-            <span className="ltr" title="لا يوفّر Windows WTS عنوان IP المصدر للجلسة">—</span>
+          <DetailRow icon={<Globe size={13} />} label={t('عنوان المصدر (IP)')}>
+            <span className="ltr" title={t('لا يوفّر Windows WTS عنوان IP المصدر للجلسة')}>—</span>
           </DetailRow>
-          <DetailRow icon={<CalendarClock size={13} />} label="وقت تسجيل الدخول">
+          <DetailRow icon={<CalendarClock size={13} />} label={t('وقت تسجيل الدخول')}>
             <span className="ltr">{formatLoginTimestamp(session.login_time || session.login)}</span>
           </DetailRow>
-          <DetailRow icon={<Timer size={13} />} label="مدة الجلسة">
+          <DetailRow icon={<Timer size={13} />} label={t('مدة الجلسة')}>
             <span className="ltr">{formatSessionDuration(session.login_time || session.login, now)}</span>
           </DetailRow>
-          <DetailRow icon={<Activity size={13} />} label="حالة الجلسة">
+          <DetailRow icon={<Activity size={13} />} label={t('حالة الجلسة')}>
             <span className={`pill-status ${status.className}`}>
               <span className="badge-dot" />
               {status.label}
             </span>
           </DetailRow>
-          <DetailRow icon={<Monitor size={13} />} label="نوع الاتصال">
+          <DetailRow icon={<Monitor size={13} />} label={t('نوع الاتصال')}>
             <span className="ltr">{session.station || 'RDP-Tcp'}</span>
           </DetailRow>
-          <DetailRow icon={<Maximize2 size={13} />} label="الدقة">
-            <span className="ltr" title="دقة شاشة الجلسة غير متاحة عبر WTS">—</span>
+          <DetailRow icon={<Maximize2 size={13} />} label={t('الدقة')}>
+            <span className="ltr" title={t('دقة شاشة الجلسة غير متاحة عبر WTS')}>—</span>
           </DetailRow>
-          <DetailRow icon={<MemoryStick size={13} />} label="الذاكرة المستخدمة">
+          <DetailRow icon={<MemoryStick size={13} />} label={t('الذاكرة المستخدمة')}>
             <span className="ltr gold">{sessionRamLabel(session)}</span>
           </DetailRow>
-          <DetailRow icon={<Cpu size={13} />} label="العمليات المفتوحة">
+          <DetailRow icon={<Cpu size={13} />} label={t('العمليات المفتوحة')}>
             <span>{sessionProcessCount(session)} عملية</span>
           </DetailRow>
-          <DetailRow icon={<Clock3 size={13} />} label="وقت الخمول">
+          <DetailRow icon={<Clock3 size={13} />} label={t('وقت الخمول')}>
             <span>{sessionIdleLabel(session)}</span>
           </DetailRow>
-          <DetailRow icon={<UserRound size={13} />} label="الصلاحيات">
+          <DetailRow icon={<UserRound size={13} />} label={t('الصلاحيات')}>
             <span className="chip-row">
               <span className="mini-chip">RDP</span>
-              <span className="mini-chip">{session.is_current ? 'الجلسة الحالية' : session.role || 'مستخدم'}</span>
+              <span className="mini-chip">{session.is_current ? t('الجلسة الحالية') : session.role || t('مستخدم')}</span>
             </span>
           </DetailRow>
         </dl>
@@ -147,16 +148,16 @@ export function SessionDrawer({
             disabled={viewBusy}
           >
             <Eye size={15} />
-            {viewBusy ? 'جارٍ فتح الجلسة…' : 'عرض الجلسة'}
+            {viewBusy ? t('جارٍ فتح الجلسة…') : t('عرض الجلسة')}
           </button>
           <div className="session-panel__split">
             <button type="button" className="btn-dark" onClick={() => onShadow(session)} disabled={shadowBusy}>
               <MonitorPlay size={15} />
-              {shadowBusy ? 'جارٍ المراقبة…' : 'مراقبة الجلسة'}
+              {shadowBusy ? t('جارٍ المراقبة…') : t('مراقبة الجلسة')}
             </button>
             <button type="button" className="btn-danger-soft" onClick={() => onDisconnect(session)}>
               <Unplug size={15} />
-              قطع الاتصال
+              {t('قطع الاتصال')}
             </button>
           </div>
         </div>

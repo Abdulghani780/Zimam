@@ -1,4 +1,5 @@
 import type { UserSession } from './api';
+import { t } from './i18n';
 
 export interface SessionStatusInfo {
   key: 'active' | 'disconnected' | 'other';
@@ -9,7 +10,7 @@ export interface SessionStatusInfo {
 function parseLogonDate(value?: string | null): Date | null {
   if (!value) return null;
   const text = value.trim();
-  if (!text || text === 'الآن' || text === '—') return null;
+  if (!text || text === t('الآن') || text === '—') return null;
 
   // quser.exe on Windows Server emits M/D/YYYY HH:mm (optionally with seconds).
   const match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?/);
@@ -50,12 +51,12 @@ export function formatLoginTimestamp(login?: string | null): string {
 export function sessionStatus(session: UserSession): SessionStatusInfo {
   const state = (session.state || session.status || '').toLowerCase();
   if (state.includes('active')) {
-    return { key: 'active', label: 'نشطة', className: 'pill-status--on' };
+    return { key: 'active', label: t('نشطة'), className: 'pill-status--on' };
   }
   if (state.includes('disc')) {
-    return { key: 'disconnected', label: 'خاملة', className: 'pill-status--idle' };
+    return { key: 'disconnected', label: t('خاملة'), className: 'pill-status--idle' };
   }
-  return { key: 'other', label: 'مستمرة', className: 'pill-status--info' };
+  return { key: 'other', label: t('مستمرة'), className: 'pill-status--info' };
 }
 
 export function sessionRamLabel(session: UserSession): string {
@@ -68,7 +69,7 @@ export function sessionRamLabel(session: UserSession): string {
   if (typeof session.ram === 'number' && session.ram > 0) {
     return session.ram >= 1 ? `${session.ram.toFixed(2)} GB` : `${Math.round(session.ram * 1024)} MB`;
   }
-  return 'أقل من 50 MB';
+  return t('أقل من 50 MB');
 }
 
 export function sessionProcessCount(session: UserSession): number {
@@ -78,5 +79,5 @@ export function sessionProcessCount(session: UserSession): number {
 }
 
 export function sessionIdleLabel(session: UserSession): string {
-  return session.idle_time || session.idle_formatted || (session.idle !== null && session.idle !== undefined ? String(session.idle) : 'نشط الآن');
+  return session.idle_time || session.idle_formatted || (session.idle !== null && session.idle !== undefined ? String(session.idle) : t('نشط الآن'));
 }

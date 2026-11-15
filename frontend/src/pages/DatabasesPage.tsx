@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 10: Database Management & Sovereign SQL Studio (إدارة واستكشاف قواعد البيانات)
  * Zero-Mock Production with Real Windows SQL Server, PostgreSQL, and SQLite Engine
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Server,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function DatabasesPage() {
   const toast = useToast();
@@ -70,7 +71,7 @@ export function DatabasesPage() {
       }
       setBackups(backupsRes?.backups || []);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب بيانات محركات قواعد البيانات', 'error');
+      toast(err.message || t('فشل جلب بيانات محركات قواعد البيانات'), 'error');
     } finally {
       setLoading(false);
     }
@@ -85,10 +86,10 @@ export function DatabasesPage() {
         setTableData(res);
         setPageOffset(offset);
       } else {
-        toast(res.error || 'فشل جلب سجلات الجدول', 'error');
+        toast(res.error || t('فشل جلب سجلات الجدول'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء قراءة الجدول', 'error');
+      toast(err.message || t('خطأ أثناء قراءة الجدول'), 'error');
     } finally {
       setLoadingData(false);
     }
@@ -107,7 +108,7 @@ export function DatabasesPage() {
   const handleExecuteQuery = async (queryToRun?: string) => {
     const q = (queryToRun || sqlQuery).trim();
     if (!q) {
-      toast('يرجى كتابة استعلام SQL صالح', 'error');
+      toast(t('يرجى كتابة استعلام SQL صالح'), 'error');
       return;
     }
     setExecutingQuery(true);
@@ -115,18 +116,18 @@ export function DatabasesPage() {
       const res = await api.executeDatabaseQuery(q);
       if (res.ok) {
         setQueryResult(res);
-        toast(res.is_select ? `تم جلب ${res.row_count} صف في ${res.duration_ms}ms` : res.message, 'success');
+        toast(res.is_select ? `${t('تم جلب ')}${res.row_count}${t(' صف في ')}${res.duration_ms}ms` : res.message, 'success');
         if (!res.is_select) {
           fetchOverview();
           if (selectedTable) fetchTableContent(selectedTable, pageOffset);
         }
       } else {
         setQueryResult(null);
-        toast(res.error || 'فشل تنفيذ استعلام SQL', 'error');
+        toast(res.error || t('فشل تنفيذ استعلام SQL'), 'error');
       }
     } catch (err: any) {
       setQueryResult(null);
-      toast(err.message || 'خطأ في معالجة الاستعلام', 'error');
+      toast(err.message || t('خطأ في معالجة الاستعلام'), 'error');
     } finally {
       setExecutingQuery(false);
     }
@@ -135,18 +136,18 @@ export function DatabasesPage() {
   const handleCreateBackup = async () => {
     setCreatingBackup(true);
     try {
-      const res = await api.createDatabaseBackup(backupDesc || 'نسخة احتياطية يدوية');
+      const res = await api.createDatabaseBackup(backupDesc || t('نسخة احتياطية يدوية'));
       if (res.ok) {
-        toast(`تم إنشاء النسخة الاحتياطية [${res.filename}] بنجاح (${res.size_mb} MB)`, 'success');
+        toast(`${t('تم إنشاء النسخة الاحتياطية [')}${res.filename}${t('] بنجاح (')}${res.size_mb} MB)`, 'success');
         setBackupModalOpen(false);
         setBackupDesc('');
         const bRes = await api.getDatabaseBackups();
         setBackups(bRes?.backups || []);
       } else {
-        toast(res.error || 'فشل أخذ النسخة الاحتياطية', 'error');
+        toast(res.error || t('فشل أخذ النسخة الاحتياطية'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء إنشاء النسخة الاحتياطية', 'error');
+      toast(err.message || t('خطأ أثناء إنشاء النسخة الاحتياطية'), 'error');
     } finally {
       setCreatingBackup(false);
     }
@@ -160,21 +161,21 @@ export function DatabasesPage() {
         toast(res.message, 'success');
         fetchOverview();
       } else {
-        toast(res.error || 'فشل تحسين قاعدة البيانات', 'error');
+        toast(res.error || t('فشل تحسين قاعدة البيانات'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تحسين قاعدة البيانات', 'error');
+      toast(err.message || t('خطأ أثناء تحسين قاعدة البيانات'), 'error');
     } finally {
       setOptimizing(false);
     }
   };
 
   const quickQueries = [
-    { label: 'حسابات مديري النظام', sql: 'SELECT id, username, role, full_name, is_active, created_at FROM app_users;' },
-    { label: 'أحدث سجلات تدقيق الأمان', sql: 'SELECT id, timestamp, event_type, client_ip, severity, details FROM security_audit_events ORDER BY id DESC LIMIT 15;' },
-    { label: 'الخوادم المسجلة بالمنظومة', sql: 'SELECT * FROM servers;' },
-    { label: 'بيئات ومشاريع المطورين', sql: 'SELECT id, name, runtime, port, status, created_at FROM developer_projects;' },
-    { label: 'صلاحيات JIT المؤقتة', sql: 'SELECT id, user, role, granted_at, expires_at, status, reason FROM jit_grants;' },
+    { label: t('حسابات مديري النظام'), sql: 'SELECT id, username, role, full_name, is_active, created_at FROM app_users;' },
+    { label: t('أحدث سجلات تدقيق الأمان'), sql: 'SELECT id, timestamp, event_type, client_ip, severity, details FROM security_audit_events ORDER BY id DESC LIMIT 15;' },
+    { label: t('الخوادم المسجلة بالمنظومة'), sql: 'SELECT * FROM servers;' },
+    { label: t('بيئات ومشاريع المطورين'), sql: 'SELECT id, name, runtime, port, status, created_at FROM developer_projects;' },
+    { label: t('صلاحيات JIT المؤقتة'), sql: 'SELECT id, user, role, granted_at, expires_at, status, reason FROM jit_grants;' },
   ];
 
   return (
@@ -200,10 +201,10 @@ export function DatabasesPage() {
             </div>
             <div>
               <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>
-                إدارة محركات وقواعد البيانات السيادية (Database Studio)
+                {t('إدارة محركات وقواعد البيانات السيادية (Database Studio)')}
               </h1>
               <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '2px 0 0' }}>
-                مراقبة محركات SQL Server وPostgreSQL، استكشاف الجداول، محرر SQL مباشر، والنسخ الاحتياطي المشفر
+                {t('مراقبة محركات SQL Server وPostgreSQL، استكشاف الجداول، محرر SQL مباشر، والنسخ الاحتياطي المشفر')}
               </p>
             </div>
           </div>
@@ -217,7 +218,7 @@ export function DatabasesPage() {
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
-            تحديث المؤشرات
+            {t('تحديث المؤشرات')}
           </Button>
           <Button
             variant="primary"
@@ -225,7 +226,7 @@ export function DatabasesPage() {
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <Save size={14} />
-            أخذ نسخة احتياطية فورية
+            {t('أخذ نسخة احتياطية فورية')}
           </Button>
         </div>
       </div>
@@ -242,11 +243,11 @@ export function DatabasesPage() {
         <Card style={{ padding: 14, borderRight: '4px solid var(--status-safe)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>سلامة قاعدة البيانات</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('سلامة قاعدة البيانات')}</span>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--status-safe)', marginTop: 4 }}>
-                {stats?.integrity_status || 'سليم (OK)'}
+                {stats?.integrity_status || t('سليم (OK)')}
               </div>
-              <span style={{ fontSize: 10, color: 'var(--text-2)' }}>وضع المعاملات: {stats?.journal_mode || 'WAL'}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-2)' }}>{t('وضع المعاملات')}: {stats?.journal_mode || 'WAL'}</span>
             </div>
             <ShieldCheck size={22} style={{ color: 'var(--status-safe)' }} />
           </div>
@@ -255,11 +256,11 @@ export function DatabasesPage() {
         <Card style={{ padding: 14, borderRight: '4px solid var(--accent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>حجم التخزين الفعلي</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('حجم التخزين الفعلي')}</span>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>
                 {stats?.file_size_mb || 0} MB
               </div>
-              <span style={{ fontSize: 10, color: 'var(--text-2)' }}>{stats?.total_tables || 0} جدولاً هيكلياً</span>
+              <span style={{ fontSize: 10, color: 'var(--text-2)' }}>{stats?.total_tables || 0} {t('جدولاً هيكلياً')}</span>
             </div>
             <HardDrive size={22} style={{ color: 'var(--accent)' }} />
           </div>
@@ -268,11 +269,11 @@ export function DatabasesPage() {
         <Card style={{ padding: 14, borderRight: '4px solid var(--status-info)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>إجمالي السجلات الحية</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('إجمالي السجلات الحية')}</span>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>
                 {stats?.total_records?.toLocaleString() || 0}
               </div>
-              <span style={{ fontSize: 10, color: 'var(--text-2)' }}>سجل موثق تشفيرياً</span>
+              <span style={{ fontSize: 10, color: 'var(--text-2)' }}>{t('سجل موثق تشفيرياً')}</span>
             </div>
             <Layers size={22} style={{ color: 'var(--status-info)' }} />
           </div>
@@ -281,9 +282,9 @@ export function DatabasesPage() {
         <Card style={{ padding: 14, borderRight: '4px solid var(--status-warning)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>المحركات المكتشفة بالسيرفر</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>{t('المحركات المكتشفة بالسيرفر')}</span>
               <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>
-                {engines.length} محركات
+                {engines.length} {t('محركات')}
               </div>
               <span style={{ fontSize: 10, color: 'var(--text-2)' }}>SQL Server / Postgres / SQLite</span>
             </div>
@@ -320,7 +321,7 @@ export function DatabasesPage() {
           }}
         >
           <Table size={14} />
-          مستكشف الجداول والبيانات ({tables.length})
+          {t('مستكشف الجداول والبيانات')} ({tables.length})
         </button>
 
         <button
@@ -341,7 +342,7 @@ export function DatabasesPage() {
           }}
         >
           <Terminal size={14} />
-          محرر استعلامات SQL المباشر (Console)
+          {t('محرر استعلامات SQL المباشر (Console)')}
         </button>
 
         <button
@@ -362,7 +363,7 @@ export function DatabasesPage() {
           }}
         >
           <Save size={14} />
-          النسخ الاحتياطية والصيانة ({backups.length})
+          {t('النسخ الاحتياطية والصيانة')} ({backups.length})
         </button>
 
         <button
@@ -383,7 +384,7 @@ export function DatabasesPage() {
           }}
         >
           <Server size={14} />
-          محركات قواعد البيانات بالسيرفر
+          {t('محركات قواعد البيانات بالسيرفر')}
         </button>
       </div>
 
@@ -393,8 +394,8 @@ export function DatabasesPage() {
           {/* Tables Sidebar List */}
           <Card style={{ padding: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>قائمة الجداول</span>
-              <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700 }}>{tables.length} جداول</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>{t('قائمة الجداول')}</span>
+              <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700 }}>{tables.length} {t('جداول')}</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 600, overflowY: 'auto' }}>
@@ -466,7 +467,7 @@ export function DatabasesPage() {
             >
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-1)' }}>جدول: {selectedTable}</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-1)' }}>{t('جدول')}: {selectedTable}</span>
                   <span
                     style={{
                       fontSize: 11,
@@ -477,11 +478,11 @@ export function DatabasesPage() {
                       fontWeight: 700,
                     }}
                   >
-                    {tableData?.total || 0} سجل
+                    {tableData?.total || 0} {t('سجل')}
                   </span>
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  عرض الصفوف من {pageOffset + 1} إلى {Math.min(pageOffset + pageSize, tableData?.total || 0)}
+                  {t('عرض الصفوف من')} {pageOffset + 1} {t('إلى')} {Math.min(pageOffset + pageSize, tableData?.total || 0)}
                 </span>
               </div>
 
@@ -493,7 +494,7 @@ export function DatabasesPage() {
                   disabled={loadingData}
                 >
                   <RotateCw size={13} className={loadingData ? 'animate-spin' : ''} />
-                  تحديث
+                  {t('تحديث')}
                 </Button>
                 <Button
                   size="sm"
@@ -501,7 +502,7 @@ export function DatabasesPage() {
                   disabled={pageOffset === 0 || loadingData}
                   onClick={() => fetchTableContent(selectedTable, Math.max(0, pageOffset - pageSize))}
                 >
-                  السابق
+                  {t('السابق')}
                 </Button>
                 <Button
                   size="sm"
@@ -509,7 +510,7 @@ export function DatabasesPage() {
                   disabled={pageOffset + pageSize >= (tableData?.total || 0) || loadingData}
                   onClick={() => fetchTableContent(selectedTable, pageOffset + pageSize)}
                 >
-                  التالي
+                  {t('التالي')}
                 </Button>
               </div>
             </div>
@@ -558,7 +559,7 @@ export function DatabasesPage() {
               </div>
             ) : (
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-3)' }}>
-                لا توجد سجلات في هذا الجدول حتى الآن.
+                {t('لا توجد سجلات في هذا الجدول حتى الآن.')}
               </div>
             )}
           </Card>
@@ -571,7 +572,7 @@ export function DatabasesPage() {
           {/* Quick Queries Bar */}
           <Card style={{ padding: 12 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', display: 'block', marginBottom: 6 }}>
-              نماذج استعلام سريعة وجاهزة:
+              {t('نماذج استعلام سريعة وجاهزة:')}
             </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {quickQueries.map((qq, idx) => (
@@ -604,7 +605,7 @@ export function DatabasesPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Terminal size={15} style={{ color: 'var(--accent)' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>محرر استعلامات SQL (Live Sovereign Engine)</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{t('محرر استعلامات SQL (Live Sovereign Engine)')}</span>
               </div>
               <Button
                 variant="primary"
@@ -613,14 +614,14 @@ export function DatabasesPage() {
                 style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               >
                 <Play size={13} />
-                تشغيل الاستعلام (F5)
+                {t('تشغيل الاستعلام (F5)')}
               </Button>
             </div>
 
             <textarea
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
-              placeholder="اكتب استعلام SQL هنا (مثال: SELECT * FROM app_users WHERE is_active = 1;)"
+              placeholder={t('اكتب استعلام SQL هنا (مثال: SELECT * FROM app_users WHERE is_active = 1;)')}
               rows={4}
               style={{
                 width: '100%',
@@ -654,10 +655,10 @@ export function DatabasesPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <CheckCircle2 size={16} style={{ color: 'var(--status-safe)' }} />
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>
-                    نتائج الاستعلام ({queryResult.row_count || queryResult.affected_rows || 0})
+                    {t('نتائج الاستعلام')} ({queryResult.row_count || queryResult.affected_rows || 0})
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                    استغرق: {queryResult.duration_ms} مللي ثانية
+                    {t('استغرق')}: {queryResult.duration_ms} {t('مللي ثانية')}
                   </span>
                 </div>
               </div>
@@ -696,7 +697,7 @@ export function DatabasesPage() {
                 </div>
               ) : (
                 <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-2)', fontSize: 12 }}>
-                  {queryResult.message || 'لا توجد بيانات مطابقة للاستعلام.'}
+                  {queryResult.message || t('لا توجد بيانات مطابقة للاستعلام.')}
                 </div>
               )}
             </Card>
@@ -712,10 +713,10 @@ export function DatabasesPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text-1)' }}>
-                  النسخ الاحتياطي والصيانة التلقائية
+                  {t('النسخ الاحتياطي والصيانة التلقائية')}
                 </h3>
                 <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '4px 0 0' }}>
-                  توليد نسخ احتياطية فيزيائية فورية، حساب التواقيع التشفيرية SHA-256، وتحرير مساحة التخزين عبر VACUUM
+                  {t('توليد نسخ احتياطية فيزيائية فورية، حساب التواقيع التشفيرية SHA-256، وتحرير مساحة التخزين عبر VACUUM')}
                 </p>
               </div>
 
@@ -727,7 +728,7 @@ export function DatabasesPage() {
                   style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <Wrench size={14} />
-                  تحسين وفهرسة (Optimize & VACUUM)
+                  {t('تحسين وفهرسة (Optimize & VACUUM)')}
                 </Button>
                 <Button
                   variant="primary"
@@ -735,7 +736,7 @@ export function DatabasesPage() {
                   style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <Save size={14} />
-                  إنشاء نسخة احتياطية جديدة
+                  {t('إنشاء نسخة احتياطية جديدة')}
                 </Button>
               </div>
             </div>
@@ -744,7 +745,7 @@ export function DatabasesPage() {
           {/* Existing Backups List */}
           <Card style={{ padding: 14 }}>
             <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', marginBottom: 12 }}>
-              أرشيف النسخ الاحتياطية المتاحة ({backups.length})
+              {t('أرشيف النسخ الاحتياطية المتاحة')} ({backups.length})
             </h4>
 
             {backups.length > 0 ? (
@@ -767,7 +768,7 @@ export function DatabasesPage() {
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{b.filename}</div>
                         <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'monospace' }}>
-                          المسار: {b.path}
+                          {t('المسار')}: {b.path}
                         </div>
                       </div>
                     </div>
@@ -792,7 +793,7 @@ export function DatabasesPage() {
               </div>
             ) : (
               <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)', fontSize: 12 }}>
-                لم يتم تسجيل أي نسخ احتياطية بعد. اضغط على الزر أعلاه لإنشاء نسخة احتياطية فورية.
+                {t('لم يتم تسجيل أي نسخ احتياطية بعد. اضغط على الزر أعلاه لإنشاء نسخة احتياطية فورية.')}
               </div>
             )}
           </Card>
@@ -803,10 +804,10 @@ export function DatabasesPage() {
       {activeTab === 'engines' && (
         <Card style={{ padding: 16 }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--text-1)' }}>
-            محركات قواعد البيانات النشطة على Windows Server
+            {t('محركات قواعد البيانات النشطة على Windows Server')}
           </h3>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 16px' }}>
-            فحص خدمات النظام والعمليات لاكتشاف خدمات Microsoft SQL Server، PostgreSQL، MySQL، والمحرك السيادي الداخلي
+            {t('فحص خدمات النظام والعمليات لاكتشاف خدمات Microsoft SQL Server، PostgreSQL، MySQL، والمحرك السيادي الداخلي')}
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 14 }}>
@@ -834,11 +835,11 @@ export function DatabasesPage() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--text-2)' }}>
-                    <div>نوع المحرك: <strong style={{ color: 'var(--text-1)' }}>{eng.type}</strong></div>
-                    <div>خدمة الويندوز: <code style={{ color: 'var(--accent)' }}>{eng.service_name}</code></div>
-                    <div>المسار / المرجع: <span style={{ color: 'var(--text-3)', fontSize: 10 }}>{eng.database_path}</span></div>
+                    <div>{t('نوع المحرك:')} <strong style={{ color: 'var(--text-1)' }}>{eng.type}</strong></div>
+                    <div>{t('خدمة الويندوز:')} <code style={{ color: 'var(--accent)' }}>{eng.service_name}</code></div>
+                    <div>{t('المسار / المرجع:')} <span style={{ color: 'var(--text-3)', fontSize: 10 }}>{eng.database_path}</span></div>
                     {eng.storage_size_mb > 0 && (
-                      <div>حجم البيانات: <strong style={{ color: 'var(--text-1)' }}>{eng.storage_size_mb} MB</strong></div>
+                      <div>{t('حجم البيانات:')} <strong style={{ color: 'var(--text-1)' }}>{eng.storage_size_mb} MB</strong></div>
                     )}
                   </div>
                 </div>
@@ -851,30 +852,30 @@ export function DatabasesPage() {
       {/* Backup Modal */}
       {backupModalOpen && (
         <Modal
-          title="أخذ نسخة احتياطية فورية لقاعدة البيانات"
+          title={t('أخذ نسخة احتياطية فورية لقاعدة البيانات')}
           open={backupModalOpen}
           onClose={() => setBackupModalOpen(false)}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ fontSize: 12, color: 'var(--text-2)' }}>
-              سيتم إنشاء لقطة فيزيائية مشفرة لقاعدة البيانات <code>asaas_v2.db</code> وحفظها في المجلد السيادي مع حساب الهاش SHA-256.
+              {t('سيتم إنشاء لقطة فيزيائية مشفرة لقاعدة البيانات')} <code>asaas_v2.db</code> {t('وحفظها في المجلد السيادي مع حساب الهاش SHA-256.')}
             </p>
             <div>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 4 }}>
-                وصف النسخة الاحتياطية
+                {t('وصف النسخة الاحتياطية')}
               </label>
               <TextInput
                 value={backupDesc}
                 onChange={(e: any) => setBackupDesc(e.target.value)}
-                placeholder="مثال: ترقية الإصدار v3.0 قبل الصيانة"
+                placeholder={t('مثال: ترقية الإصدار v3.0 قبل الصيانة')}
               />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
               <Button variant="ghost" onClick={() => setBackupModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button variant="primary" onClick={handleCreateBackup} loading={creatingBackup}>
-                إنشاء وتوثيق النسخة
+                {t('إنشاء وتوثيق النسخة')}
               </Button>
             </div>
           </div>

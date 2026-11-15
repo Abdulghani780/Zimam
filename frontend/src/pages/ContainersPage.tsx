@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 6: Containers & Virtualization (إدارة حاويات Docker والآلات الافتراضية Hyper-V)
  * Zero-Mock Production with Real Windows Hyper-V vmms & Docker CLI
@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Server,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function ContainersPage() {
   const toast = useToast();
@@ -34,7 +35,7 @@ export function ContainersPage() {
       setDockerData(dockRes);
       setHypervData(hypRes);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب بيانات الحاويات والافتراضية', 'error');
+      toast(err.message || t('فشل جلب بيانات الحاويات والافتراضية'), 'error');
     } finally {
       setLoading(false);
     }
@@ -51,15 +52,15 @@ export function ContainersPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Boxes size={24} style={{ color: 'var(--accent)' }} />
-            <span>الحاويات والافتراضية (Docker & Hyper-V Virtualization)</span>
+            <span>{t('الحاويات والافتراضية (Docker & Hyper-V Virtualization)')}</span>
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
-            مركز تحكم موحد لحاويات Docker Windows/Linux، وآلات Hyper-V الافتراضية، ومراقبة موارد المعالج والذاكرة.
+            {t('مركز تحكم موحد لحاويات Docker Windows/Linux، وآلات Hyper-V الافتراضية، ومراقبة موارد المعالج والذاكرة.')}
           </p>
         </div>
         <Button variant="ghost" onClick={fetchData} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={15} className={loading ? 'spin' : ''} />
-          <span>تحديث</span>
+          <span>{t('تحديث')}</span>
         </Button>
       </div>
 
@@ -83,7 +84,7 @@ export function ContainersPage() {
           }}
         >
           <Boxes size={16} />
-          <span>حاويات Docker ({dockerData?.containers?.length || 0})</span>
+          <span>{t('حاويات Docker')} ({dockerData?.containers?.length || 0})</span>
         </button>
 
         <button
@@ -104,7 +105,7 @@ export function ContainersPage() {
           }}
         >
           <Server size={16} />
-          <span>بيئة الافتراضية Hyper-V</span>
+          <span>{t('بيئة الافتراضية Hyper-V')}</span>
         </button>
       </div>
 
@@ -121,10 +122,10 @@ export function ContainersPage() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)' }}>
-                      محرك Docker Engine
+                      {t('محرك Docker Engine')}
                     </span>
                     <span className={`badge ${dockerData?.cli_available ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
-                      {dockerData?.cli_available ? 'الواجهة البرمجية CLI مثبتة' : 'غير مثبت'}
+                      {dockerData?.cli_available ? t('الواجهة البرمجية CLI مثبتة') : t('غير مثبت')}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2, fontFamily: 'monospace' }}>
@@ -135,7 +136,7 @@ export function ContainersPage() {
 
               <div>
                 <span className={`badge ${dockerData?.daemon_running ? 'badge--success' : 'badge--warning'}`} style={{ fontSize: 12, padding: '6px 12px' }}>
-                  {dockerData?.daemon_running ? 'خادم الخدمة Daemon متصل ويعمل' : 'خدمة Docker Daemon غير مشغلة حالياً (Standby)'}
+                  {dockerData?.daemon_running ? t('خادم الخدمة Daemon متصل ويعمل') : t('خدمة Docker Daemon غير مشغلة حالياً (Standby)')}
                 </span>
               </div>
             </div>
@@ -144,22 +145,22 @@ export function ContainersPage() {
           {/* Containers List */}
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-              قائمة الحاويات النشطة والمسجلة (Container Inventory)
+              {t('قائمة الحاويات النشطة والمسجلة (Container Inventory)')}
             </div>
             {!dockerData?.containers || dockerData.containers.length === 0 ? (
               <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-                لا توجد حاويات نشطة حالياً على خادم Docker المحلي.
+                {t('لا توجد حاويات نشطة حالياً على خادم Docker المحلي.')}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                   <thead>
                     <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>معرف الحاوية</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم الحاوية</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الصورة (Image)</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المنافذ المربوطة</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('معرف الحاوية')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الحاوية')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الصورة (Image)')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المنافذ المربوطة')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -180,7 +181,7 @@ export function ContainersPage() {
                           </span>
                         </td>
                         <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
-                          {c.ports || 'لا توجد منافذ عامة'}
+                          {c.ports || t('لا توجد منافذ عامة')}
                         </td>
                       </tr>
                     ))}
@@ -205,21 +206,21 @@ export function ContainersPage() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)' }}>
-                      منصة الافتراضية Microsoft Hyper-V
+                      {t('منصة الافتراضية Microsoft Hyper-V')}
                     </span>
                     <span className={`badge ${hypervData?.installed ? 'badge--success' : 'badge--warning'}`} style={{ fontSize: 11 }}>
-                      {hypervData?.installed ? 'دور Hyper-V مثبت' : 'غير مثبت'}
+                      {hypervData?.installed ? t('دور Hyper-V مثبت') : t('غير مثبت')}
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                    خدمة إدارة الآلات الافتراضية (vmms): <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{hypervData?.service_status || 'متوقفة'}</span>
+                    {t('خدمة إدارة الآلات الافتراضية (vmms):')} <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{hypervData?.service_status || t('متوقفة')}</span>
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
                 <span className="badge badge--neutral" style={{ fontSize: 12 }}>
-                  الدعم السيادي: Windows Server 2025
+                  {t('الدعم السيادي: Windows Server 2025')}
                 </span>
               </div>
             </div>
@@ -228,22 +229,22 @@ export function ContainersPage() {
           {/* VMs Inventory */}
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-              الآلات الافتراضية (Virtual Machines)
+              {t('الآلات الافتراضية (Virtual Machines)')}
             </div>
             {!hypervData?.vms || hypervData.vms.length === 0 ? (
               <div style={{ padding: 36, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-                لا توجد آلات افتراضية مسجلة في Hyper-V حالياً.
+                {t('لا توجد آلات افتراضية مسجلة في Hyper-V حالياً.')}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                   <thead>
                     <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم الآلة (VM Name)</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة (State)</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المعالج المستهلك</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الذاكرة المخصصة</th>
-                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>مدة التشغيل</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الآلة (VM Name)')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة (State)')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المعالج المستهلك')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الذاكرة المخصصة')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('مدة التشغيل')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -261,7 +262,7 @@ export function ContainersPage() {
                           {vm.cpu_usage || '0%'}
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
-                          {vm.memory_mb ? `${vm.memory_mb} MB` : 'غير محدد'}
+                          {vm.memory_mb ? `${vm.memory_mb} MB` : t('غير محدد')}
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
                           {vm.uptime || '-'}

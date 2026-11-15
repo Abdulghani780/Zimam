@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Button, Skeleton } from '../asaas-ui';
 import { api } from '../lib/api';
 import { ShieldCheck, AlertTriangle, CheckCircle, RefreshCw, Cpu, Database, HardDrive } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface AiDiagModalProps {
   open: boolean;
@@ -33,7 +34,7 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
   if (!open) return null;
 
   return (
-    <Modal onClose={onClose} title="تقرير التشخيص الذكي لخوادم أساس (AI Ops Radar)">
+    <Modal onClose={onClose} title={t('تقرير التشخيص الذكي لخوادم أساس (AI Ops Radar)')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         {loading ? (
           <Skeleton count={4} height={42} />
@@ -59,10 +60,10 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
                 )}
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: data.score >= 80 ? 'var(--paid)' : 'var(--partial)' }}>
-                    مستوى كفاءة واستقرار السيرفر: {data.status || 'ممتاز'}
+                    مستوى كفاءة واستقرار السيرفر: {data.status || t('ممتاز')}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-                    {data.summary || 'تم إجراء فحص شامل للذاكرة والأنوية والأقراص وعمليات الـ RDP.'}
+                    {data.summary || t('تم إجراء فحص شامل للذاكرة والأنوية والأقراص وعمليات الـ RDP.')}
                   </div>
                 </div>
               </div>
@@ -74,31 +75,31 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
             {/* Findings & Checks */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
-                المؤشرات الحيوية التي تم تدقيقها:
+                {t('المؤشرات الحيوية التي تم تدقيقها:')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-tint-strong)', border: '1px solid var(--glass-rim-low)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-3)' }}>
-                    <Cpu size={15} color="var(--accent)" /> المعالج والأنوية
+                    <Cpu size={15} color="var(--accent)" /> {t('المعالج والأنوية')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginTop: 6, color: 'var(--text)' }}>
-                    {data.cpu_health || 'استقرار تام'}
+                    {data.cpu_health || t('استقرار تام')}
                   </div>
                 </div>
                 <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-tint-strong)', border: '1px solid var(--glass-rim-low)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-3)' }}>
-                    <Database size={15} color="var(--accent)" /> حاكم الذاكرة
+                    <Database size={15} color="var(--accent)" /> {t('حاكم الذاكرة')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginTop: 6, color: 'var(--text)' }}>
-                    {data.ram_health || 'محمي من التسريب'}
+                    {data.ram_health || t('محمي من التسريب')}
                   </div>
                 </div>
                 <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-tint-strong)', border: '1px solid var(--glass-rim-low)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-3)' }}>
-                    <HardDrive size={15} color="var(--accent)" /> الأقراص والتخزين
+                    <HardDrive size={15} color="var(--accent)" /> {t('الأقراص والتخزين')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginTop: 6, color: 'var(--text)' }}>
-                    {data.disk_health || 'مساحة كافية'}
+                    {data.disk_health || t('مساحة كافية')}
                   </div>
                 </div>
               </div>
@@ -108,7 +109,7 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
             {data.recommendations && data.recommendations.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
-                  توصيات الذكاء الاصطناعي لتحسين الأداء:
+                  {t('توصيات الذكاء الاصطناعي لتحسين الأداء:')}
                 </div>
                 <ul style={{ paddingInlineStart: 20, margin: 0, fontSize: 13, color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {data.recommendations.map((rec: string, idx: number) => (
@@ -123,17 +124,17 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
           </>
         ) : (
           <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)' }}>
-            تعذر جلب تقرير التشخيص.
+            {t('تعذر جلب تقرير التشخيص.')}
           </div>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 12 }}>
           <Button variant="ghost" onClick={runDiagnosis} loading={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} />
-            <span>إعادة الفحص الآن</span>
+            <span>{t('إعادة الفحص الآن')}</span>
           </Button>
           <Button variant="primary" onClick={onClose} style={{ minWidth: 120 }}>
-            إغلاق التقرير
+            {t('إغلاق التقرير')}
           </Button>
         </div>
       </div>

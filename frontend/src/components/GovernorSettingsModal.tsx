@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Modal, Button, Field, TextInput, useToast } from '../asaas-ui';
 import { api, type GovernorStatus } from '../lib/api';
 import { Zap, Clock, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface GovernorSettingsModalProps {
   open: boolean;
@@ -32,7 +33,7 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
         setLogoffHours(g.auto_logoff_hours ?? 8);
       })
       .catch((err) => {
-        toast(err.message || 'تعذر تحميل إعدادات الحاكم', 'error');
+        toast(err.message || t('تعذر تحميل إعدادات الحاكم'), 'error');
       })
 
   }, [open]);
@@ -51,11 +52,11 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
         auto_logoff_enabled: autoLogoff,
         auto_logoff_hours: Number(logoffHours),
       });
-      toast('تم حفظ سياسات حاكم الموارد الذكي في قاعدة البيانات بنجاح.', 'success');
+      toast(t('تم حفظ سياسات حاكم الموارد الذكي في قاعدة البيانات بنجاح.'), 'success');
       if (onSaved) onSaved();
       onClose();
     } catch (err: any) {
-      toast(err.message || 'فشل حفظ الإعدادات', 'error');
+      toast(err.message || t('فشل حفظ الإعدادات'), 'error');
     } finally {
       setSaving(false);
     }
@@ -65,7 +66,7 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
     <Modal
       open={open}
       onClose={onClose}
-      title="إعدادات حاكم الموارد الذكي (Resource Governor Policies)"
+      title={t('إعدادات حاكم الموارد الذكي (Resource Governor Policies)')}
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Policy 1: Auto Memory Trim */}
@@ -73,8 +74,8 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Zap size={20} color="var(--accent)" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>التفريغ التلقائي للذاكرة (Auto Trim)</div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>تفريغ صفحات الذاكرة الخاملة فور تجاوز ضغط الرام 70%</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{t('التفريغ التلقائي للذاكرة (Auto Trim)')}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('تفريغ صفحات الذاكرة الخاملة فور تجاوز ضغط الرام 70%')}</div>
             </div>
           </div>
           <label className="toggle-switch">
@@ -90,8 +91,8 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
         {/* Policy 2: Idle Threshold Slider */}
         <div style={{ padding: 12, background: 'var(--glass-inset)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>عتبة خمول الجلسات المستهدفة:</span>
-            <span style={{ fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--font)' }} dir="ltr">{idleThreshold} دقيقة</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{t('عتبة خمول الجلسات المستهدفة:')}</span>
+            <span style={{ fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--font)' }} dir="ltr">{idleThreshold} {t('دقيقة')}</span>
           </div>
           <input
             type="range"
@@ -108,8 +109,8 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Clock size={20} color="var(--partial)" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>فصل الجلسات الخاملة تلقائياً (Auto Disconnect)</div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>تحويل الجلسة إلى منفصلة بعد وقت خمول محدد</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{t('فصل الجلسات الخاملة تلقائياً (Auto Disconnect)')}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('تحويل الجلسة إلى منفصلة بعد وقت خمول محدد')}</div>
             </div>
           </div>
           <label className="toggle-switch">
@@ -123,7 +124,7 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
         </div>
 
         {autoDisconnect && (
-          <Field label="مهلة الخمول قبل الفصل (بالدقائق)">
+          <Field label={t('مهلة الخمول قبل الفصل (بالدقائق)')}>
             {(id) => (
               <TextInput
                 id={id}
@@ -143,8 +144,8 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ShieldAlert size={20} color="var(--unpaid)" />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>تسجيل الخروج الإجباري اليومي (Mandatory Logoff)</div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>إنهاء الجلسات المفتوحة التي تتجاوز الساعات المحددة</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>{t('تسجيل الخروج الإجباري اليومي (Mandatory Logoff)')}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('إنهاء الجلسات المفتوحة التي تتجاوز الساعات المحددة')}</div>
             </div>
           </div>
           <label className="toggle-switch">
@@ -158,7 +159,7 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
         </div>
 
         {autoLogoff && (
-          <Field label="أقصى مدة بقاء للجلسة (بالساعات)">
+          <Field label={t('أقصى مدة بقاء للجلسة (بالساعات)')}>
             {(id) => (
               <TextInput
                 id={id}
@@ -176,11 +177,11 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
         {/* Footer Actions */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
           <Button type="button" variant="ghost" onClick={onClose}>
-            إلغاء
+            {t('إلغاء')}
           </Button>
           <Button type="submit" variant="primary" loading={saving}>
             <CheckCircle2 size={16} />
-            حفظ السياسات وتطبيقها
+            {t('حفظ السياسات وتطبيقها')}
           </Button>
         </div>
       </form>

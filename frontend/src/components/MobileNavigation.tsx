@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -26,6 +26,7 @@ import {
   Globe,
   Bot,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface MobileNavigationProps {
   isAdmin?: boolean;
@@ -75,30 +76,30 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
 
   return (
     <>
-      <nav className="mobile-tabbar" aria-label="شريط التنقل السفلي للجوال">
+      <nav className="mobile-tabbar" aria-label={t('شريط التنقل السفلي للجوال')}>
         <NavLink to="/" end onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
           <LayoutDashboard size={20} />
-          <span>الرئيسية</span>
+          <span>{t('الرئيسية')}</span>
         </NavLink>
 
         <NavLink to="/control" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
           <Monitor size={20} />
-          <span>الجلسات</span>
+          <span>{t('الجلسات')}</span>
         </NavLink>
 
         <NavLink to="/governor" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
           <Cpu size={20} />
-          <span>الموارد</span>
+          <span>{t('الموارد')}</span>
         </NavLink>
 
         <NavLink to="/ports" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
           <Network size={20} />
-          <span>المنافذ</span>
+          <span>{t('المنافذ')}</span>
         </NavLink>
 
         <NavLink to="/security" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
           <Shield size={20} />
-          <span>الحماية</span>
+          <span>{t('الحماية')}</span>
         </NavLink>
 
         <button
@@ -106,10 +107,10 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
           onClick={() => setDrawerOpen(!drawerOpen)}
           className={`mobile-tabbar__item ${drawerOpen ? 'active' : ''}`}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-          aria-label="المزيد من القوائم"
+          aria-label={t('المزيد من القوائم')}
         >
           {drawerOpen ? <X size={20} /> : <Menu size={20} />}
-          <span>المزيد</span>
+          <span>{t('المزيد')}</span>
         </button>
       </nav>
 
@@ -120,17 +121,17 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="قائمة التنقل الموسعة"
+            aria-label={t('قائمة التنقل الموسعة')}
           >
             <div className="mobile-drawer__header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <img src="/logo-light.png" alt="" width="28" height="28" style={{ objectFit: 'contain' }} />
                 <div>
                   <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>ASAAS Server Control</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)', display: 'block' }}>بوابة التحكم الآمن</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)', display: 'block' }}>{t('بوابة التحكم الآمن')}</span>
                 </div>
               </div>
-              <button type="button" onClick={closeDrawer} className="mobile-drawer__close" aria-label="إغلاق القائمة">
+              <button type="button" onClick={closeDrawer} className="mobile-drawer__close" aria-label={t('إغلاق القائمة')}>
                 <X size={20} />
               </button>
             </div>
@@ -142,7 +143,7 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
               <div style={{ flex: 1 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Administrator</span>
                 <span style={{ fontSize: 11, color: isAdmin ? 'var(--paid)' : 'var(--accent)', display: 'block' }}>
-                  {isAdmin ? 'صلاحيات مسؤول كاملة' : 'مستخدم قياسي'}
+                  {isAdmin ? t('صلاحيات مسؤول كاملة') : t('مستخدم قياسي')}
                 </span>
               </div>
             </div>
@@ -157,7 +158,7 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
                   className={({ isActive }) => `mobile-drawer__link ${isActive ? 'active' : ''}`}
                 >
                   <Icon size={18} />
-                  <span>{label}</span>
+                  <span>{t(label)}</span>
                 </NavLink>
               ))}
             </div>

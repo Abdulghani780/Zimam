@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 7: Infrastructure (أدوار Windows، ميزات الخادم، الخدمات، المهام المجدولة، التحديثات والشهادات)
  * Zero-Mock Production with Real Windows Server 2025 Standard APIs
@@ -20,6 +20,7 @@ import {
   RotateCw,
   AlertTriangle,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function InfrastructurePage() {
   const toast = useToast();
@@ -55,7 +56,7 @@ export function InfrastructurePage() {
       const res = await api.getRoles(refresh);
       setRoles(res?.roles || []);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب أدوار الخادم', 'error');
+      toast(err.message || t('فشل جلب أدوار الخادم'), 'error');
     }
   };
 
@@ -64,7 +65,7 @@ export function InfrastructurePage() {
       const res = await api.getServicesList(q);
       setServices(res?.services || []);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب خدمات النظام', 'error');
+      toast(err.message || t('فشل جلب خدمات النظام'), 'error');
     }
   };
 
@@ -73,7 +74,7 @@ export function InfrastructurePage() {
       const res = await api.getTasksList();
       setTasks(res?.tasks || []);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب المهام المجدولة', 'error');
+      toast(err.message || t('فشل جلب المهام المجدولة'), 'error');
     }
   };
 
@@ -82,7 +83,7 @@ export function InfrastructurePage() {
       const res = await api.getUpdates();
       setUpdatesData(res);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب تحديثات الخادم', 'error');
+      toast(err.message || t('فشل جلب تحديثات الخادم'), 'error');
     }
   };
 
@@ -91,7 +92,7 @@ export function InfrastructurePage() {
       const res = await api.getCertificatesList();
       setCerts(res?.certificates || []);
     } catch (err: any) {
-      toast(err.message || 'فشل جلب شهادات النظام', 'error');
+      toast(err.message || t('فشل جلب شهادات النظام'), 'error');
     }
   };
 
@@ -123,14 +124,14 @@ export function InfrastructurePage() {
       const fn = isInstalled ? api.uninstallRole : api.installRole;
       const res = await fn(selectedRole.name, true);
       if (res.ok) {
-        toast(`تم بنجاح أمر ${isInstalled ? 'إزالة' : 'تثبيت'} الدور [${selectedRole.display_name}].`, 'success');
+        toast(`${t('تم بنجاح أمر ')}${isInstalled ? t('إزالة') : t('تثبيت')}${t(' الدور [')}${selectedRole.display_name}].`, 'success');
         setRoleModalOpen(false);
         fetchRoles(true);
       } else {
-        toast(res.error || 'فشلت معالجة طلب الدور', 'error');
+        toast(res.error || t('فشلت معالجة طلب الدور'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تنفيذ الإجراء', 'error');
+      toast(err.message || t('خطأ أثناء تنفيذ الإجراء'), 'error');
     } finally {
       setRoleActionExecuting(false);
     }
@@ -142,13 +143,13 @@ export function InfrastructurePage() {
     try {
       const res = await api.controlServiceAction(serviceName, action);
       if (res.ok) {
-        toast(`تم إرسال أمر ${action} للخدمة [${serviceName}] بنجاح`, 'success');
+        toast(`${t('تم إرسال أمر ')}${action}${t(' للخدمة [')}${serviceName}${t('] بنجاح')}`, 'success');
         fetchServices(serviceSearch);
       } else {
-        toast(res.error || `فشل أمر ${action} للخدمة`, 'error');
+        toast(res.error || `${t('فشل أمر ')}${action}${t(' للخدمة')}`, 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء التحكم بالخدمة', 'error');
+      toast(err.message || t('خطأ أثناء التحكم بالخدمة'), 'error');
     } finally {
       setControllingService(null);
     }
@@ -187,15 +188,15 @@ export function InfrastructurePage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Layers size={24} style={{ color: 'var(--accent)' }} />
-            <span>البنية التحتية والخدمات (Windows Server Core & SCM)</span>
+            <span>{t('البنية التحتية والخدمات (Windows Server Core & SCM)')}</span>
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
-            لوحة إدارة مركزية لأدوار وميزات السيرفر، خدمات Windows Service Control Manager، المهام المجدولة، والتحديثات.
+            {t('لوحة إدارة مركزية لأدوار وميزات السيرفر، خدمات Windows Service Control Manager، المهام المجدولة، والتحديثات.')}
           </p>
         </div>
         <Button variant="ghost" onClick={fetchTabData} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={15} className={loading ? 'spin' : ''} />
-          <span>تحديث</span>
+          <span>{t('تحديث')}</span>
         </Button>
       </div>
 
@@ -219,7 +220,7 @@ export function InfrastructurePage() {
           }}
         >
           <Layers size={16} />
-          <span>أدوار وميزات السيرفر (Roles & Features)</span>
+          <span>{t('أدوار وميزات السيرفر (Roles & Features)')}</span>
         </button>
 
         <button
@@ -240,7 +241,7 @@ export function InfrastructurePage() {
           }}
         >
           <Cog size={16} />
-          <span>خدمات Windows (Services - {services.length})</span>
+          <span>{t('خدمات Windows')} (Services - {services.length})</span>
         </button>
 
         <button
@@ -261,7 +262,7 @@ export function InfrastructurePage() {
           }}
         >
           <Calendar size={16} />
-          <span>المهام المجدولة (Task Scheduler)</span>
+          <span>{t('المهام المجدولة (Task Scheduler)')}</span>
         </button>
 
         <button
@@ -282,7 +283,7 @@ export function InfrastructurePage() {
           }}
         >
           <ShieldCheck size={16} />
-          <span>تحديثات النظام (Windows Updates)</span>
+          <span>{t('تحديثات النظام (Windows Updates)')}</span>
         </button>
 
         <button
@@ -303,7 +304,7 @@ export function InfrastructurePage() {
           }}
         >
           <Award size={16} />
-          <span>خزنة الشهادات (Certificates)</span>
+          <span>{t('خزنة الشهادات (Certificates)')}</span>
         </button>
       </div>
 
@@ -318,7 +319,7 @@ export function InfrastructurePage() {
                 <TextInput
                   value={rolesSearch}
                   onChange={(e) => setRolesSearch(e.target.value)}
-                  placeholder="بحث في الأدوار والميزات..."
+                  placeholder={t('بحث في الأدوار والميزات...')}
                   style={{ paddingRight: 36 }}
                 />
               </div>
@@ -330,21 +331,21 @@ export function InfrastructurePage() {
                 onClick={() => setRolesFilter('installed')}
                 style={{ fontSize: 12 }}
               >
-                المثبتة فقط
+                {t('المثبتة فقط')}
               </Button>
               <Button
                 variant={rolesFilter === 'available' ? 'primary' : 'ghost'}
                 onClick={() => setRolesFilter('available')}
                 style={{ fontSize: 12 }}
               >
-                المتاحة للتثبيت
+                {t('المتاحة للتثبيت')}
               </Button>
               <Button
                 variant={rolesFilter === 'all' ? 'primary' : 'ghost'}
                 onClick={() => setRolesFilter('all')}
                 style={{ fontSize: 12 }}
               >
-                الكل ({roles.length})
+                {t('الكل')} ({roles.length})
               </Button>
             </div>
           </div>
@@ -354,10 +355,10 @@ export function InfrastructurePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                 <thead>
                   <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم الدور / الميزة</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المعرف التقني</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>إجراء المعالج</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الدور / الميزة')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المعرف التقني')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>{t('إجراء المعالج')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -371,7 +372,7 @@ export function InfrastructurePage() {
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span className={`badge ${r.installed ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
-                          {r.installed ? 'مثبّت ونشط' : 'متاح للتثبيت'}
+                          {r.installed ? t('مثبّت ونشط') : t('متاح للتثبيت')}
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'end' }}>
@@ -380,7 +381,7 @@ export function InfrastructurePage() {
                           onClick={() => handleToggleRoleModal(r)}
                           style={{ fontSize: 11, padding: '4px 10px' }}
                         >
-                          {r.installed ? 'إزالة الدور' : 'تثبيت الدور'}
+                          {r.installed ? t('إزالة الدور') : t('تثبيت الدور')}
                         </Button>
                       </td>
                     </tr>
@@ -406,7 +407,7 @@ export function InfrastructurePage() {
                     setServiceSearch(e.target.value);
                     fetchServices(e.target.value);
                   }}
-                  placeholder="بحث سريع في الخدمات (مثال: RpcSs, TermService, WinRM)..."
+                  placeholder={t('بحث سريع في الخدمات (مثال: RpcSs, TermService, WinRM)...')}
                   style={{ paddingRight: 36 }}
                 />
               </div>
@@ -418,21 +419,21 @@ export function InfrastructurePage() {
                 onClick={() => setServiceStatusFilter('running')}
                 style={{ fontSize: 12 }}
               >
-                قيد التشغيل (Running)
+                {t('قيد التشغيل (Running)')}
               </Button>
               <Button
                 variant={serviceStatusFilter === 'stopped' ? 'primary' : 'ghost'}
                 onClick={() => setServiceStatusFilter('stopped')}
                 style={{ fontSize: 12 }}
               >
-                متوقفة (Stopped)
+                {t('متوقفة (Stopped)')}
               </Button>
               <Button
                 variant={serviceStatusFilter === 'all' ? 'primary' : 'ghost'}
                 onClick={() => setServiceStatusFilter('all')}
                 style={{ fontSize: 12 }}
               >
-                كافة الخدمات ({services.length})
+                {t('كافة الخدمات')} ({services.length})
               </Button>
             </div>
           </div>
@@ -442,11 +443,11 @@ export function InfrastructurePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم الخدمة</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الاسم البرمجي</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>نوع البدء</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>التحكم بالخدمة</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الخدمة')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الاسم البرمجي')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نوع البدء')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>{t('التحكم بالخدمة')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,7 +466,7 @@ export function InfrastructurePage() {
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span className={`badge ${s.status === 'running' ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
-                          {s.status === 'running' ? 'قيد التشغيل' : 'متوقفة'}
+                          {s.status === 'running' ? t('قيد التشغيل') : t('متوقفة')}
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'end' }}>
@@ -476,7 +477,7 @@ export function InfrastructurePage() {
                               disabled={controllingService === s.name}
                               onClick={() => handleControlService(s.name, 'start')}
                               style={{ color: 'var(--status-safe)', padding: 6 }}
-                              title="تشغيل الخدمة"
+                              title={t('تشغيل الخدمة')}
                             >
                               <Play size={14} />
                             </Button>
@@ -487,7 +488,7 @@ export function InfrastructurePage() {
                               disabled={controllingService === s.name}
                               onClick={() => handleControlService(s.name, 'stop')}
                               style={{ color: 'var(--status-danger)', padding: 6 }}
-                              title="إيقاف الخدمة"
+                              title={t('إيقاف الخدمة')}
                             >
                               <Square size={14} />
                             </Button>
@@ -497,7 +498,7 @@ export function InfrastructurePage() {
                             disabled={controllingService === s.name}
                             onClick={() => handleControlService(s.name, 'restart')}
                             style={{ color: 'var(--accent)', padding: 6 }}
-                            title="إعادة تشغيل الخدمة"
+                            title={t('إعادة تشغيل الخدمة')}
                           >
                             <RotateCw size={14} className={controllingService === s.name ? 'spin' : ''} />
                           </Button>
@@ -520,7 +521,7 @@ export function InfrastructurePage() {
             <TextInput
               value={tasksSearch}
               onChange={(e) => setTasksSearch(e.target.value)}
-              placeholder="بحث في المهام المجدولة..."
+              placeholder={t('بحث في المهام المجدولة...')}
               style={{ paddingRight: 36 }}
             />
           </div>
@@ -530,9 +531,9 @@ export function InfrastructurePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                 <thead>
                   <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم المهمة</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المسار في Task Scheduler</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم المهمة')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المسار في Task Scheduler')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -565,9 +566,9 @@ export function InfrastructurePage() {
             <div style={{ padding: 14, borderRadius: 8, background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', display: 'flex', alignItems: 'center', gap: 10, color: 'var(--accent)' }}>
               <AlertTriangle size={20} />
               <div>
-                <strong>تنبيه: يتطلب النظام إعادة تشغيل لإكمال تطبيق تحديثات الأمان!</strong>
+                <strong>{t('تنبيه: يتطلب النظام إعادة تشغيل لإكمال تطبيق تحديثات الأمان!')}</strong>
                 <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                  سجل Windows Registry يشير إلى وجود تحديثات مجمعة مثبتة بانتظار إعادة التشغيل.
+                  {t('سجل Windows Registry يشير إلى وجود تحديثات مجمعة مثبتة بانتظار إعادة التشغيل.')}
                 </div>
               </div>
             </div>
@@ -575,16 +576,16 @@ export function InfrastructurePage() {
 
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-              سجل التحديثات المثبتة (Hotfixes & Security Patches)
+              {t('سجل التحديثات المثبتة (Hotfixes & Security Patches)')}
             </div>
             <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                 <thead>
                   <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>معرف التحديث (HotFix ID)</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الوصف</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>تاريخ التثبيت</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>مثبت بواسطة</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('معرف التحديث (HotFix ID)')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوصف')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('تاريخ التثبيت')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('مثبت بواسطة')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -597,7 +598,7 @@ export function InfrastructurePage() {
                         {h.Description || 'Security Update'}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
-                        {h.InstalledOn || 'غير محدد'}
+                        {h.InstalledOn || t('غير محدد')}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
                         {h.InstalledBy || 'NT AUTHORITY\\SYSTEM'}
@@ -615,16 +616,16 @@ export function InfrastructurePage() {
       {activeTab === 'certs' && (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-            شهادات الأمان المحلية (LocalMachine\My Store)
+            {t('شهادات الأمان المحلية')} (LocalMachine\My Store)
           </div>
           <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الموضوع (Subject)</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الجهة المصدرة (Issuer)</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>تاريخ الانتهاء</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>البصمة (Thumbprint)</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الموضوع (Subject)')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الجهة المصدرة (Issuer)')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('تاريخ الانتهاء')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('البصمة (Thumbprint)')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -654,24 +655,24 @@ export function InfrastructurePage() {
       <Modal
         open={roleModalOpen}
         onClose={() => setRoleModalOpen(false)}
-        title={selectedRole?.installed ? 'إزالة دور من الخادم' : 'تثبيت دور وميزة على الخادم'}
+        title={selectedRole?.installed ? t('إزالة دور من الخادم') : t('تثبيت دور وميزة على الخادم')}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            هل ترغب في {selectedRole?.installed ? 'إلغاء تثبيت' : 'تثبيت'} الدور التالي عبر Server Manager؟
+            هل ترغب في {selectedRole?.installed ? t('إلغاء تثبيت') : t('تثبيت')} الدور التالي عبر Server Manager؟
           </div>
           <div style={{ padding: 12, borderRadius: 8, background: 'var(--glass-tint)', border: '1px solid var(--glass-rim)' }}>
             <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>{selectedRole?.display_name}</div>
             <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--accent)', marginTop: 2 }}>{selectedRole?.name}</div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-            <Button variant="ghost" onClick={() => setRoleModalOpen(false)}>إلغاء</Button>
+            <Button variant="ghost" onClick={() => setRoleModalOpen(false)}>{t('إلغاء')}</Button>
             <Button
               variant={selectedRole?.installed ? 'danger' : 'primary'}
               disabled={roleActionExecuting}
               onClick={handleExecuteRoleAction}
             >
-              {roleActionExecuting ? 'جارٍ المعالجة عبر Action Engine...' : (selectedRole?.installed ? 'تأكيد الإزالة' : 'تأكيد التثبيت')}
+              {roleActionExecuting ? t('جارٍ المعالجة عبر Action Engine...') : (selectedRole?.installed ? t('تأكيد الإزالة') : t('تأكيد التثبيت'))}
             </Button>
           </div>
         </div>

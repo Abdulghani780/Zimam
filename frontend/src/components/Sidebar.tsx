@@ -22,6 +22,7 @@ import {
   Globe,
   Bot,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 const NAV_ITEMS = [
   { to: '/', label: 'لوحة القيادة', icon: LayoutDashboard, end: true },
@@ -49,8 +50,8 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   return (
-    <aside className="app-sidebar" aria-label="شريط التنقل الجانبي">
-      <NavLink to="/" className="sidebar-brand" aria-label="منظومة أساس - لوحة القيادة">
+    <aside className="app-sidebar" aria-label={t('شريط التنقل الجانبي')}>
+      <NavLink to="/" className="sidebar-brand" aria-label={t('منظومة أساس - لوحة القيادة')}>
         <span className="sidebar-brand__text">
           <strong>ASAAS</strong>
           <span>Server Control</span>
@@ -73,7 +74,7 @@ export function Sidebar() {
             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
           >
             <span className="icon-wrap"><Icon size={17} /></span>
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </NavLink>
         ))}
       </nav>

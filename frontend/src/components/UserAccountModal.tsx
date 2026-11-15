@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Button, Field, TextInput, PasswordInput, useToast } from '../asaas-ui';
 import { api, type AppUser } from '../lib/api';
 import { User, LogIn, LogOut } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface UserAccountModalProps {
   open: boolean;
@@ -25,14 +26,14 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
     try {
       const res = await api.login(username, password);
       if (res.ok) {
-        toast(`تم تسجيل الدخول بنجاح كـ ${res.user.full_name} (${res.user.role}).`, 'success');
+        toast(`${t('تم تسجيل الدخول بنجاح كـ ')}${res.user.full_name} (${res.user.role}).`, 'success');
         onUserChanged(res.user);
         onClose();
       } else {
-        toast('فشل تسجيل الدخول: بيانات الاعتماد غير صحيحة.', 'error');
+        toast(t('فشل تسجيل الدخول: بيانات الاعتماد غير صحيحة.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تسجيل الدخول', 'error');
+      toast(err.message || t('خطأ أثناء تسجيل الدخول'), 'error');
     } finally {
       setLoading(false);
     }
@@ -40,13 +41,13 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
 
   const handleLogout = async () => {
     await api.logout();
-    toast('تم تسجيل الخروج بنجاح.', 'success');
+    toast(t('تم تسجيل الخروج بنجاح.'), 'success');
     onUserChanged(null);
   };
 
   return (
     <Modal
-      title="إدارة الحسابات وصلاحيات الوصول (Multi-User RBAC)"
+      title={t('إدارة الحسابات وصلاحيات الوصول (Multi-User RBAC)')}
       onClose={onClose}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -80,13 +81,13 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>
-                {currentUser?.full_name || 'حساب غير محدد'}
+                {currentUser?.full_name || t('حساب غير محدد')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span>اسم المستخدم: <strong style={{ color: 'var(--text-2)' }}>{currentUser?.username || '—'}</strong></span>
+                <span>{t('اسم المستخدم:')} <strong style={{ color: 'var(--text-2)' }}>{currentUser?.username || '—'}</strong></span>
                 <span>•</span>
                 <span style={{ color: currentUser?.role === 'admin' ? 'var(--paid)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--chart-out)', fontWeight: 600 }}>
-                  {currentUser?.role === 'admin' ? 'مدير نظام كامل الصلاحيات' : currentUser?.role === 'operator' ? 'مشغل عمليات' : 'مراجع للقراءة فقط'}
+                  {currentUser?.role === 'admin' ? t('مدير نظام كامل الصلاحيات') : currentUser?.role === 'operator' ? t('مشغل عمليات') : t('مراجع للقراءة فقط')}
                 </span>
               </div>
             </div>
@@ -95,27 +96,27 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
           {currentUser && (
             <Button size="sm" variant="ghost" onClick={handleLogout} style={{ color: 'var(--danger)' }}>
               <LogOut size={14} />
-              <span>خروج</span>
+              <span>{t('خروج')}</span>
             </Button>
           )}
         </div>
 
         {/* Direct Login Form */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="اسم المستخدم">
+          <Field label={t('اسم المستخدم')}>
             {(id) => (
               <TextInput
                 id={id}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="اسم المستخدم المسجل في المنصة"
+                placeholder={t('اسم المستخدم المسجل في المنصة')}
                 autoComplete="username"
                 required
               />
             )}
           </Field>
 
-          <Field label="كلمة المرور">
+          <Field label={t('كلمة المرور')}>
             {(id) => (
               <PasswordInput
                 id={id}
@@ -130,11 +131,11 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
             <Button type="button" variant="ghost" onClick={onClose}>
-              إلغاء
+              {t('إلغاء')}
             </Button>
             <Button type="submit" variant="primary" loading={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <LogIn size={15} />
-              <span>تسجيل الدخول</span>
+              <span>{t('تسجيل الدخول')}</span>
             </Button>
           </div>
         </form>

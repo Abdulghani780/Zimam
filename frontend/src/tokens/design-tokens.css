@@ -177,6 +177,15 @@
   --status-info-surface:       var(--primitive-color-sky-50);
   --status-info-border:        rgba(56, 189, 248, 0.35);
 
+  /* Data-viz palette: gold stays the brand series; companions are muted
+     enough to sit on obsidian without competing with the UI chrome. */
+  --chart-1:                   #d4af6a; /* heritage gold — primary series */
+  --chart-2:                   #7fae9e; /* sage teal */
+  --chart-3:                   #a08bc4; /* muted violet */
+  --chart-4:                   #c98a7d; /* dusty rose */
+  --chart-5:                   #8fa8c4; /* slate blue */
+  --chart-6:                   #c4b083; /* sand */
+
   /* Global Layout Frame */
   --frame-page-max:            1360px;
   --frame-header-height:       64px;
@@ -243,6 +252,14 @@
   --action-secondary-hover:    #d9d0c0;
   --action-secondary-fg:       #221f1f;
   --action-accent:             #8f6626;
+
+  /* Light-theme data-viz palette */
+  --chart-1:                   #8f6626;
+  --chart-2:                   #4e7d6d;
+  --chart-3:                   #7a68a0;
+  --chart-4:                   #a85f52;
+  --chart-5:                   #5f7ea8;
+  --chart-6:                   #a08a5a;
 
   /* Compatibility aliases → official ASAAS kit tokens (light) */
   --text-1:                 var(--text);

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Server Control v2.5 - Screen JIT Elevation
  * مركز اعتماد وترقية الصلاحيات المؤقتة (Just-In-Time Elevation Center)
  * Strict implementation of Stitch Prototype jit_elevation
@@ -16,6 +16,7 @@ import {
   XCircle,
   UserCheck,
 } from 'lucide-react';
+import { t, isRtl } from '../lib/i18n';
 
 type JitStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'PENDING' | 'REJECTED';
 
@@ -35,15 +36,15 @@ interface JitGrant {
 const statusLabel = (status: JitStatus): string => {
   switch (status) {
     case 'ACTIVE':
-      return 'نشطة ACTIVE';
+      return t('نشطة ACTIVE');
     case 'PENDING':
-      return 'بانتظار الاعتماد PENDING';
+      return t('بانتظار الاعتماد PENDING');
     case 'REJECTED':
-      return 'مرفوضة REJECTED';
+      return t('مرفوضة REJECTED');
     case 'REVOKED':
-      return 'مسحوبة REVOKED';
+      return t('مسحوبة REVOKED');
     default:
-      return 'منتهية EXPIRED';
+      return t('منتهية EXPIRED');
   }
 };
 
@@ -69,7 +70,7 @@ export function JitElevationPage() {
 
   const [targetRole, setTargetRole] = useState('Local Administrator');
   const [durationMins, setDurationMins] = useState(30);
-  const [reason, setReason] = useState('طوارئ صيانة قواعد البيانات - تذكرة CHG-9840');
+  const [reason, setReason] = useState(t('طوارئ صيانة قواعد البيانات - تذكرة CHG-9840'));
   const [submitting, setSubmitting] = useState(false);
 
   const isAdmin = currentRole === 'admin';
@@ -133,13 +134,13 @@ export function JitElevationPage() {
     try {
       const res = await api.revokeJitElevation(id);
       if (res && res.ok) {
-        toast(res.message || `تم سحب الصلاحيات المؤقتة للمستخدم [${user}] فوراً.`, 'success');
+        toast(res.message || `${t('تم سحب الصلاحيات المؤقتة للمستخدم [')}${user}${t('] فوراً.')}`, 'success');
         fetchGrants();
       } else {
-        toast((res as any)?.error || 'فشل سحب الصلاحيات.', 'error');
+        toast((res as any)?.error || t('فشل سحب الصلاحيات.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء سحب الصلاحيات', 'error');
+      toast(err.message || t('خطأ أثناء سحب الصلاحيات'), 'error');
     }
   };
 
@@ -150,16 +151,16 @@ export function JitElevationPage() {
       if (res && res.ok) {
         toast(
           res.message || (approve
-            ? `تم اعتماد طلب الترقية المؤقتة للمستخدم [${user}].`
-            : `تم رفض طلب الترقية المؤقتة للمستخدم [${user}].`),
+            ? `${t('تم اعتماد طلب الترقية المؤقتة للمستخدم [')}${user}].`
+            : `${t('تم رفض طلب الترقية المؤقتة للمستخدم [')}${user}].`),
           approve ? 'success' : 'info',
         );
         fetchGrants();
       } else {
-        toast(res?.error || 'فشل تنفيذ قرار الاعتماد.', 'error');
+        toast(res?.error || t('فشل تنفيذ قرار الاعتماد.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تنفيذ قرار الاعتماد', 'error');
+      toast(err.message || t('خطأ أثناء تنفيذ قرار الاعتماد'), 'error');
     } finally {
       setDecidingId(null);
     }
@@ -175,13 +176,13 @@ export function JitElevationPage() {
         duration_mins: durationMins,
       });
       if (res && res.ok) {
-        toast(res.message || `تم تسجيل طلب الترقية المؤقتة لمدة (${durationMins} دقيقة).`, 'success');
+        toast(res.message || `${t('تم تسجيل طلب الترقية المؤقتة لمدة (')}${durationMins}${t(' دقيقة).')}`, 'success');
         fetchGrants();
       } else {
-        toast((res as any)?.error || 'فشل اعتماد طلب الترقية المؤقتة.', 'error');
+        toast((res as any)?.error || t('فشل اعتماد طلب الترقية المؤقتة.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'فشل تقديم طلب الترقية المؤقتة', 'error');
+      toast(err.message || t('فشل تقديم طلب الترقية المؤقتة'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -224,7 +225,7 @@ export function JitElevationPage() {
                 }}
               >
                 <CheckCircle2 size={13} />
-                صلاحيات مؤقتة مرتبطة بسياسة الوصول
+                {t('صلاحيات مؤقتة مرتبطة بسياسة الوصول')}
               </span>
               <span
                 style={{
@@ -236,16 +237,15 @@ export function JitElevationPage() {
                   fontWeight: 700,
                 }}
               >
-                {isAdmin ? 'اعتماد مدير النظام مفعّل' : 'يتطلب اعتماد مدير النظام'}
+                {isAdmin ? t('اعتماد مدير النظام مفعّل') : t('يتطلب اعتماد مدير النظام')}
               </span>
             </div>
 
               <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-                طلبات الصلاحيات المؤقتة (JIT)
+                {t('طلبات الصلاحيات المؤقتة (JIT)')}
               </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              منح صلاحيات إدارية مؤقتة محددة بزمن صارم وتجريد الحسابات تلقائياً بمجرد انتهاء المهمة أو انقضاء المؤقت،
-              مع تسجيل كافة الأنشطة بجلسة التحقيق الجنائي لمنع مخاطر الحسابات الإدارية الدائمة.
+              {t('منح صلاحيات إدارية مؤقتة محددة بزمن صارم وتجريد الحسابات تلقائياً بمجرد انتهاء المهمة أو انقضاء المؤقت، مع تسجيل كافة الأنشطة بجلسة التحقيق الجنائي لمنع مخاطر الحسابات الإدارية الدائمة.')}
             </p>
           </div>
         </div>
@@ -254,11 +254,11 @@ export function JitElevationPage() {
       {/* Pending approvals: non-admin requests wait for an explicit admin decision. */}
       {pendingGrants.length > 0 && (
         <Card
-          title="طلبات الترقية بانتظار اعتماد مدير النظام (Pending Approvals)"
+          title={t('طلبات الترقية بانتظار اعتماد مدير النظام (Pending Approvals)')}
           icon="clock"
           actions={
             <span style={{ fontSize: 12, color: 'var(--partial)', fontWeight: 700 }}>
-              {pendingGrants.length} طلب معلق
+              {pendingGrants.length} {t('طلب معلق')}
             </span>
           }
         >
@@ -283,11 +283,11 @@ export function JitElevationPage() {
                     {g.user} → {g.role}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                    المدة المطلوبة: {g.duration_mins} دقيقة — المبرر: {g.ticket}
+                    {t('المدة المطلوبة')}: {g.duration_mins} {t('دقيقة')} — {t('المبرر')}: {g.ticket}
                   </span>
                   {g.created_at && (
                     <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
-                      تاريخ الطلب: {new Date(g.created_at).toLocaleString('ar-SA')}
+                      {t('تاريخ الطلب')}: {new Date(g.created_at).toLocaleString(isRtl() ? 'ar-SA' : 'en-US')}
                     </span>
                   )}
                 </div>
@@ -301,7 +301,7 @@ export function JitElevationPage() {
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
                     >
                       <UserCheck size={13} />
-                      <span>اعتماد</span>
+                      <span>{t('اعتماد')}</span>
                     </Button>
                     <Button
                       size="sm"
@@ -311,13 +311,13 @@ export function JitElevationPage() {
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--unpaid)' }}
                     >
                       <XCircle size={13} />
-                      <span>رفض</span>
+                      <span>{t('رفض')}</span>
                     </Button>
                   </div>
                 ) : (
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--partial)' }}>
                     <ShieldCheck size={13} style={{ marginInlineEnd: 4, verticalAlign: 'middle' }} />
-                    بانتظار قرار مدير النظام
+                    {t('بانتظار قرار مدير النظام')}
                   </span>
                 )}
               </div>
@@ -349,16 +349,16 @@ export function JitElevationPage() {
               </div>
               <div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                  طلب ترقية صلاحيات مؤقتة في الوقت الفعلي
+                  {t('طلب ترقية صلاحيات مؤقتة في الوقت الفعلي')}
                 </h2>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  {isAdmin ? 'اعتماد فوري بصلاحية مدير النظام' : 'طلب يتطلب اعتماد مدير النظام'}
+                  {isAdmin ? t('اعتماد فوري بصلاحية مدير النظام') : t('طلب يتطلب اعتماد مدير النظام')}
                 </span>
               </div>
             </div>
 
             <form onSubmit={handleSubmitRequest} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Field label="الدور المطلوب الترقية إليه">
+              <Field label={t('الدور المطلوب الترقية إليه')}>
                 {() => (
                   <select
                     value={targetRole}
@@ -366,10 +366,10 @@ export function JitElevationPage() {
                     className="text-input"
                     style={{ width: '100%' }}
                   >
-                    <option value="Local Administrator">مدير محلي كامل (Local Administrator)</option>
-                    <option value="SQL SysAdmin">مدير قواعد بيانات (SQL Server SysAdmin)</option>
-                    <option value="Network Operator">مشغل شبكة وجدار حماية (Network Operator)</option>
-                    <option value="Backup Operator">مشغل نسخ احتياطي (Backup Operator)</option>
+                    <option value="Local Administrator">{t('مدير محلي كامل (Local Administrator)')}</option>
+                    <option value="SQL SysAdmin">{t('مدير قواعد بيانات (SQL Server SysAdmin)')}</option>
+                    <option value="Network Operator">{t('مشغل شبكة وجدار حماية (Network Operator)')}</option>
+                    <option value="Backup Operator">{t('مشغل نسخ احتياطي (Backup Operator)')}</option>
                   </select>
                 )}
               </Field>
@@ -377,13 +377,13 @@ export function JitElevationPage() {
               {/* Duration chips */}
               <div>
                 <span style={{ fontSize: 12, color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
-                  مدة الترقية الممنوحة:
+                  {t('مدة الترقية الممنوحة:')}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[
-                    { mins: 15, label: '15 دقيقة (فحص عاجل)' },
-                    { mins: 30, label: '30 دقيقة (صيانة متوسطة)' },
-                    { mins: 60, label: 'ساعة ★ موصى بها' },
+                    { mins: 15, label: t('15 دقيقة (فحص عاجل)') },
+                    { mins: 30, label: t('30 دقيقة (صيانة متوسطة)') },
+                    { mins: 60, label: t('ساعة ★ موصى بها') },
                   ].map((chip) => (
                     <button
                       key={chip.mins}
@@ -407,13 +407,13 @@ export function JitElevationPage() {
                 </div>
               </div>
 
-              <Field label="مبرر الترقية أو رقم تذكرة التغيير (Change Ticket)">
+              <Field label={t('مبرر الترقية أو رقم تذكرة التغيير (Change Ticket)')}>
                 {(id) => (
                   <TextInput
                     id={id}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="مثال: CHG-1029 أو فحص طوارئ..."
+                    placeholder={t('مثال: CHG-1029 أو فحص طوارئ...')}
                     required
                   />
                 )}
@@ -421,7 +421,7 @@ export function JitElevationPage() {
 
               <Button size="sm" variant="primary" loading={submitting} type="submit" style={{ marginTop: 6 }}>
                 <Send size={13} />
-                <span>{isAdmin ? 'اعتماد وترقية الصلاحية فوراً (مدير النظام)' : 'تقديم طلب الترقية لاعتماد مدير النظام'}</span>
+                <span>{isAdmin ? t('اعتماد وترقية الصلاحية فوراً (مدير النظام)') : t('تقديم طلب الترقية لاعتماد مدير النظام')}</span>
               </Button>
             </form>
           </Glass>
@@ -430,11 +430,11 @@ export function JitElevationPage() {
         {/* Active JIT Grants Table (7 cols) */}
         <div style={{ gridColumn: 'span 7', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card
-            title="سجل وثائق الصلاحيات الحية (Active JIT Grants)"
+            title={t('سجل وثائق الصلاحيات الحية (Active JIT Grants)')}
             icon="vault"
             actions={
               <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                الوثائق النشطة: {grants.filter((g) => g.status === 'ACTIVE').length}
+                {t('الوثائق النشطة')}: {grants.filter((g) => g.status === 'ACTIVE').length}
               </span>
             }
           >
@@ -442,12 +442,12 @@ export function JitElevationPage() {
               <table className="app-table">
                 <thead>
                   <tr>
-                    <th>المستخدم</th>
-                    <th>الدور الممنوح</th>
-                    <th>التذكرة</th>
-                    <th>الوقت المتبقي</th>
-                    <th>الحالة</th>
-                    <th style={{ textAlign: 'end' }}>الإجراء</th>
+                    <th>{t('المستخدم')}</th>
+                    <th>{t('الدور الممنوح')}</th>
+                    <th>{t('التذكرة')}</th>
+                    <th>{t('الوقت المتبقي')}</th>
+                    <th>{t('الحالة')}</th>
+                    <th style={{ textAlign: 'end' }}>{t('الإجراء')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -496,9 +496,9 @@ export function JitElevationPage() {
                             variant="ghost"
                             onClick={() => handleRevoke(g.id, g.user)}
                             style={{ padding: '3px 8px', fontSize: 11, color: 'var(--unpaid)' }}
-                            title="سحب الصلاحية فوراً"
+                            title={t('سحب الصلاحية فوراً')}
                           >
-                            <span>سحب الصلاحية</span>
+                            <span>{t('سحب الصلاحية')}</span>
                           </Button>
                         )}
                       </td>

@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Moon, ShieldCheck, Sun } from 'lucide-react';
+import { Languages, Moon, ShieldCheck, Sun } from 'lucide-react';
 import { Button, Field, FormError, Glass, PasswordInput, Stretch, TextInput, useTheme } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1, ApiV1Error } from '../lib/apiV1';
+import { useLang, toggleLang } from '../lib/i18n';
+import { t } from '../lib/i18n';
 
 type LoginLocationState = { from?: string };
 
@@ -11,6 +13,7 @@ export function ZeroTrustLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [theme, toggleTheme] = useTheme();
+  const lang = useLang();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,13 +35,13 @@ export function ZeroTrustLoginPage() {
         try {
           await api.getCurrentUser();
         } catch {
-          throw new Error('تم التحقق من الحساب في طبقة التحكم، لكن لا يوجد ملف مطابق في الدليل المحلي. شغّل أداة bootstrap_admin.py لإنشاء حساب محلي بنفس الاسم.');
+          throw new Error(t('تم التحقق من الحساب في طبقة التحكم، لكن لا يوجد ملف مطابق في الدليل المحلي. شغّل أداة bootstrap_admin.py لإنشاء حساب محلي بنفس الاسم.'));
         }
       } catch (v1Error) {
         if (v1Error instanceof ApiV1Error && v1Error.status === 401 && /mfa/i.test(v1Error.message)) {
           throw v1Error;
         }
-        if (v1Error instanceof Error && v1Error.message.startsWith('تم التحقق')) {
+        if (v1Error instanceof Error && v1Error.message.startsWith(t('تم التحقق'))) {
           throw v1Error;
         }
         await api.login(username.trim(), password);
@@ -47,7 +50,7 @@ export function ZeroTrustLoginPage() {
       const destination = requested?.startsWith('/') && !requested.startsWith('//') ? requested : '/';
       navigate(destination, { replace: true });
     } catch (reason) {
-      setError(reason instanceof Error ? reason : new Error('تعذّر تسجيل الدخول، تحقق من البيانات وحاول مرة أخرى.'));
+      setError(reason instanceof Error ? reason : new Error(t('تعذّر تسجيل الدخول، تحقق من البيانات وحاول مرة أخرى.')));
     } finally {
       setLoading(false);
     }
@@ -56,38 +59,47 @@ export function ZeroTrustLoginPage() {
   return (
     <main className="auth-page">
       <header className="auth-page__topbar">
-        <a href="/login" className="brand auth-brand" aria-label="منظومة أساس">
+        <a href="/login" className="brand auth-brand" aria-label={t('منظومة أساس')}>
           <span className="brand__mark" aria-hidden="true" />
           <span>
-            <strong className="brand__name">منظومة أساس</strong>
-            <small className="brand__tag">إدارة الوصول والخوادم</small>
+            <strong className="brand__name">{t('منظومة أساس')}</strong>
+            <small className="brand__tag">{t('إدارة الوصول والخوادم')}</small>
           </span>
         </a>
-        <Button
-          type="button"
-          variant="ghost"
-          iconNode={theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          label={theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
-          onClick={toggleTheme}
-        />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button
+            type="button"
+            variant="ghost"
+            iconNode={<Languages size={18} />}
+            label={lang === 'ar' ? 'English' : 'العربية'}
+            onClick={toggleLang}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            iconNode={theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            label={theme === 'dark' ? t('الوضع النهاري') : t('الوضع الليلي')}
+            onClick={toggleTheme}
+          />
+        </div>
       </header>
 
       <section className="auth-page__content" aria-labelledby="login-title">
         <div className="auth-intro">
-          <span className="auth-intro__eyebrow"><ShieldCheck size={16} /> مساحة إدارة محمية</span>
+          <span className="auth-intro__eyebrow"><ShieldCheck size={16} /> {t('مساحة إدارة محمية')}</span>
           <p className="auth-intro__greeting" aria-hidden="true">
             {new Date().getHours() < 12
-              ? <><Stretch before="صب" after="اح" length={3} /> الخير</>
-              : <><Stretch before="مس" after="اء" length={3} /> الخير</>}
+              ? <><Stretch before={t('صب')} after={t('اح')} length={3} /> {t('الخير')}</>
+              : <><Stretch before={t('مس')} after={t('اء')} length={3} /> {t('الخير')}</>}
           </p>
-          <h1 id="login-title" className="display">دخول واضح وآمن إلى خوادمك</h1>
+          <h1 id="login-title" className="display">{t('دخول واضح وآمن إلى خوادمك')}</h1>
           <p className="prose">
-            سجّل الدخول بحساب الإدارة المحلي. لا تُعرض كلمات المرور للمتصفح، وتُسجل كل عملية إدارية في سجل التدقيق.
+            {t('سجّل الدخول بحساب الإدارة المحلي. لا تُعرض كلمات المرور للمتصفح، وتُسجل كل عملية إدارية في سجل التدقيق.')}
           </p>
-          <div className="auth-trust-list" aria-label="خصائص الحماية">
-            <span>جلسة HttpOnly</span>
-            <span>تدقيق لكل عملية</span>
-            <span>تشغيل داخل شبكة العميل</span>
+          <div className="auth-trust-list" aria-label={t('خصائص الحماية')}>
+            <span>{t('جلسة HttpOnly')}</span>
+            <span>{t('تدقيق لكل عملية')}</span>
+            <span>{t('تشغيل داخل شبكة العميل')}</span>
           </div>
         </div>
 
@@ -95,13 +107,13 @@ export function ZeroTrustLoginPage() {
           <div className="auth-card__heading">
             <span className="auth-card__icon"><ShieldCheck size={22} /></span>
             <div>
-              <h2>تسجيل الدخول</h2>
-              <p>استخدم حساب الإدارة الذي أنشأته عند تهيئة النظام.</p>
+              <h2>{t('تسجيل الدخول')}</h2>
+              <p>{t('استخدم حساب الإدارة الذي أنشأته عند تهيئة النظام.')}</p>
             </div>
           </div>
 
           <form className="form auth-form" onSubmit={submit}>
-            <Field label="اسم المستخدم" required>
+            <Field label={t('اسم المستخدم')} required>
               {(id, isError) => (
                 <TextInput
                   id={id}
@@ -116,7 +128,7 @@ export function ZeroTrustLoginPage() {
               )}
             </Field>
 
-            <Field label="كلمة المرور" required>
+            <Field label={t('كلمة المرور')} required>
               {(id, isError) => (
                 <PasswordInput
                   id={id}
@@ -125,26 +137,26 @@ export function ZeroTrustLoginPage() {
                   autoComplete="current-password"
                   required
                   error={isError}
-                  placeholder="أدخل كلمة المرور"
+                  placeholder={t('أدخل كلمة المرور')}
                 />
               )}
             </Field>
 
             <FormError error={error} />
             <Button type="submit" variant="primary" loading={loading} disabled={!username.trim() || !password}>
-              دخول إلى لوحة التحكم
+              {t('دخول إلى لوحة التحكم')}
             </Button>
           </form>
 
           <p className="auth-card__help">
-            إذا نسيت كلمة المرور، أعد ضبط حساب الطوارئ من الجهاز المثبّت عليه ASAAS باستخدام أداة bootstrap.
+            {t('إذا نسيت كلمة المرور، أعد ضبط حساب الطوارئ من الجهاز المثبّت عليه ASAAS باستخدام أداة bootstrap.')}
           </p>
         </Glass>
       </section>
 
       <footer className="auth-page__footer">
         <span>ASAAS Server Control</span>
-        <span>واجهة عربية · تشغيل محلي · صلاحيات حسب الدور</span>
+        <span>{t('واجهة عربية · تشغيل محلي · صلاحيات حسب الدور')}</span>
       </footer>
     </main>
   );

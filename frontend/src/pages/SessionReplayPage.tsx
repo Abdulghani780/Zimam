@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   FileCode,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function SessionReplayPage() {
   const toast = useToast();
@@ -51,7 +52,7 @@ export function SessionReplayPage() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    toast('تم تصدير ملف سجل التحقيق الجنائي والأحداث بصيغة JSON مشفر.', 'success');
+    toast(t('تم تصدير ملف سجل التحقيق الجنائي والأحداث بصيغة JSON مشفر.'), 'success');
   };
 
   return (
@@ -85,7 +86,7 @@ export function SessionReplayPage() {
                 }}
               >
                 <CheckCircle2 size={13} />
-                بانتظار تسجيل حقيقي من بوابة الجلسات
+                {t('بانتظار تسجيل حقيقي من بوابة الجلسات')}
               </span>
               <span
                 style={{
@@ -97,15 +98,15 @@ export function SessionReplayPage() {
                   fontWeight: 700,
                 }}
               >
-                لا توجد جلسة محددة
+                {t('لا توجد جلسة محددة')}
               </span>
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              مركز استرجاع التسجيلات والتحقيق الجنائي الرقمي (Forensic Session Replay)
+              {t('مركز استرجاع التسجيلات والتحقيق الجنائي الرقمي (Forensic Session Replay)')}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              ستظهر التسجيلات والأوامر هنا بعد تشغيل بوابة RDP/SSH الحقيقية وتخزينها في MinIO مع سياسة احتفاظ.
+              {t('ستظهر التسجيلات والأوامر هنا بعد تشغيل بوابة RDP/SSH الحقيقية وتخزينها في MinIO مع سياسة احتفاظ.')}
             </p>
           </div>
 
@@ -117,7 +118,7 @@ export function SessionReplayPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <FileCode size={13} color="var(--accent)" />
-              <span>تصدير سجل الأحداث JSON</span>
+              <span>{t('تصدير سجل الأحداث JSON')}</span>
             </Button>
           </div>
         </div>
@@ -159,7 +160,7 @@ export function SessionReplayPage() {
               >
                 {keystrokes.length === 0 ? (
                   <div style={{ color: 'var(--text-3)', textAlign: 'center', marginTop: 90 }}>
-                    لا توجد تسجيلات أمنية حالياً
+                    {t('لا توجد تسجيلات أمنية حالياً')}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%', overflowY: 'auto' }}>
@@ -236,7 +237,7 @@ export function SessionReplayPage() {
                     style={{ padding: '6px 14px' }}
                   >
                     {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-                    <span>{isPlaying ? 'إيقاف مؤقت' : 'تشغيل التسجيل'}</span>
+                    <span>{isPlaying ? t('إيقاف مؤقت') : t('تشغيل التسجيل')}</span>
                   </Button>
                   <Button
                     size="sm"
@@ -246,7 +247,7 @@ export function SessionReplayPage() {
                     style={{ padding: '6px 10px' }}
                   >
                     <RotateCcw size={14} />
-                    <span>10 ث</span>
+                    <span>{t('10 ث')}</span>
                   </Button>
                   <Button
                     size="sm"
@@ -256,7 +257,7 @@ export function SessionReplayPage() {
                     style={{ padding: '6px 10px' }}
                   >
                     <RotateCw size={14} />
-                    <span>10 ث</span>
+                    <span>{t('10 ث')}</span>
                   </Button>
                 </div>
 
@@ -288,7 +289,7 @@ export function SessionReplayPage() {
 
         {/* Keystroke & Event Timeline (4 cols) */}
         <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <Card title="سجل نقرات المفاتيح والأحداث" icon="list">
+          <Card title={t('سجل نقرات المفاتيح والأحداث')} icon="list">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 420, overflowY: 'auto' }}>
               {keystrokes.map((k, idx) => (
                 <div

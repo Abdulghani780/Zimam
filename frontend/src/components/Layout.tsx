@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ReactNode } from 'react';
+﻿import { useState, useEffect, Component, type ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { HeaderBar } from './HeaderBar';
@@ -11,6 +11,7 @@ import { AssistantWidget } from '../asaas-ui/assistant/AssistantWidget';
 import { useTelemetry } from '../lib/useTelemetry';
 import { api, type AppUser } from '../lib/api';
 import { CheckCircle2, Server, Wrench } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 class PageErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error?: Error }> {
   constructor(props: { children: ReactNode }) {
@@ -26,8 +27,8 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
     if (this.state.hasError) {
       return (
         <div style={{ padding: 40, textAlign: 'center', background: 'var(--panel)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--hairline)', margin: 24 }}>
-          <h3 style={{ color: 'var(--danger)', marginBottom: 10, fontSize: 20 }}>تعذر عرض هذه الصفحة</h3>
-          <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 20 }}>{this.state.error?.message || 'خطأ غير متوقع في معالجة البيانات'}</p>
+          <h3 style={{ color: 'var(--danger)', marginBottom: 10, fontSize: 20 }}>{t('تعذر عرض هذه الصفحة')}</h3>
+          <p style={{ color: 'var(--text-2)', fontSize: 14, marginBottom: 20 }}>{this.state.error?.message || t('خطأ غير متوقع في معالجة البيانات')}</p>
           <button
             onClick={() => {
               this.setState({ hasError: false });
@@ -44,7 +45,7 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
               fontFamily: 'inherit',
             }}
           >
-            إعادة تحميل الصفحة
+            {t('إعادة تحميل الصفحة')}
           </button>
         </div>
       );
@@ -104,13 +105,13 @@ export function Layout() {
               <span dir="ltr">v{health?.version || '3.0.0'} | ASAAS Server Control</span>
             </div>
             <div className="app-footer__group">
-              <span><Server size={13} /> الجلسات النشطة: {activeSessions}</span>
-              <span><Wrench size={13} /> الخدمات النشطة: {runningServices}</span>
+              <span><Server size={13} /> {t('الجلسات النشطة:')} {activeSessions}</span>
+              <span><Wrench size={13} /> {t('الخدمات النشطة:')} {runningServices}</span>
             </div>
             <div className="app-footer__group">
               <span className={health?.ok ? 'ok' : ''}>
                 <CheckCircle2 size={13} />
-                حالة المنظومة: {health?.ok ? 'سليمة' : 'قيد الفحص'}
+                {t('حالة المنظومة:')} {health?.ok ? t('سليمة') : t('قيد الفحص')}
               </span>
             </div>
           </footer>
@@ -142,22 +143,22 @@ export function Layout() {
       <AssistantWidget
         user={{
           id: currentUser?.username || 'admin',
-          displayName: currentUser?.full_name || currentUser?.username || 'مدير النظام',
+          displayName: currentUser?.full_name || currentUser?.username || t('مدير النظام'),
         }}
-        title="مساعد أساس الذكي"
-        subtitle="الروبوت السيادي لإدارة وتحليل Windows Server"
+        title={t('مساعد أساس الذكي')}
+        subtitle={t('الروبوت السيادي لإدارة وتحليل Windows Server')}
         suggestions={[
-          'ما هي حالة الموارد واستهلاك المعالج حالياً؟',
-          'هل توجد جلسات RDP خاملة تحتاج تفريغ؟',
-          'افحص صحة محركات وقواعد البيانات',
+          t('ما هي حالة الموارد واستهلاك المعالج حالياً؟'),
+          t('هل توجد جلسات RDP خاملة تحتاج تفريغ؟'),
+          t('افحص صحة محركات وقواعد البيانات'),
         ]}
         ask={async (messages) => {
           const userQuery = messages[messages.length - 1]?.content || '';
           const diag = await api.getAiDiagnosis().catch(() => null);
           const rec = diag?.recommendations?.[0];
           const text = rec
-            ? `تحليل ذكاء أساس: ${diag.summary || 'النظام يعمل بحالة مستقرة.'}\n\nالتوصية بخصوص (${userQuery}): ${rec}`
-            : `منظومة أساس تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ${userQuery}`;
+            ? `${t('تحليل ذكاء أساس: ')}${diag.summary || t('النظام يعمل بحالة مستقرة.')}${t('\\n\\nالتوصية بخصوص (')}${userQuery}): ${rec}`
+            : `${t('منظومة أساس تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ')}${userQuery}`;
           return { reply: text };
         }}
       />

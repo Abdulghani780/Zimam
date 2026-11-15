@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Server Control v2.5 - Screens _11 & _13 & PAM
  * دليل الخوادم والبنية التحتية السيادية + بطاقة الفحص الميداني وتفاصيل الخادم
  * Strict implementation of Stitch Prototypes _11 & _13
@@ -18,6 +18,7 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 const toAssetItem = (a: V1Asset): AssetItem => ({
   id: a.id,
@@ -67,7 +68,7 @@ export function AssetsPage() {
     const port = a.port || (protocol === 'RDP' ? 3389 : 22);
     const url = `/api/bastion/connect?host=${encodeURIComponent(a.host)}&port=${encodeURIComponent(String(port))}&name=${encodeURIComponent(a.name)}&username=Administrator&protocol=${encodeURIComponent(protocol)}`;
     window.open(url, '_blank');
-    toast(`تم إرسال طلب جلسة ${protocol} للأصل [${a.name}] عبر بوابة الحصن.`, 'success');
+    toast(`${t('تم إرسال طلب جلسة ')}${protocol}${t(' للأصل [')}${a.name}${t('] عبر بوابة الحصن.')}`, 'success');
   };
 
   const handleTrimServer = async (a: AssetItem) => {
@@ -76,15 +77,15 @@ export function AssetsPage() {
       if (res && res.ok) {
         const rec = res.reclaimed_mb ?? (res as any)?.result?.reclaimed_mb ?? 0;
         if (rec > 0) {
-          toast(`تم تفريغ ذاكرة الخادم [${a.name}] بنجاح — تم استرداد ${rec} MB.`, 'success');
+          toast(`${t('تم تفريغ ذاكرة الخادم [')}${a.name}${t('] بنجاح — تم استرداد ')}${rec} MB.`, 'success');
         } else {
-          toast(res.message || `ذاكرة الخادم [${a.name}] محسنة بالكامل بالفعل.`, 'success');
+          toast(res.message || `${t('ذاكرة الخادم [')}${a.name}${t('] محسنة بالكامل بالفعل.')}`, 'success');
         }
       } else {
-        toast((res as any)?.error || 'فشل تفريغ ذاكرة الخادم.', 'error');
+        toast((res as any)?.error || t('فشل تفريغ ذاكرة الخادم.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تنفيذ تفريغ الذاكرة', 'error');
+      toast(err.message || t('خطأ أثناء تنفيذ تفريغ الذاكرة'), 'error');
     }
   };
 
@@ -105,13 +106,13 @@ export function AssetsPage() {
         protocol: type.toLowerCase().includes('windows') ? 'rdp' : 'ssh',
         metadata: { asset_type: type },
       });
-      toast('تم تسجيل الخادم الجديد بنجاح.', 'success');
+      toast(t('تم تسجيل الخادم الجديد بنجاح.'), 'success');
       setModalOpen(false);
       setName('');
       setHost('');
       fetchAssets();
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -159,7 +160,7 @@ export function AssetsPage() {
                 }}
               >
                 <CheckCircle2 size={13} />
-                {assets.length ? `${assets.length} أصل مسجل من Control Plane` : 'لا توجد أصول مسجلة بعد'}
+                {assets.length ? `${assets.length}${t(' أصل مسجل من Control Plane')}` : t('لا توجد أصول مسجلة بعد')}
               </span>
               <span
                 style={{
@@ -176,10 +177,10 @@ export function AssetsPage() {
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              دليل وإدارة قائمة الخوادم ومؤشرات النبض (Servers &amp; Assets Directory)
+              {t('دليل وإدارة قائمة الخوادم ومؤشرات النبض')} (Servers &amp; Assets Directory)
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              مراقبة حالة الأصول المسجلة عبر Agent heartbeat، مع تجهيز الاتصال لرموز جلسات قصيرة العمر دون كشف كلمات السر للمتصفح.
+              {t('مراقبة حالة الأصول المسجلة عبر Agent heartbeat، مع تجهيز الاتصال لرموز جلسات قصيرة العمر دون كشف كلمات السر للمتصفح.')}
             </p>
           </div>
 
@@ -191,7 +192,7 @@ export function AssetsPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <RefreshCw size={13} />
-              <span>إعادة الفحص الميداني</span>
+              <span>{t('إعادة الفحص الميداني')}</span>
             </Button>
             <Button
               size="sm"
@@ -200,7 +201,7 @@ export function AssetsPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Plus size={14} />
-              <span>إضافة خادم جديد</span>
+              <span>{t('إضافة خادم جديد')}</span>
             </Button>
           </div>
         </div>
@@ -209,11 +210,11 @@ export function AssetsPage() {
       {/* 2. Filter Tabs (Stitch _11 L10-L15) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--accent-soft)', paddingBottom: 12 }}>
         {[
-          { key: 'all', label: `الكل (${assets.length})` },
-          { key: 'windows', label: `خوادم ويندوز (${assets.filter((a) => matchesTab(a, 'windows')).length})` },
-          { key: 'linux', label: `خوادم لينكس (${assets.filter((a) => matchesTab(a, 'linux')).length})` },
-          { key: 'db', label: `قواعد البيانات (${assets.filter((a) => matchesTab(a, 'db')).length})` },
-          { key: 'k8s', label: `حاويات K8s (${assets.filter((a) => matchesTab(a, 'k8s')).length})` },
+          { key: 'all', label: `${t('الكل (')}${assets.length})` },
+          { key: 'windows', label: `${t('خوادم ويندوز (')}${assets.filter((a) => matchesTab(a, 'windows')).length})` },
+          { key: 'linux', label: `${t('خوادم لينكس (')}${assets.filter((a) => matchesTab(a, 'linux')).length})` },
+          { key: 'db', label: `${t('قواعد البيانات (')}${assets.filter((a) => matchesTab(a, 'db')).length})` },
+          { key: 'k8s', label: `${t('حاويات K8s (')}${assets.filter((a) => matchesTab(a, 'k8s')).length})` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -298,19 +299,19 @@ export function AssetsPage() {
             {/* Real asset state reported by the backend */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                <span style={{ color: 'var(--text-3)' }}>حالة الأصل:</span>
+                <span style={{ color: 'var(--text-3)' }}>{t('حالة الأصل:')}</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }} dir="ltr">{a.status || 'unknown'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                <span style={{ color: 'var(--text-3)' }}>آخر فحص مسجل:</span>
+                <span style={{ color: 'var(--text-3)' }}>{t('آخر فحص مسجل:')}</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }} dir="ltr">{a.last_check || '—'}</span>
               </div>
             </div>
 
             {/* System Info */}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)' }}>
-              <span>النظام: <strong style={{ color: 'var(--text-2)' }}>{a.type}</strong></span>
-              <span>الاستجابة: <strong style={{ color: 'var(--paid)', fontFamily: 'var(--font)' }}><span dir="ltr">{a.latency_ms > 0 ? `${a.latency_ms} ms` : 'غير متاح'}</span></strong></span>
+              <span>{t('النظام:')} <strong style={{ color: 'var(--text-2)' }}>{a.type}</strong></span>
+              <span>{t('الاستجابة:')} <strong style={{ color: 'var(--paid)', fontFamily: 'var(--font)' }}><span dir="ltr">{a.latency_ms > 0 ? `${a.latency_ms} ms` : t('غير متاح')}</span></strong></span>
             </div>
 
             {/* Action buttons (Stitch _11) */}
@@ -322,25 +323,25 @@ export function AssetsPage() {
                 style={{ flex: 1, padding: '4px 8px', fontSize: 11 }}
               >
                 <Zap size={12} />
-                <span>اتصال Bastion</span>
+                <span>{t('اتصال Bastion')}</span>
               </Button>
               <Button
                 size="sm"
                 variant="glass"
                 onClick={() => handleTrimServer(a)}
                 style={{ padding: '4px 8px', fontSize: 11 }}
-                title="تفريغ ذاكرة الخادم"
+                title={t('تفريغ ذاكرة الخادم')}
               >
-                <span>تفريغ Trim</span>
+                <span>{t('تفريغ Trim')}</span>
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => openServerDrawer(a)}
                 style={{ padding: '4px 8px', fontSize: 11 }}
-                title="بطاقة الفحص الميداني"
+                title={t('بطاقة الفحص الميداني')}
               >
-                <span>فحص ميداني</span>
+                <span>{t('فحص ميداني')}</span>
               </Button>
             </div>
           </Glass>
@@ -381,9 +382,9 @@ export function AssetsPage() {
             {/* Drawer Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>نافذة تفاصيل الخادم المنبثقة السفلية</span>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('نافذة تفاصيل الخادم المنبثقة السفلية')}</span>
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-                  بطاقة الفحص الميداني وتفاصيل الخادم:
+                  {t('بطاقة الفحص الميداني وتفاصيل الخادم:')}
                   <span style={{ color: 'var(--accent)', fontFamily: 'var(--font)', display: 'block', fontSize: 18 }}>
                     {selectedServer.name}
                   </span>
@@ -412,15 +413,15 @@ export function AssetsPage() {
             {/* Telemetry Grid — no agent-linked metrics exist yet, show honest state */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
               {[
-                { label: 'المعالج والأنوية', value: '—' },
-                { label: 'الذاكرة المادية RAM', value: '—' },
-                { label: 'التخزين', value: '—' },
-                { label: 'حركة الشبكة والكمون', value: selectedServer.latency_ms > 0 ? `${selectedServer.latency_ms} ms` : '—' },
+                { label: t('المعالج والأنوية'), value: '—' },
+                { label: t('الذاكرة المادية RAM'), value: '—' },
+                { label: t('التخزين'), value: '—' },
+                { label: t('حركة الشبكة والكمون'), value: selectedServer.latency_ms > 0 ? `${selectedServer.latency_ms} ms` : '—' },
               ].map((m) => (
                 <div key={m.label} style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{m.label}</span>
                   <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>{m.value}</div>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>لا تتوفر قياسات — تتطلب وكيلاً مرتبطاً بالأصل</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا تتوفر قياسات — تتطلب وكيلاً مرتبطاً بالأصل')}</span>
                 </div>
               ))}
             </div>
@@ -428,10 +429,10 @@ export function AssetsPage() {
             {/* Core Services Section — not collected yet */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                الخدمات النشطة — غير متاحة
+                {t('الخدمات النشطة — غير متاحة')}
               </h4>
               <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-                لا تُجمع بيانات الخدمات بعد. عندما يرتبط وكيلاً ASAAS بهذا الأصل عبر /api/v1/agents وتُنفَّذ مهمة service.list موقعة ستظهر النتائج الحقيقية هنا.
+                {t('لا تُجمع بيانات الخدمات بعد. عندما يرتبط وكيلاً ASAAS بهذا الأصل عبر /api/v1/agents وتُنفَّذ مهمة service.list موقعة ستظهر النتائج الحقيقية هنا.')}
               </p>
             </div>
 
@@ -444,7 +445,7 @@ export function AssetsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Zap size={14} />
-                <span>طلب جلسة عبر السياسة</span>
+                <span>{t('طلب جلسة عبر السياسة')}</span>
               </Button>
               <Button
                 size="sm"
@@ -453,7 +454,7 @@ export function AssetsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Cpu size={14} />
-                <span>تفريغ خمول الذاكرة Working Set Trim</span>
+                <span>{t('تفريغ خمول الذاكرة Working Set Trim')}</span>
               </Button>
               <Button
                 size="sm"
@@ -464,7 +465,7 @@ export function AssetsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Radio size={14} />
-                <span>فحص المنافذ Scan Ports</span>
+                <span>{t('فحص المنافذ Scan Ports')}</span>
               </Button>
               <Button
                 size="sm"
@@ -472,7 +473,7 @@ export function AssetsPage() {
                 onClick={() => setDrawerOpen(false)}
                 style={{ marginInlineStart: 'auto' }}
               >
-                إغلاق النافذة
+                {t('إغلاق النافذة')}
               </Button>
             </div>
           </div>
@@ -481,33 +482,33 @@ export function AssetsPage() {
 
       {/* Modal: Add New Asset */}
       {modalOpen && (
-        <Modal onClose={() => setModalOpen(false)} title="إضافة خادم جديد للبنية التحتية السيادية">
+        <Modal onClose={() => setModalOpen(false)} title={t('إضافة خادم جديد للبنية التحتية السيادية')}>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="اسم الخادم (Server Hostname)">
+            <Field label={t('اسم الخادم (Server Hostname)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="مثال: SRV-APP-PROD-03"
+                  placeholder={t('مثال: SRV-APP-PROD-03')}
                   required
                 />
               )}
             </Field>
 
-            <Field label="عنوان IP أو اسم النطاق (IP / FQDN)">
+            <Field label={t('عنوان IP أو اسم النطاق (IP / FQDN)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
-                  placeholder="مثال: 10.0.1.50"
+                  placeholder={t('مثال: 10.0.1.50')}
                   required
                 />
               )}
             </Field>
 
-            <Field label="نوع نظام التشغيل">
+            <Field label={t('نوع نظام التشغيل')}>
               {() => (
                 <select
                   value={type}
@@ -524,14 +525,14 @@ export function AssetsPage() {
               )}
             </Field>
 
-            <Field label="المنفذ الرئيسي (Port)">
+            <Field label={t('المنفذ الرئيسي (Port)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   type="number"
                   value={String(port)}
                   onChange={(e) => setPort(Number(e.target.value))}
-                  placeholder="3389 أو 22"
+                  placeholder={t('3389 أو 22')}
                   required
                 />
               )}
@@ -539,10 +540,10 @@ export function AssetsPage() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button type="submit" variant="primary" loading={submitting}>
-                تسجيل الخادم
+                {t('تسجيل الخادم')}
               </Button>
             </div>
           </form>

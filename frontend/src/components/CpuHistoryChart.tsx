@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { t } from '../lib/i18n';
 
 export interface ChartPoint {
   label: string;
@@ -52,7 +53,7 @@ export function CpuHistoryChart({ points, value }: CpuHistoryChartProps) {
   const lastY = last ? 100 - Math.max(0, Math.min(100, last.value)) : 0;
 
   return (
-    <section className="panel chart-card" aria-label="استهلاك المعالج">
+    <section className="panel chart-card" aria-label={t('استهلاك المعالج')}>
       <header className="panel__head">
         <h2 className="panel__title">
           <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -60,18 +61,18 @@ export function CpuHistoryChart({ points, value }: CpuHistoryChartProps) {
             <rect x="9" y="9" width="6" height="6" rx="1" />
             <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3" />
           </svg>
-          استهلاك المعالج (CPU)
+          {t('استهلاك المعالج (CPU)')}
         </h2>
         <span className="chart-pill" dir="ltr">{value}%</span>
       </header>
       <div className="panel__body">
         {points.length < 2 ? (
-          <div className="chart-empty">جارٍ تجميع نقاط القياس الحية…</div>
+          <div className="chart-empty">{t('جارٍ تجميع نقاط القياس الحية…')}</div>
         ) : (
           <>
             <div className="chart">
               <div className="chart__plot">
-                <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`متوسط استهلاك المعالج ${value}%`}>
+                <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`${t('متوسط استهلاك المعالج ')}${value}%`}>
                   <defs>
                     <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" style={{ stopColor: 'var(--chart-in)' }} stopOpacity="0.16" />

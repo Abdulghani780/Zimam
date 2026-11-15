@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useMemo,
@@ -44,6 +44,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { t, isRtl } from '../lib/i18n';
 
 type PortState = 'reserved' | 'used' | 'system' | 'connection';
 type RangeValue = '1-10000' | '10001-30000' | '30001-65535' | 'all';
@@ -120,7 +121,7 @@ const MONITORED_RANGES: ReadonlyArray<{ value: RangeValue; label: string; start:
   { value: '1-10000', label: '1 - 10,000', start: 1, end: 10000 },
   { value: '10001-30000', label: '10,001 - 30,000', start: 10001, end: 30000 },
   { value: '30001-65535', label: '30,001 - 65,535', start: 30001, end: 65535 },
-  { value: 'all', label: 'كافة المنافذ (1 - 65,535)', start: 1, end: 65535 },
+  { value: 'all', label: t('كافة المنافذ (1 - 65,535)'), start: 1, end: 65535 },
 ];
 
 const QUICK_PORTS = [3000, 5173, 8000, 8080, 4321];
@@ -166,7 +167,7 @@ function projectLabel(row: PortItem): string {
   if (row.project_hint) return row.project_hint;
   const service = (row.service_name || row.service || '').trim();
   if (service && !/^dynamic(\s*\/\s*application)?$/i.test(service)) return service;
-  return prettyProcess(row.process_name) || `منفذ ${row.local_port}`;
+  return prettyProcess(row.process_name) || `${t('منفذ ')}${row.local_port}`;
 }
 
 function projectIcon(label: string, processName: string, isSystem: boolean): LucideIcon {
@@ -198,10 +199,10 @@ function projectIcon(label: string, processName: string, isSystem: boolean): Luc
 }
 
 function stateMeta(state: PortState): { label: string; className: string } {
-  if (state === 'reserved') return { label: 'محجوز', className: 'pill-status--idle' };
-  if (state === 'used') return { label: 'مستخدم', className: 'pill-status--on' };
-  if (state === 'system') return { label: 'نظامي', className: 'pill-status--muted' };
-  return { label: 'اتصال', className: 'pill-status--info' };
+  if (state === 'reserved') return { label: t('محجوز'), className: 'pill-status--idle' };
+  if (state === 'used') return { label: t('مستخدم'), className: 'pill-status--on' };
+  if (state === 'system') return { label: t('نظامي'), className: 'pill-status--muted' };
+  return { label: t('اتصال'), className: 'pill-status--info' };
 }
 
 function buildReservationMap(guard: GuardSummary | null): Map<number, ReservationInfo> {
@@ -241,36 +242,36 @@ function buildReservationMap(guard: GuardSummary | null): Map<number, Reservatio
 function describeConfirm(state: ConfirmState): ConfirmCopy {
   if (state.kind === 'release') {
     return {
-      title: 'تحرير حجز المنفذ',
-      description: `هل تريد تحرير حجز المنفذ ${state.port} الخاص بمشروع «${state.project}»؟`,
-      warning: 'سيُلغى الحجز النشط ويصبح المنفذ متاحاً لجميع المستخدمين.',
-      action: 'تحرير الحجز',
+      title: t('تحرير حجز المنفذ'),
+      description: `${t('هل تريد تحرير حجز المنفذ ')}${state.port}${t(' الخاص بمشروع «')}${state.project}${t('»؟')}`,
+      warning: t('سيُلغى الحجز النشط ويصبح المنفذ متاحاً لجميع المستخدمين.'),
+      action: t('تحرير الحجز'),
     };
   }
 
   if (state.kind === 'close') {
     return {
-      title: 'إغلاق العملية وتحرير المنفذ',
-      description: `سيتم إنهاء العملية ${state.process} (PID ${state.pid}) المرتبطة بالمنفذ ${state.port}.`,
-      warning: 'قد يؤدي إنهاء العملية إلى فقدان بيانات غير محفوظة في التطبيق المرتبط.',
-      action: 'إغلاق العملية',
+      title: t('إغلاق العملية وتحرير المنفذ'),
+      description: `${t('سيتم إنهاء العملية ')}${state.process} (PID ${state.pid}${t(') المرتبطة بالمنفذ ')}${state.port}.`,
+      warning: t('قد يؤدي إنهاء العملية إلى فقدان بيانات غير محفوظة في التطبيق المرتبط.'),
+      action: t('إغلاق العملية'),
     };
   }
 
   if (state.kind === 'block') {
     return {
-      title: 'حظر عنوان IP',
-      description: `سيتم إضافة قاعدة حظر في جدار حماية Windows للعنوان ${state.ip}.`,
-      warning: 'لن يتمكن هذا العنوان من الاتصال بالسيرفر حتى تُزال القاعدة يدوياً.',
-      action: 'حظر العنوان',
+      title: t('حظر عنوان IP'),
+      description: `${t('سيتم إضافة قاعدة حظر في جدار حماية Windows للعنوان ')}${state.ip}.`,
+      warning: t('لن يتمكن هذا العنوان من الاتصال بالسيرفر حتى تُزال القاعدة يدوياً.'),
+      action: t('حظر العنوان'),
     };
   }
 
   return {
-    title: 'تحرير الحجوزات المحددة',
-    description: `سيتم تحرير ${state.ports.length} حجز منفذ دفعة واحدة: ${state.ports.join('، ')}.`,
-    warning: 'ستصبح هذه المنافذ متاحة لجميع المستخدمين فوراً.',
-    action: 'تحرير الحجوزات',
+    title: t('تحرير الحجوزات المحددة'),
+    description: `${t('سيتم تحرير ')}${state.ports.length}${t(' حجز منفذ دفعة واحدة: ')}${state.ports.join('، ')}.`,
+    warning: t('ستصبح هذه المنافذ متاحة لجميع المستخدمين فوراً.'),
+    action: t('تحرير الحجوزات'),
   };
 }
 
@@ -332,7 +333,7 @@ export function PortsPage() {
           setGuard(guardRes as GuardSummary);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'تعذر تحميل بيانات المنافذ.';
+        const message = err instanceof Error ? err.message : t('تعذر تحميل بيانات المنافذ.');
         setLoadError(message);
         toast(message, 'error');
       } finally {
@@ -476,7 +477,7 @@ export function PortsPage() {
         key: `${port}:TCP`,
         port,
         proto: 'TCP',
-        project: reservation.project || 'حجز منفذ مخصص',
+        project: reservation.project || t('حجز منفذ مخصص'),
         owners: [],
         reservedBy: reservation.user,
         state: 'reserved',
@@ -633,7 +634,7 @@ export function PortsPage() {
       setCheckResult(result);
       return result;
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'تعذر فحص المنفذ.');
+      setFormError(err instanceof Error ? err.message : t('تعذر فحص المنفذ.'));
       return null;
     } finally {
       setChecking(false);
@@ -667,7 +668,7 @@ export function PortsPage() {
   const handleCheck = async () => {
     const port = parsePort(formPort);
     if (port === null) {
-      setFormError('رقم المنفذ يجب أن يكون بين 1 و 65535.');
+      setFormError(t('رقم المنفذ يجب أن يكون بين 1 و 65535.'));
       return;
     }
     await runCheck(port);
@@ -682,7 +683,7 @@ export function PortsPage() {
         project_name: formProject.trim(),
       });
       toast(
-        res.message || `تم حجز المنفذ ${res.assigned_port ?? port} بنجاح لمشروعك.`,
+        res.message || `${t('تم حجز المنفذ ')}${res.assigned_port ?? port}${t(' بنجاح لمشروعك.')}`,
         'success',
       );
       setCreateOpen(false);
@@ -694,7 +695,7 @@ export function PortsPage() {
       setConflictOnly(false);
       await fetchPorts(true);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'تعذر حجز المنفذ.');
+      setFormError(err instanceof Error ? err.message : t('تعذر حجز المنفذ.'));
     } finally {
       setClaiming(false);
     }
@@ -704,11 +705,11 @@ export function PortsPage() {
     event.preventDefault();
     const port = parsePort(formPort);
     if (port === null) {
-      setFormError('رقم المنفذ يجب أن يكون بين 1 و 65535.');
+      setFormError(t('رقم المنفذ يجب أن يكون بين 1 و 65535.'));
       return;
     }
     if (formProject.trim().length < 2) {
-      setFormError('يرجى إدخال اسم مشروع واضح (حرفان على الأقل).');
+      setFormError(t('يرجى إدخال اسم مشروع واضح (حرفان على الأقل).'));
       return;
     }
 
@@ -728,10 +729,10 @@ export function PortsPage() {
           await submitClaim(suggestedPort);
           return;
         }
-        setFormError('لم يُعثر على منفذ بديل شاغر تلقائياً. اختر منفذاً آخر.');
+        setFormError(t('لم يُعثر على منفذ بديل شاغر تلقائياً. اختر منفذاً آخر.'));
         return;
       }
-      setFormError('المنفذ المطلوب محجوز. اختر منفذاً بديلاً أو اعتمد الاقتراح.');
+      setFormError(t('المنفذ المطلوب محجوز. اختر منفذاً بديلاً أو اعتمد الاقتراح.'));
       return;
     }
 
@@ -795,9 +796,9 @@ export function PortsPage() {
     setRowMenu(null);
     try {
       await navigator.clipboard.writeText(String(port));
-      toast(`تم نسخ رقم المنفذ ${port} إلى الحافظة.`, 'success');
+      toast(`${t('تم نسخ رقم المنفذ ')}${port}${t(' إلى الحافظة.')}`, 'success');
     } catch {
-      toast('تعذر النسخ إلى الحافظة.', 'error');
+      toast(t('تعذر النسخ إلى الحافظة.'), 'error');
     }
   };
 
@@ -807,7 +808,7 @@ export function PortsPage() {
       .filter((row) => row.state === 'reserved')
       .map((row) => row.port);
     if (portsToRelease.length === 0) {
-      toast('لا توجد حجوزات نشطة بين الصفوف المحددة.', 'info');
+      toast(t('لا توجد حجوزات نشطة بين الصفوف المحددة.'), 'info');
       return;
     }
     setConfirmState({ kind: 'bulk-release', ports: portsToRelease });
@@ -817,14 +818,14 @@ export function PortsPage() {
     setBulkOpen(false);
     if (selectedRows.length === 0) return;
     const header = [
-      'المنفذ',
-      'البروتوكول',
-      'المشروع',
-      'المالك',
-      'الحالة',
-      'التعارض',
+      t('المنفذ'),
+      t('البروتوكول'),
+      t('المشروع'),
+      t('المالك'),
+      t('الحالة'),
+      t('التعارض'),
       'PID',
-      'العملية',
+      t('العملية'),
     ];
     const lines = selectedRows.map((row) =>
       [
@@ -833,7 +834,7 @@ export function PortsPage() {
         row.project,
         row.reservedBy || row.owners.join(' | ') || 'SYSTEM',
         stateMeta(row.state).label,
-        row.conflict ? 'نعم' : 'لا',
+        row.conflict ? t('نعم') : t('لا'),
         row.pid,
         prettyProcess(row.process),
       ]
@@ -850,7 +851,7 @@ export function PortsPage() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    toast(`تم تصدير ${selectedRows.length} منفذاً إلى ملف CSV.`, 'success');
+    toast(`${t('تم تصدير ')}${selectedRows.length}${t(' منفذاً إلى ملف CSV.')}`, 'success');
   };
 
   const executeConfirm = async () => {
@@ -859,24 +860,24 @@ export function PortsPage() {
     try {
       if (confirmState.kind === 'release') {
         const res = await api.releasePort(confirmState.port);
-        toast(res.message || `تم تحرير المنفذ ${confirmState.port}.`, 'success');
+        toast(res.message || `${t('تم تحرير المنفذ ')}${confirmState.port}.`, 'success');
       } else if (confirmState.kind === 'close') {
         const res = await api.closePortProcess(confirmState.pid);
         if (!res.ok) {
-          toast(res.error || 'تعذر إغلاق العملية.', 'error');
+          toast(res.error || t('تعذر إغلاق العملية.'), 'error');
           return;
         }
         toast(
-          `تم إنهاء العملية ${confirmState.process} وتحرير المنفذ ${confirmState.port}.`,
+          `${t('تم إنهاء العملية ')}${confirmState.process}${t(' وتحرير المنفذ ')}${confirmState.port}.`,
           'success',
         );
       } else if (confirmState.kind === 'block') {
         const res = await api.blockIp(confirmState.ip);
         if (!res.ok) {
-          toast(res.error || 'تعذر حظر العنوان.', 'error');
+          toast(res.error || t('تعذر حظر العنوان.'), 'error');
           return;
         }
-        toast(`تمت إضافة قاعدة حظر للعنوان ${confirmState.ip}.`, 'success');
+        toast(`${t('تمت إضافة قاعدة حظر للعنوان ')}${confirmState.ip}.`, 'success');
       } else {
         const results = await Promise.allSettled(
           confirmState.ports.map((port) => api.releasePort(port)),
@@ -885,18 +886,18 @@ export function PortsPage() {
         const failedCount = results.length - okCount;
         if (failedCount > 0) {
           toast(
-            `تم تحرير ${okCount} حجزاً، وتعذر تحرير ${failedCount}.`,
+            `${t('تم تحرير ')}${okCount}${t(' حجزاً، وتعذر تحرير ')}${failedCount}.`,
             'warn',
           );
         } else {
-          toast(`تم تحرير ${okCount} حجزاً بنجاح.`, 'success');
+          toast(`${t('تم تحرير ')}${okCount}${t(' حجزاً بنجاح.')}`, 'success');
         }
         setSelected(new Set());
       }
       setConfirmState(null);
       await fetchPorts(true);
     } catch (err) {
-      toast(err instanceof Error ? err.message : 'تعذر تنفيذ الإجراء.', 'error');
+      toast(err instanceof Error ? err.message : t('تعذر تنفيذ الإجراء.'), 'error');
     } finally {
       setConfirmBusy(false);
     }
@@ -912,15 +913,15 @@ export function PortsPage() {
             <Waypoints size={20} />
           </span>
           <div>
-            <nav className="breadcrumb" aria-label="مسار الصفحة">
-              <Link to="/">الصفحة الرئيسية</Link>
+            <nav className="breadcrumb" aria-label={t('مسار الصفحة')}>
+              <Link to="/">{t('الصفحة الرئيسية')}</Link>
               <ChevronLeft size={12} />
-              <span>عزل المنافذ</span>
+              <span>{t('عزل المنافذ')}</span>
             </nav>
             <h1>
-              عزل المنافذ <span className="page-head__latin">(Port Isolation)</span>
+              {t('عزل المنافذ')} <span className="page-head__latin">(Port Isolation)</span>
             </h1>
-            <p>إدارة وتوزيع منافذ المشاريع على السيرفر، ومنع التعارض بينها بشكل آمن وذكي.</p>
+            <p>{t('إدارة وتوزيع منافذ المشاريع على السيرفر، ومنع التعارض بينها بشكل آمن وذكي.')}</p>
           </div>
         </div>
 
@@ -931,7 +932,7 @@ export function PortsPage() {
             onClick={() => openCreate()}
           >
             <Plus size={15} />
-            إنشاء قاعدة جديدة
+            {t('إنشاء قاعدة جديدة')}
           </button>
 
           <div className="ports-bulk">
@@ -942,7 +943,7 @@ export function PortsPage() {
               aria-expanded={bulkOpen}
               aria-haspopup="menu"
             >
-              إجراءات جماعية
+              {t('إجراءات جماعية')}
               {selected.size > 0 && (
                 <span className="ports-bulk__count">{selected.size}</span>
               )}
@@ -955,7 +956,7 @@ export function PortsPage() {
                   type="button"
                   className="menu-backdrop"
                   onClick={() => setBulkOpen(false)}
-                  aria-label="إغلاق قائمة الإجراءات الجماعية"
+                  aria-label={t('إغلاق قائمة الإجراءات الجماعية')}
                 />
                 <div className="ports-bulk__menu" role="menu">
                   <button
@@ -971,11 +972,11 @@ export function PortsPage() {
                     }}
                   >
                     <Check size={14} />
-                    تحديد الصفحة الحالية
+                    {t('تحديد الصفحة الحالية')}
                   </button>
                   <button type="button" role="menuitem" onClick={selectAllFiltered}>
                     <Layers size={14} />
-                    تحديد كل النتائج ({filteredRows.length})
+                    {t('تحديد كل النتائج')} ({filteredRows.length})
                   </button>
                   <button
                     type="button"
@@ -987,7 +988,7 @@ export function PortsPage() {
                     disabled={selected.size === 0}
                   >
                     <X size={14} />
-                    إلغاء التحديد
+                    {t('إلغاء التحديد')}
                   </button>
                   <button
                     type="button"
@@ -996,7 +997,7 @@ export function PortsPage() {
                     disabled={selectedReserved.length === 0}
                   >
                     <ShieldX size={14} />
-                    تحرير الحجوزات المحددة ({selectedReserved.length})
+                    {t('تحرير الحجوزات المحددة')} ({selectedReserved.length})
                   </button>
                   <button
                     type="button"
@@ -1005,7 +1006,7 @@ export function PortsPage() {
                     disabled={selected.size === 0}
                   >
                     <Download size={14} />
-                    تصدير المحدد إلى CSV
+                    {t('تصدير المحدد إلى CSV')}
                   </button>
                 </div>
               </>
@@ -1017,8 +1018,8 @@ export function PortsPage() {
             className="icon-btn"
             onClick={() => void fetchPorts(true)}
             disabled={loading}
-            aria-label="تحديث بيانات المنافذ"
-            title="تحديث بيانات المنافذ"
+            aria-label={t('تحديث بيانات المنافذ')}
+            title={t('تحديث بيانات المنافذ')}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
           </button>
@@ -1027,29 +1028,29 @@ export function PortsPage() {
 
       <div className="ports-layout">
         <div className="ports-main">
-          <section className="panel ports-selector" aria-label="تحديد السيرفر والمشروع">
+          <section className="panel ports-selector" aria-label={t('تحديد السيرفر والمشروع')}>
             <div className="ports-selector__grid">
               <label className="ports-selector__field">
                 <span className="ports-selector__label">
-                  <span>اختر السيرفر:</span>
+                  <span>{t('اختر السيرفر:')}</span>
                   {serverOnline !== null && (
                     <span className="ports-selector__status">
                       <span
                         className={`dot ${serverOnline ? 'dot--green' : 'dot--red'}`}
                       />
-                      {serverOnline ? 'متصل' : 'غير متصل'}
+                      {serverOnline ? t('متصل') : t('غير متصل')}
                     </span>
                   )}
                 </span>
                 <span className="ui-select ui-select--block">
                   <select
-                    aria-label="اختيار السيرفر"
+                    aria-label={t('اختيار السيرفر')}
                     value={effectiveServerId}
                     onChange={(event) => setServerId(event.target.value)}
-                    title="تُجمع بيانات المنافذ الحية من السيرفر المحلي فقط."
+                    title={t('تُجمع بيانات المنافذ الحية من السيرفر المحلي فقط.')}
                   >
                     {localServers.length === 0 && (
-                      <option value="local">السيرفر المحلي</option>
+                      <option value="local">{t('السيرفر المحلي')}</option>
                     )}
                     {localServers.map((server) => (
                       <option key={server.id} value={server.id}>
@@ -1062,15 +1063,15 @@ export function PortsPage() {
 
               <label className="ports-selector__field">
                 <span className="ports-selector__label">
-                  <span>اختر المشروع:</span>
+                  <span>{t('اختر المشروع:')}</span>
                 </span>
                 <span className="ui-select ui-select--block">
                   <select
-                    aria-label="تصفية حسب المشروع"
+                    aria-label={t('تصفية حسب المشروع')}
                     value={projectFilter}
                     onChange={(event) => setProjectFilter(event.target.value)}
                   >
-                    <option value="all">جميع المشاريع</option>
+                    <option value="all">{t('جميع المشاريع')}</option>
                     {projectOptions.map(([label, count]) => (
                       <option key={label} value={label}>
                         {label} ({count})
@@ -1085,7 +1086,7 @@ export function PortsPage() {
           <section
             className="panel ports-table-panel"
             id="ports-table-panel"
-            aria-label="قائمة منافذ السيرفر"
+            aria-label={t('قائمة منافذ السيرفر')}
           >
             <div className="ports-toolbar">
               <label className="search-box">
@@ -1094,8 +1095,8 @@ export function PortsPage() {
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="بحث في المنافذ أو المشاريع..."
-                  aria-label="البحث في المنافذ أو المشاريع"
+                  placeholder={t('بحث في المنافذ أو المشاريع...')}
+                  aria-label={t('البحث في المنافذ أو المشاريع')}
                 />
               </label>
 
@@ -1105,17 +1106,17 @@ export function PortsPage() {
                     type="button"
                     className="ports-filter-chip"
                     onClick={() => setConflictOnly(false)}
-                    title="إلغاء تصفية التعارضات"
+                    title={t('إلغاء تصفية التعارضات')}
                   >
                     <AlertCircle size={12} />
-                    التعارضات فقط
+                    {t('التعارضات فقط')}
                     <X size={12} />
                   </button>
                 )}
 
                 <label
                   className="toggle"
-                  title="عند التفعيل، يعتمد النظام تلقائياً منفذاً بديلاً شاغراً إذا كان المنفذ المطلوب محجوزاً."
+                  title={t('عند التفعيل، يعتمد النظام تلقائياً منفذاً بديلاً شاغراً إذا كان المنفذ المطلوب محجوزاً.')}
                 >
                   <input
                     type="checkbox"
@@ -1123,7 +1124,7 @@ export function PortsPage() {
                     onChange={(event) => setAutoAllocate(event.target.checked)}
                   />
                   <span className="toggle__track" />
-                  <span className="ports-toggle__label">التوزيع التلقائي للمنافذ</span>
+                  <span className="ports-toggle__label">{t('التوزيع التلقائي للمنافذ')}</span>
                 </label>
               </div>
             </div>
@@ -1138,17 +1139,17 @@ export function PortsPage() {
                         className="port-check"
                         checked={allPageSelected}
                         onChange={togglePage}
-                        aria-label="تحديد كل المنافذ في الصفحة الحالية"
+                        aria-label={t('تحديد كل المنافذ في الصفحة الحالية')}
                       />
                     </th>
-                    <th>اسم المشروع</th>
-                    <th>رقم المنفذ</th>
-                    <th>البروتوكول</th>
-                    <th>المالك</th>
-                    <th>الحالة</th>
-                    <th>حالة التعارض</th>
+                    <th>{t('اسم المشروع')}</th>
+                    <th>{t('رقم المنفذ')}</th>
+                    <th>{t('البروتوكول')}</th>
+                    <th>{t('المالك')}</th>
+                    <th>{t('الحالة')}</th>
+                    <th>{t('حالة التعارض')}</th>
                     <th>PID</th>
-                    <th aria-label="إجراءات" />
+                    <th aria-label={t('إجراءات')} />
                   </tr>
                 </thead>
                 <tbody>
@@ -1157,8 +1158,8 @@ export function PortsPage() {
                       <td colSpan={9}>
                         <div className="pam-empty">
                           <RefreshCw size={24} className="spin" />
-                          <strong>جارٍ تحميل المنافذ…</strong>
-                          <span>يتم فحص المقابس والعمليات على السيرفر المحلي.</span>
+                          <strong>{t('جارٍ تحميل المنافذ…')}</strong>
+                          <span>{t('يتم فحص المقابس والعمليات على السيرفر المحلي.')}</span>
                         </div>
                       </td>
                     </tr>
@@ -1169,7 +1170,7 @@ export function PortsPage() {
                       <td colSpan={9}>
                         <div className="pam-empty">
                           <AlertTriangle size={26} />
-                          <strong>تعذر تحميل بيانات المنافذ</strong>
+                          <strong>{t('تعذر تحميل بيانات المنافذ')}</strong>
                           <span>{loadError}</span>
                           <button
                             type="button"
@@ -1177,7 +1178,7 @@ export function PortsPage() {
                             onClick={() => void fetchPorts(true)}
                           >
                             <RefreshCw size={14} />
-                            إعادة المحاولة
+                            {t('إعادة المحاولة')}
                           </button>
                         </div>
                       </td>
@@ -1189,11 +1190,11 @@ export function PortsPage() {
                       <td colSpan={9}>
                         <div className="pam-empty">
                           <Inbox size={26} />
-                          <strong>لا توجد منافذ مطابقة</strong>
+                          <strong>{t('لا توجد منافذ مطابقة')}</strong>
                           <span>
                             {conflictOnly
-                              ? 'لا توجد تعارضات مطابقة لعوامل التصفية الحالية.'
-                              : 'جرّب تغيير المشروع أو عبارة البحث.'}
+                              ? t('لا توجد تعارضات مطابقة لعوامل التصفية الحالية.')
+                              : t('جرّب تغيير المشروع أو عبارة البحث.')}
                           </span>
                         </div>
                       </td>
@@ -1208,9 +1209,9 @@ export function PortsPage() {
                       row.state === 'system',
                     );
                     const ownerTitle = [
-                      ...(row.reservedBy ? [`حجز: ${row.reservedBy}`] : []),
+                      ...(row.reservedBy ? [`${t('حجز: ')}${row.reservedBy}`] : []),
                       ...(row.owners.length > 0 ? row.owners : ['SYSTEM']),
-                    ].join('، ');
+                    ].join(isRtl() ? '، ' : ', ');
 
                     return (
                       <tr
@@ -1223,7 +1224,7 @@ export function PortsPage() {
                             className="port-check"
                             checked={selected.has(row.key)}
                             onChange={() => toggleRow(row.key)}
-                            aria-label={`تحديد المنفذ ${row.port} ${row.proto}`}
+                            aria-label={`${t('تحديد المنفذ ')}${row.port} ${row.proto}`}
                           />
                         </td>
                         <td>
@@ -1274,7 +1275,7 @@ export function PortsPage() {
                             ) : (
                               <Check size={11} />
                             )}
-                            {row.conflict ? 'متعارض' : 'سليم'}
+                            {row.conflict ? t('متعارض') : t('سليم')}
                           </span>
                         </td>
                         <td className="cell-mono" dir="ltr">
@@ -1285,7 +1286,7 @@ export function PortsPage() {
                             type="button"
                             className="icon-btn icon-btn--xs"
                             onClick={(event) => openRowMenu(event, row)}
-                            aria-label={`إجراءات المنفذ ${row.port} ${row.proto}`}
+                            aria-label={`${t('إجراءات المنفذ ')}${row.port} ${row.proto}`}
                             aria-haspopup="menu"
                           >
                             <MoreVertical size={15} />
@@ -1300,7 +1301,7 @@ export function PortsPage() {
 
             <div className="pagination">
               <span>
-                عرض {visibleFrom} - {visibleTo} من أصل {filteredRows.length} سجل
+                {t('عرض')} {visibleFrom} - {visibleTo} {t('من أصل')} {filteredRows.length} {t('سجل')}
               </span>
 
               {totalPages > 1 && (
@@ -1309,7 +1310,7 @@ export function PortsPage() {
                     type="button"
                     onClick={() => setPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage <= 1}
-                    aria-label="الصفحة السابقة"
+                    aria-label={t('الصفحة السابقة')}
                   >
                     <ChevronRight size={13} />
                   </button>
@@ -1327,7 +1328,7 @@ export function PortsPage() {
                     type="button"
                     onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage >= totalPages}
-                    aria-label="الصفحة التالية"
+                    aria-label={t('الصفحة التالية')}
                   >
                     <ChevronLeft size={13} />
                   </button>
@@ -1335,10 +1336,10 @@ export function PortsPage() {
               )}
 
               <span className="pagination__size">
-                عرض
+                {t('عرض')}
                 <span className="ui-select">
                   <select
-                    aria-label="عدد المنافذ في الصفحة"
+                    aria-label={t('عدد المنافذ في الصفحة')}
                     value={pageSize}
                     onChange={(event) => setPageSize(Number(event.target.value))}
                   >
@@ -1349,18 +1350,18 @@ export function PortsPage() {
                     ))}
                   </select>
                 </span>
-                لكل صفحة
+                {t('لكل صفحة')}
               </span>
             </div>
           </section>
         </div>
 
-        <aside className="ports-side" aria-label="ملخص حالة المنافذ">
-          <section className="panel port-health" aria-label="حالة المنافذ على السيرفر">
+        <aside className="ports-side" aria-label={t('ملخص حالة المنافذ')}>
+          <section className="panel port-health" aria-label={t('حالة المنافذ على السيرفر')}>
             <header className="panel__head">
               <h2 className="panel__title">
                 <Gauge size={17} />
-                حالة المنافذ على السيرفر
+                {t('حالة المنافذ على السيرفر')}
               </h2>
             </header>
             <div className="panel__body">
@@ -1369,28 +1370,28 @@ export function PortsPage() {
                   <div className="port-health__row">
                     <span className="port-health__key">
                       <span className="dot dot--gold" />
-                      المنافذ الكلية
+                      {t('المنافذ الكلية')}
                     </span>
                     <strong>{formatNumber(rangeSize)}</strong>
                   </div>
                   <div className="port-health__row">
                     <span className="port-health__key">
                       <span className="dot dot--gold" />
-                      مستخدمة
+                      {t('مستخدمة')}
                     </span>
                     <strong>{formatNumber(usedInRange)}</strong>
                   </div>
                   <div className="port-health__row">
                     <span className="port-health__key">
                       <span className="dot dot--green" />
-                      متاحة
+                      {t('متاحة')}
                     </span>
                     <strong>{formatNumber(availableInRange)}</strong>
                   </div>
                   <div className="port-health__row">
                     <span className="port-health__key">
                       <span className="dot dot--red" />
-                      متعارضة
+                      {t('متعارضة')}
                     </span>
                     <strong>{formatNumber(conflictInRange)}</strong>
                   </div>
@@ -1400,28 +1401,28 @@ export function PortsPage() {
                   className="donut"
                   style={{ '--pct': visualPercent } as CSSProperties}
                   role="img"
-                  aria-label={`نسبة المنافذ المستخدمة ${percentLabel}`}
+                  aria-label={`${t('نسبة المنافذ المستخدمة ')}${percentLabel}`}
                 >
                   <div className="donut__center">
                     <div className="donut__value">{percentLabel}</div>
-                    <div className="donut__label">مستخدم</div>
+                    <div className="donut__label">{t('مستخدم')}</div>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="panel range-card" aria-label="خريطة نطاق المنافذ">
+          <section className="panel range-card" aria-label={t('خريطة نطاق المنافذ')}>
             <div className="range-head">
               <h2 className="panel__title">
                 <Radar size={17} />
-                خريطة نطاق المنافذ
+                {t('خريطة نطاق المنافذ')}
               </h2>
               <span className="ui-select">
                 <select
                   value={range}
                   onChange={(event) => setRange(event.target.value as RangeValue)}
-                  aria-label="نطاق المنافذ المراقب"
+                  aria-label={t('نطاق المنافذ المراقب')}
                 >
                   {MONITORED_RANGES.map((item) => (
                     <option key={item.value} value={item.value}>
@@ -1452,15 +1453,15 @@ export function PortsPage() {
             <div className="range-legend">
               <span>
                 <span className="dot dot--green" />
-                متاحة
+                {t('متاحة')}
               </span>
               <span>
                 <span className="dot dot--gold" />
-                مستخدمة
+                {t('مستخدمة')}
               </span>
               <span>
                 <span className="dot dot--red" />
-                متعارضة
+                {t('متعارضة')}
               </span>
             </div>
           </section>
@@ -1469,7 +1470,7 @@ export function PortsPage() {
             className={`panel conflict-card${
               allConflicts.length === 0 ? ' conflict-card--clear' : ''
             }`}
-            aria-label="تنبيه تعارض المنافذ"
+            aria-label={t('تنبيه تعارض المنافذ')}
           >
             <header className="panel__head">
               <h2 className="panel__title">
@@ -1478,30 +1479,30 @@ export function PortsPage() {
                 ) : (
                   <ShieldCheck size={17} />
                 )}
-                تنبيه تعارض منافذ
+                {t('تنبيه تعارض منافذ')}
               </h2>
             </header>
             <div className="panel__body">
               {allConflicts.length > 0 ? (
                 <>
                   <p className="conflict-card__lead">
-                    تم اكتشاف {allConflicts.length} تعارض حالياً:
+                    {t('تم اكتشاف')} {allConflicts.length} {t('تعارض حالياً')}
                   </p>
                   <div className="conflict-list">
                     {allConflicts.slice(0, 3).map((conflict) => (
                       <span key={conflict.key}>
                         <AlertCircle size={13} />
                         <span>
-                          المنفذ <strong>{conflict.port}</strong> ({conflict.proto})
-                          مستخدم من {conflict.owners.length} مستخدمين مختلفين:{' '}
-                          {conflict.owners.join('، ')}.
+                          {t('المنفذ')} <strong>{conflict.port}</strong> ({conflict.proto})
+                          {t('مستخدم من')} {conflict.owners.length} {t('مستخدمين مختلفين')}:
+                          {conflict.owners.join(', ')}.
                         </span>
                       </span>
                     ))}
                   </div>
                   {allConflicts.length > 3 && (
                     <p className="conflict-card__more">
-                      +{allConflicts.length - 3} تعارضات أخرى ظاهرة في الجدول.
+                      +{allConflicts.length - 3} {t('تعارضات أخرى ظاهرة في الجدول')}
                     </p>
                   )}
                   <div className="conflict-card__foot">
@@ -1511,7 +1512,7 @@ export function PortsPage() {
                       onClick={showConflicts}
                     >
                       <ExternalLink size={13} />
-                      عرض التفاصيل
+                      {t('عرض التفاصيل')}
                     </button>
                   </div>
                 </>
@@ -1519,8 +1520,7 @@ export function PortsPage() {
                 <div className="conflict-clear">
                   <ShieldCheck size={26} />
                   <p>
-                    لا توجد تعارضات حالياً. جميع المنافذ المراقبة موزعة بشكل سليم
-                    بين المستخدمين.
+                    {t('لا توجد تعارضات حالياً. جميع المنافذ المراقبة موزعة بشكل سليم بين المستخدمين.')}
                   </p>
                 </div>
               )}
@@ -1535,7 +1535,7 @@ export function PortsPage() {
             type="button"
             className="menu-backdrop"
             onClick={() => setRowMenu(null)}
-            aria-label="إغلاق قائمة إجراءات المنفذ"
+            aria-label={t('إغلاق قائمة إجراءات المنفذ')}
           />
           <div
             className="menu-pop ports-row-menu"
@@ -1552,7 +1552,7 @@ export function PortsPage() {
               }}
             >
               <Search size={14} />
-              فحص المنفذ وحجزه
+              {t('فحص المنفذ وحجزه')}
             </button>
 
             {rowMenu.row.state === 'reserved' && (
@@ -1570,7 +1570,7 @@ export function PortsPage() {
                 }}
               >
                 <ShieldX size={14} />
-                تحرير الحجز
+                {t('تحرير الحجز')}
               </button>
             )}
 
@@ -1590,7 +1590,7 @@ export function PortsPage() {
                 }}
               >
                 <Power size={14} />
-                إغلاق العملية (PID {rowMenu.row.pid})
+                {t('إغلاق العملية')} (PID {rowMenu.row.pid})
               </button>
             )}
 
@@ -1605,7 +1605,7 @@ export function PortsPage() {
                 }}
               >
                 <ShieldX size={14} />
-                حظر IP {rowMenu.row.externalIps[0]}
+                {t('حظر IP')} {rowMenu.row.externalIps[0]}
               </button>
             )}
 
@@ -1615,7 +1615,7 @@ export function PortsPage() {
               onClick={() => void copyPort(rowMenu.row.port)}
             >
               <Copy size={14} />
-              نسخ رقم المنفذ
+              {t('نسخ رقم المنفذ')}
             </button>
           </div>
         </>
@@ -1631,21 +1631,21 @@ export function PortsPage() {
             className="modal-panel modal-panel--wide"
             role="dialog"
             aria-modal="true"
-            aria-label="إنشاء قاعدة منفذ جديدة"
+            aria-label={t('إنشاء قاعدة منفذ جديدة')}
             onSubmit={handleCreateSubmit}
             onClick={(event) => event.stopPropagation()}
           >
             <div className="modal-panel__head">
               <span className="modal-panel__title">
                 <Waypoints size={18} />
-                إنشاء قاعدة منفذ جديدة
+                {t('إنشاء قاعدة منفذ جديدة')}
               </span>
               <button
                 type="button"
                 className="modal-panel__close"
                 onClick={closeCreate}
                 disabled={checking || claiming}
-                aria-label="إغلاق نافذة إنشاء قاعدة المنفذ"
+                aria-label={t('إغلاق نافذة إنشاء قاعدة المنفذ')}
               >
                 <X size={16} />
               </button>
@@ -1653,8 +1653,7 @@ export function PortsPage() {
 
             <div className="modal-panel__body">
               <p className="ports-modal-lead">
-                احجز منفذاً حصرياً لمشروعك لمنع تداخل المستخدمين. يمكنك فحص
-                التوفر قبل الحجز، وسيحتفظ النظام بالحجز في قاعدة البيانات.
+                {t('احجز منفذاً حصرياً لمشروعك لمنع تداخل المستخدمين. يمكنك فحص التوفر قبل الحجز، وسيحتفظ النظام بالحجز في قاعدة البيانات.')}
               </p>
 
               {formError && <div className="form-error">{formError}</div>}
@@ -1662,7 +1661,7 @@ export function PortsPage() {
               <div className="form-grid">
                 <div className="form-grid form-grid--2">
                   <label className="ui-label">
-                    رقم المنفذ
+                    {t('رقم المنفذ')}
                     <input
                       className="ui-input"
                       dir="ltr"
@@ -1679,7 +1678,7 @@ export function PortsPage() {
                   </label>
 
                   <label className="ui-label">
-                    اسم المشروع
+                    {t('اسم المشروع')}
                     <input
                       className="ui-input"
                       value={formProject}
@@ -1687,13 +1686,13 @@ export function PortsPage() {
                         setFormProject(event.target.value);
                         setFormError(null);
                       }}
-                      placeholder="مثال: متجر أساس / نظام ERP"
+                      placeholder={t('مثال: متجر أساس / نظام ERP')}
                     />
                   </label>
                 </div>
 
                 <div className="ports-port-chips">
-                  <span>فحص سريع:</span>
+                  <span>{t('فحص سريع:')}</span>
                   {QUICK_PORTS.map((port) => (
                     <button
                       key={port}
@@ -1723,7 +1722,7 @@ export function PortsPage() {
                   ) : (
                     <ShieldCheck size={14} />
                   )}
-                  {checking ? 'جارٍ فحص المنفذ…' : 'فحص توفر المنفذ'}
+                  {checking ? t('جارٍ فحص المنفذ…') : t('فحص توفر المنفذ')}
                 </button>
 
                 {checkResult && (
@@ -1740,23 +1739,23 @@ export function PortsPage() {
                       )}
                       <strong>
                         {checkResult.available
-                          ? `المنفذ ${checkResult.requested_port ?? formPort} شاغر ومتاح`
-                          : `المنفذ ${checkResult.requested_port ?? formPort} غير متاح`}
+                          ? `${t('المنفذ ')}${checkResult.requested_port ?? formPort}${t(' شاغر ومتاح')}`
+                          : `${t('المنفذ ')}${checkResult.requested_port ?? formPort}${t(' غير متاح')}`}
                       </strong>
                     </div>
                     <p>
                       {checkResult.available
                         ? checkResult.message
-                        : `المنفذ ${checkResult.requested_port ?? formPort} غير متاح حالياً على السيرفر. لم يتم إجراء أي حجز بعد — اعتمد المنفذ البديل أو غيّر الرقم، ثم أكّد الحجز.`}
+                        : `${t('المنفذ ')}${checkResult.requested_port ?? formPort}${t(' غير متاح حالياً على السيرفر. لم يتم إجراء أي حجز بعد — اعتمد المنفذ البديل أو غيّر الرقم، ثم أكّد الحجز.')}`}
                     </p>
                     {!checkResult.available && checkResult.current_owner && (
                       <p className="ports-check-result__owner">
-                        المالك الحالي: <span dir="ltr">{checkResult.current_owner}</span>
+                        {t('المالك الحالي:')} <span dir="ltr">{checkResult.current_owner}</span>
                       </p>
                     )}
                     {!checkResult.available && checkResult.suggested_port && (
                       <div className="ports-suggestion">
-                        <span>المنفذ البديل المقترح:</span>
+                        <span>{t('المنفذ البديل المقترح:')}</span>
                         <button
                           type="button"
                           className="ports-suggestion__port"
@@ -1769,7 +1768,7 @@ export function PortsPage() {
                             (port) => port !== checkResult.suggested_port,
                           ).length > 0 && (
                             <span className="ports-suggestion__alts">
-                              بدائل:
+                              {t('بدائل')}
                               {checkResult.alternatives
                                 .filter((port) => port !== checkResult.suggested_port)
                                 .slice(0, 3)
@@ -1791,8 +1790,8 @@ export function PortsPage() {
 
                 <p className="ports-form-hint">
                   {autoAllocate
-                    ? 'التوزيع التلقائي مفعّل: عند تعارض المنفذ سيُعتمد المنفذ البديل المقترح تلقائياً عند الحجز.'
-                    : 'التوزيع التلقائي متوقف: يمكنك اعتماد المنفذ البديل المقترح يدوياً قبل الحجز.'}
+                    ? t('التوزيع التلقائي مفعّل: عند تعارض المنفذ سيُعتمد المنفذ البديل المقترح تلقائياً عند الحجز.')
+                    : t('التوزيع التلقائي متوقف: يمكنك اعتماد المنفذ البديل المقترح يدوياً قبل الحجز.')}
                 </p>
               </div>
             </div>
@@ -1809,8 +1808,8 @@ export function PortsPage() {
                   <Plus size={15} />
                 )}
                 {claiming
-                  ? 'جارٍ حجز المنفذ…'
-                  : `حجز المنفذ ${formPort || ''}`}
+                  ? t('جارٍ حجز المنفذ…')
+                  : `${t('حجز المنفذ ')}${formPort || ''}`}
               </button>
               <button
                 type="button"
@@ -1818,7 +1817,7 @@ export function PortsPage() {
                 onClick={closeCreate}
                 disabled={checking || claiming}
               >
-                إلغاء
+                {t('إلغاء')}
               </button>
             </div>
           </form>
@@ -1850,7 +1849,7 @@ export function PortsPage() {
                 className="modal-panel__close"
                 onClick={() => setConfirmState(null)}
                 disabled={confirmBusy}
-                aria-label="إغلاق نافذة التأكيد"
+                aria-label={t('إغلاق نافذة التأكيد')}
               >
                 <X size={16} />
               </button>
@@ -1876,7 +1875,7 @@ export function PortsPage() {
                 ) : (
                   <AlertTriangle size={14} />
                 )}
-                {confirmBusy ? 'جارٍ التنفيذ…' : confirmation.action}
+                {confirmBusy ? t('جارٍ التنفيذ…') : confirmation.action}
               </button>
               <button
                 type="button"
@@ -1884,7 +1883,7 @@ export function PortsPage() {
                 onClick={() => setConfirmState(null)}
                 disabled={confirmBusy}
               >
-                إلغاء
+                {t('إلغاء')}
               </button>
             </div>
           </div>

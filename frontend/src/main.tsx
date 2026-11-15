@@ -1,10 +1,22 @@
 import './asaas-ui/styles/index.css';
 import './styles/app.css';
-import { StrictMode, Component, type ReactNode } from 'react';
+import { StrictMode, Component, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider, Ambient } from './asaas-ui';
+import { useLang } from './lib/i18n';
 import App from './App';
+
+/** Applies lang/dir to <html> and remounts the tree on language switch so
+ *  every t() call re-evaluates against the new dictionary. */
+function LangRoot({ children }: { children: ReactNode }) {
+  const lang = useLang();
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  }, [lang]);
+  return <div key={lang} style={{ display: 'contents' }}>{children}</div>;
+}
 
 class GlobalErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error?: Error }> {
   constructor(props: { children: ReactNode }) {
@@ -88,7 +100,9 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <ToastProvider>
           <Ambient />
-          <App />
+          <LangRoot>
+            <App />
+          </LangRoot>
         </ToastProvider>
       </BrowserRouter>
     </GlobalErrorBoundary>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -32,6 +32,7 @@ import {
 } from '../lib/api';
 import { CpuHistoryChart, type ChartPoint } from '../components/CpuHistoryChart';
 import { HistoricalMetricsChart } from '../components/HistoricalMetricsChart';
+import { t } from '../lib/i18n';
 
 interface FirewallStatus {
   ok: boolean;
@@ -78,11 +79,11 @@ function relativeFrom(value: string): string {
   const date = new Date(value.includes('T') ? value : value.replace(' ', 'T'));
   if (Number.isNaN(date.getTime())) return value;
   const diffMinutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
-  if (diffMinutes < 60) return `منذ ${diffMinutes || 1} دقيقة`;
+  if (diffMinutes < 60) return `${t('منذ ')}${diffMinutes || 1}${t(' دقيقة')}`;
   const hours = Math.floor(diffMinutes / 60);
-  if (hours < 24) return `منذ ${hours} ساعة`;
+  if (hours < 24) return `${t('منذ ')}${hours}${t(' ساعة')}`;
   const days = Math.floor(hours / 24);
-  return `منذ ${days} يوم`;
+  return `${t('منذ ')}${days}${t(' يوم')}`;
 }
 
 function clockOf(value: string): string {
@@ -92,11 +93,11 @@ function clockOf(value: string): string {
 }
 
 const ACTION_META: Record<string, { title: string; icon: typeof Zap }> = {
-  LOGIN_SUCCESS: { title: 'تسجيل دخول ناجح', icon: LogIn },
-  SESSION_LOGOFF: { title: 'إنهاء جلسة مستخدم', icon: LogOut },
-  RAM_TRIMMED: { title: 'تفريغ الذاكرة الخاملة', icon: Zap },
-  SERVICE_CONTROL: { title: 'تعديل حالة خدمة', icon: Settings2 },
-  USER_CREATED: { title: 'إنشاء مستخدم جديد', icon: Users },
+  LOGIN_SUCCESS: { title: t('تسجيل دخول ناجح'), icon: LogIn },
+  SESSION_LOGOFF: { title: t('إنهاء جلسة مستخدم'), icon: LogOut },
+  RAM_TRIMMED: { title: t('تفريغ الذاكرة الخاملة'), icon: Zap },
+  SERVICE_CONTROL: { title: t('تعديل حالة خدمة'), icon: Settings2 },
+  USER_CREATED: { title: t('إنشاء مستخدم جديد'), icon: Users },
 };
 
 export function OverviewPage() {
@@ -235,14 +236,14 @@ export function OverviewPage() {
         <div className="page-head__title">
           <span className="page-head__bar" />
           <div>
-            <h1>لوحة القيادة</h1>
-            <p>نظرة شاملة على حالة السيرفر والموارد والخدمات الأمنية</p>
+            <h1>{t('لوحة القيادة')}</h1>
+            <p>{t('نظرة شاملة على حالة السيرفر والموارد والخدمات الأمنية')}</p>
           </div>
         </div>
         <div className="page-head__actions">
-          <div className="range-switch" role="group" aria-label="نطاق القياس الزمني">
-            <button type="button" data-active={range === '24h'} onClick={() => selectRange('24h')}>آخر 24 ساعة</button>
-            <button type="button" data-active={range === '7d'} onClick={() => selectRange('7d')}>آخر 7 أيام</button>
+          <div className="range-switch" role="group" aria-label={t('نطاق القياس الزمني')}>
+            <button type="button" data-active={range === '24h'} onClick={() => selectRange('24h')}>{t('آخر 24 ساعة')}</button>
+            <button type="button" data-active={range === '7d'} onClick={() => selectRange('7d')}>{t('آخر 7 أيام')}</button>
           </div>
           <span className="period-pill">
             <Clock3 size={14} />
@@ -253,8 +254,8 @@ export function OverviewPage() {
             className="icon-btn"
             onClick={refreshAll}
             disabled={loading}
-            aria-label="تحديث بيانات اللوحة"
-            title="تحديث بيانات اللوحة"
+            aria-label={t('تحديث بيانات اللوحة')}
+            title={t('تحديث بيانات اللوحة')}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
           </button>
@@ -264,37 +265,37 @@ export function OverviewPage() {
       <div className="kpi-grid">
         <article className="kpi">
           <div className="kpi__top">
-            <span className="kpi__label">المعالج (CPU)</span>
+            <span className="kpi__label">{t('المعالج (CPU)')}</span>
             <span className="kpi__icon"><Cpu size={19} /></span>
           </div>
           <div className="kpi__value">{cpuValue}%</div>
-          <div className="kpi__foot">{shellTop} نواة</div>
+          <div className="kpi__foot">{shellTop} {t('نواة')}</div>
           <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, cpuValue))}%` }} /></div>
         </article>
 
         <article className="kpi">
           <div className="kpi__top">
-            <span className="kpi__label">الذاكرة (RAM)</span>
+            <span className="kpi__label">{t('الذاكرة (RAM)')}</span>
             <span className="kpi__icon"><MemoryStick size={19} /></span>
           </div>
           <div className="kpi__value">{ramValue}%</div>
-          <div className="kpi__foot">من {formatGb(host?.totalRam ?? 0)} GB</div>
+          <div className="kpi__foot">{t('من')} {formatGb(host?.totalRam ?? 0)} GB</div>
           <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, ramValue))}%` }} /></div>
         </article>
 
         <article className="kpi">
           <div className="kpi__top">
-            <span className="kpi__label">القرص (C:)</span>
+            <span className="kpi__label">{t('القرص (C:)')}</span>
             <span className="kpi__icon"><HardDrive size={19} /></span>
           </div>
           <div className="kpi__value">{diskValue}%</div>
-          <div className="kpi__foot">من {formatGb(diskTotal)} GB</div>
+          <div className="kpi__foot">{t('من')} {formatGb(diskTotal)} GB</div>
           <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, diskValue))}%` }} /></div>
         </article>
 
         <article className="kpi">
           <div className="kpi__top">
-            <span className="kpi__label">الشبكة</span>
+            <span className="kpi__label">{t('الشبكة')}</span>
             <span className="kpi__icon"><Network size={19} /></span>
           </div>
           <div className="kpi__value">{formatMbps(networkTotal)} <small>Mbps</small></div>
@@ -307,21 +308,21 @@ export function OverviewPage() {
 
         <article className="kpi">
           <div className="kpi__top">
-            <span className="kpi__label">جلسات RDP النشطة</span>
+            <span className="kpi__label">{t('جلسات RDP النشطة')}</span>
             <span className="kpi__icon"><Users size={19} /></span>
           </div>
           <div className="kpi__value">{activeSessions.length}</div>
-          <div className="kpi__foot">من أصل {totalSessions} جلسة مسجلة</div>
+          <div className="kpi__foot">{t('من أصل')} {totalSessions} {t('جلسة مسجلة')}</div>
           <div className="kpi__meter meter"><div className="meter__fill meter__fill--green" style={{ width: `${totalSessions ? Math.max(3, (activeSessions.length / totalSessions) * 100) : 0}%` }} /></div>
         </article>
 
         <article className="kpi kpi--danger">
           <div className="kpi__top">
-            <span className="kpi__label">التنبيهات الأمنية</span>
+            <span className="kpi__label">{t('التنبيهات الأمنية')}</span>
             <span className="kpi__icon"><ShieldCheck size={19} /></span>
           </div>
           <div className="kpi__value">{securityAlerts.length}</div>
-          <div className="kpi__foot">{securityAlerts.length ? 'بحاجة إلى مراجعة' : 'لا توجد تنبيهات معلقة'}</div>
+          <div className="kpi__foot">{securityAlerts.length ? t('بحاجة إلى مراجعة') : t('لا توجد تنبيهات معلقة')}</div>
           <div className="kpi__meter meter"><div className="meter__fill meter__fill--red" style={{ width: `${Math.min(100, securityAlerts.length * 8 + (securityAlerts.length ? 6 : 0))}%` }} /></div>
         </article>
       </div>
@@ -335,67 +336,67 @@ export function OverviewPage() {
           totalGb={host?.totalRam ?? 0}
         />
 
-        <section className="panel chart-card server-rail-card" aria-label="حالة السيرفر">
+        <section className="panel chart-card server-rail-card" aria-label={t('حالة السيرفر')}>
           <header className="panel__head">
             <h2 className="panel__title">
               <Activity size={17} />
-              حالة السيرفر
+              {t('حالة السيرفر')}
             </h2>
             <span className={`badge ${health?.ok ? 'badge--success' : 'badge--warning'}`}>
               <span className="badge-dot" />
-              {health?.ok ? 'متصل' : 'قيد الفحص'}
+              {health?.ok ? t('متصل') : t('قيد الفحص')}
             </span>
           </header>
           <div className="panel__body">
             <div className="status-rows">
               <div className="status-row">
-                <span>النظام يعمل بشكل طبيعي</span>
+                <span>{t('النظام يعمل بشكل طبيعي')}</span>
                 <span className={`status-${health?.ok ? 'ok' : 'warn'}`}>
                   {health?.ok ? <CheckCircle2 /> : <AlertTriangle />}
                 </span>
               </div>
               <div className="status-row">
-                <span>الخدمات الأساسية ({runningServices.length}/{services.length})</span>
+                <span>{t('الخدمات الأساسية')} ({runningServices.length}/{services.length})</span>
                 <span className={`status-${criticalRunning ? 'ok' : 'warn'}`}>
                   {criticalRunning ? <CheckCircle2 /> : <AlertTriangle />}
                 </span>
               </div>
               <div className="status-row">
-                <span>جدار الحماية</span>
+                <span>{t('جدار الحماية')}</span>
                 <span className={`status-${firewallActive ? 'ok' : 'warn'}`}>
                   {firewallActive ? <CheckCircle2 /> : <AlertTriangle />}
                 </span>
               </div>
               <div className="status-row">
-                <span>حماية الحسابات والتصعيد</span>
+                <span>{t('حماية الحسابات والتصعيد')}</span>
                 <span className={`status-${securityStats?.auto_ban_enabled ? 'ok' : 'warn'}`}>
                   {securityStats?.auto_ban_enabled ? <CheckCircle2 /> : <AlertTriangle />}
                 </span>
               </div>
               <div className="status-row">
-                <span>النسخ الاحتياطي</span>
+                <span>{t('النسخ الاحتياطي')}</span>
                 <span className={`status-${lastBackup ? 'ok' : 'warn'}`}>
                   {lastBackup ? <CheckCircle2 /> : <Clock3 />}
                 </span>
               </div>
             </div>
             <div className="status-backup">
-              <span>النسخ الاحتياطي التلقائي</span>
-              <span>{lastBackup ? `آخر نسخة ${relativeFrom(lastBackup.modified_at)}` : 'لا توجد نسخة مسجلة'}</span>
+              <span>{t('النسخ الاحتياطي التلقائي')}</span>
+              <span>{lastBackup ? `${t('آخر نسخة ')}${relativeFrom(lastBackup.modified_at)}` : t('لا توجد نسخة مسجلة')}</span>
             </div>
           </div>
         </section>
       </div>
 
       <div className="overview-rail">
-        <section className="panel" aria-label="السيرفرات والخدمات">
+        <section className="panel" aria-label={t('السيرفرات والخدمات')}>
           <header className="panel__head">
             <h2 className="panel__title">
               <Server size={17} />
-              السيرفرات والخدمات
+              {t('السيرفرات والخدمات')}
             </h2>
             <NavLink to="/servers" className="panel__action" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
-              عرض الكل
+              {t('عرض الكل')}
               <ChevronLeft size={13} />
             </NavLink>
           </header>
@@ -404,19 +405,19 @@ export function OverviewPage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>اسم السيرفر / الخدمة</th>
-                    <th>الحالة</th>
-                    <th>المعالج</th>
-                    <th>الذاكرة</th>
-                    <th>القرص</th>
-                    <th>مدة التشغيل</th>
+                    <th>{t('اسم السيرفر / الخدمة')}</th>
+                    <th>{t('الحالة')}</th>
+                    <th>{t('المعالج')}</th>
+                    <th>{t('الذاكرة')}</th>
+                    <th>{t('القرص')}</th>
+                    <th>{t('مدة التشغيل')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {servers.length === 0 && (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: 30, color: 'var(--text-3)' }}>
-                        جارٍ تحميل سجل السيرفرات…
+                        {t('جارٍ تحميل سجل السيرفرات…')}
                       </td>
                     </tr>
                   )}
@@ -437,7 +438,7 @@ export function OverviewPage() {
                         <td>
                           <span className={`pill-status ${online ? 'pill-status--on' : 'pill-status--off'}`}>
                             <span className="badge-dot" />
-                            {online ? 'متصل' : 'غير متصل'}
+                            {online ? t('متصل') : t('غير متصل')}
                           </span>
                         </td>
                         <td>
@@ -470,18 +471,18 @@ export function OverviewPage() {
           </div>
         </section>
 
-        <section className="panel activity-card" aria-label="النشاط الأخير">
+        <section className="panel activity-card" aria-label={t('النشاط الأخير')}>
           <header className="panel__head">
             <h2 className="panel__title">
               <Clock3 size={17} />
-              النشاط الأخير
+              {t('النشاط الأخير')}
             </h2>
           </header>
           <div className="panel__body" style={{ paddingTop: 6 }}>
             <div className="activity-list">
               {recentActivity.length === 0 && (
                 <div style={{ padding: '18px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 11 }}>
-                  لا توجد أحداث تدقيق حديثة
+                  {t('لا توجد أحداث تدقيق حديثة')}
                 </div>
               )}
               {recentActivity.map((entry) => {
@@ -500,7 +501,7 @@ export function OverviewPage() {
               })}
             </div>
             <button type="button" className="activity-more" onClick={() => navigate('/audit')}>
-              عرض جميع السجلات
+              {t('عرض جميع السجلات')}
               <ArrowLeft size={13} />
             </button>
           </div>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 8: Network & Storage (إدارة الأقراص، وحدات التخزين، مشاركات SMB، مستعرض الملفات، المحولات، الجدار الناري والتشخيص)
  * Zero-Mock Production with Real Windows Physical Disks, Volumes, NetAdapters & Firewall
@@ -23,6 +23,7 @@ import {
   Radio,
   Wifi,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function NetworkStoragePage() {
   const toast = useToast();
@@ -93,7 +94,7 @@ export function NetworkStoragePage() {
         setCurrentPath(res.current_path);
       }
     } catch (err: any) {
-      toast(err.message || 'فشل استعراض المجلد', 'error');
+      toast(err.message || t('فشل استعراض المجلد'), 'error');
     }
   };
 
@@ -133,7 +134,7 @@ export function NetworkStoragePage() {
   const handleCreateShare = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newShareName || !newSharePath) {
-      toast('يرجى إدخال اسم المشاركة والمسار المحلي', 'error');
+      toast(t('يرجى إدخال اسم المشاركة والمسار المحلي'), 'error');
       return;
     }
     setSubmittingShare(true);
@@ -144,33 +145,33 @@ export function NetworkStoragePage() {
         description: newShareDesc,
       });
       if (res.ok) {
-        toast(`تم إنشاء مشاركة SMB [\\\\SRV-LOCAL\\${newShareName}] بنجاح.`, 'success');
+        toast(`${t('تم إنشاء مشاركة SMB [\\\\\\\\SRV-LOCAL\\\\')}${newShareName}${t('] بنجاح.')}`, 'success');
         setShareModalOpen(false);
         setNewShareName('');
         setNewSharePath('');
         fetchShares();
       } else {
-        toast(res.error || 'فشل إنشاء المشاركة', 'error');
+        toast(res.error || t('فشل إنشاء المشاركة'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء إنشاء المشاركة', 'error');
+      toast(err.message || t('خطأ أثناء إنشاء المشاركة'), 'error');
     } finally {
       setSubmittingShare(false);
     }
   };
 
   const handleDeleteShare = async (name: string) => {
-    if (!window.confirm(`هل أنت متأكد من حذف مشاركة الشبكة [${name}]؟`)) return;
+    if (!window.confirm(`${t('هل أنت متأكد من حذف مشاركة الشبكة [')}${name}${t(']؟')}`)) return;
     try {
       const res = await api.deleteSmbShare(name);
       if (res.ok) {
-        toast(`تمت إزالة مشاركة SMB [${name}] بنجاح.`, 'success');
+        toast(`${t('تمت إزالة مشاركة SMB [')}${name}${t('] بنجاح.')}`, 'success');
         fetchShares();
       } else {
-        toast(res.error || 'فشل حذف المشاركة', 'error');
+        toast(res.error || t('فشل حذف المشاركة'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء حذف المشاركة', 'error');
+      toast(err.message || t('خطأ أثناء حذف المشاركة'), 'error');
     }
   };
 
@@ -179,13 +180,13 @@ export function NetworkStoragePage() {
     try {
       const res = await api.toggleFirewallRule(ruleName, !currentEnabled);
       if (res.ok) {
-        toast(`تم ${!currentEnabled ? 'تفعيل' : 'تعطيل'} قاعدة الجدار الناري بنجاح.`, 'success');
+        toast(`${t('تم ')}${!currentEnabled ? t('تفعيل') : t('تعطيل')}${t(' قاعدة الجدار الناري بنجاح.')}`, 'success');
         fetchFirewall();
       } else {
-        toast(res.error || 'فشل تغيير حالة القاعدة', 'error');
+        toast(res.error || t('فشل تغيير حالة القاعدة'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ في الجدار الناري', 'error');
+      toast(err.message || t('خطأ في الجدار الناري'), 'error');
     } finally {
       setTogglingRule(null);
     }
@@ -199,12 +200,12 @@ export function NetworkStoragePage() {
       const res = await api.pingHost(pingHost, 4);
       setPingResult(res);
       if (res.ok && res.packet_loss_percent === 0) {
-        toast(`تم الاتصال بالهدف [${pingHost}] بنجاح، زمن الاستجابة: ${res.avg_latency_ms}ms`, 'success');
+        toast(`${t('تم الاتصال بالهدف [')}${pingHost}${t('] بنجاح، زمن الاستجابة: ')}${res.avg_latency_ms}ms`, 'success');
       } else {
-        toast(`استجابة غير مكتملة أو فقدان حزم للهدف [${pingHost}]`, 'error');
+        toast(`${t('استجابة غير مكتملة أو فقدان حزم للهدف [')}${pingHost}]`, 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'فشل تنفيذ اختبار Ping', 'error');
+      toast(err.message || t('فشل تنفيذ اختبار Ping'), 'error');
     } finally {
       setPinging(false);
     }
@@ -218,12 +219,12 @@ export function NetworkStoragePage() {
       const res = await api.testTcpPort(tcpHost, tcpPort);
       setTcpResult(res);
       if (res.connected) {
-        toast(`المنفذ [${tcpPort}] على المضيف [${tcpHost}] مفتوح وجاهز للاستقبال!`, 'success');
+        toast(`${t('المنفذ [')}${tcpPort}${t('] على المضيف [')}${tcpHost}${t('] مفتوح وجاهز للاستقبال!')}`, 'success');
       } else {
-        toast(`المنفذ [${tcpPort}] على المضيف [${tcpHost}] مغلق أو لا يستجيب.`, 'error');
+        toast(`${t('المنفذ [')}${tcpPort}${t('] على المضيف [')}${tcpHost}${t('] مغلق أو لا يستجيب.')}`, 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'فشل اختبار مقبس TCP', 'error');
+      toast(err.message || t('فشل اختبار مقبس TCP'), 'error');
     } finally {
       setTestingTcp(false);
     }
@@ -241,15 +242,15 @@ export function NetworkStoragePage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <HardDrive size={24} style={{ color: 'var(--accent)' }} />
-            <span>التخزين والشبكات (Storage, Shares & Network Core)</span>
+            <span>{t('التخزين والشبكات (Storage, Shares & Network Core)')}</span>
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
-            إدارة متكاملة للأقراص الفيزيائية، وحدات التخزين، مشاركات SMB، مستعرض ملفات السيرفر، محولات الشبكة، والجدار الناري.
+            {t('إدارة متكاملة للأقراص الفيزيائية، وحدات التخزين، مشاركات SMB، مستعرض ملفات السيرفر، محولات الشبكة، والجدار الناري.')}
           </p>
         </div>
         <Button variant="ghost" onClick={loadTabData} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={15} className={loading ? 'spin' : ''} />
-          <span>تحديث</span>
+          <span>{t('تحديث')}</span>
         </Button>
       </div>
 
@@ -273,7 +274,7 @@ export function NetworkStoragePage() {
           }}
         >
           <HardDrive size={15} />
-          <span>الأقراص الفيزيائية (Disks - {disks.length})</span>
+          <span>{t('الأقراص الفيزيائية')} (Disks - {disks.length})</span>
         </button>
 
         <button
@@ -294,7 +295,7 @@ export function NetworkStoragePage() {
           }}
         >
           <HardDrive size={15} />
-          <span>وحدات التخزين (Volumes - {volumes.length})</span>
+          <span>{t('وحدات التخزين')} (Volumes - {volumes.length})</span>
         </button>
 
         <button
@@ -315,7 +316,7 @@ export function NetworkStoragePage() {
           }}
         >
           <Share2 size={15} />
-          <span>مشاركات SMB (File Shares)</span>
+          <span>{t('مشاركات SMB (File Shares)')}</span>
         </button>
 
         <button
@@ -336,7 +337,7 @@ export function NetworkStoragePage() {
           }}
         >
           <FolderTree size={15} />
-          <span>مستعرض ملفات السيرفر (Explorer)</span>
+          <span>{t('مستعرض ملفات السيرفر (Explorer)')}</span>
         </button>
 
         <button
@@ -357,7 +358,7 @@ export function NetworkStoragePage() {
           }}
         >
           <Network size={15} />
-          <span>محولات الشبكة (Adapters)</span>
+          <span>{t('محولات الشبكة (Adapters)')}</span>
         </button>
 
         <button
@@ -378,7 +379,7 @@ export function NetworkStoragePage() {
           }}
         >
           <Shield size={15} />
-          <span>الجدار الناري (Firewall)</span>
+          <span>{t('الجدار الناري (Firewall)')}</span>
         </button>
 
         <button
@@ -399,7 +400,7 @@ export function NetworkStoragePage() {
           }}
         >
           <Activity size={15} />
-          <span>فحص وتشخيص الشبكة (Ping & TCP)</span>
+          <span>{t('فحص وتشخيص الشبكة (Ping & TCP)')}</span>
         </button>
       </div>
 
@@ -407,18 +408,18 @@ export function NetworkStoragePage() {
       {activeTab === 'disks' && (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-            الأقراص الفيزيائية المتصلة (Windows Physical Disks via Get-Disk)
+            {t('الأقراص الفيزيائية المتصلة (Windows Physical Disks via Get-Disk)')}
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>رقم القرص</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الموديل / FriendlyName</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>السعة الإجمالية</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>نوع الناقل (Bus)</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>نمط التقسيم</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة الصحية</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('رقم القرص')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الموديل / FriendlyName')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('السعة الإجمالية')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نوع الناقل (Bus)')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نمط التقسيم')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة الصحية')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -431,7 +432,7 @@ export function NetworkStoragePage() {
                       {d.model || d.FriendlyName || 'Physical Drive'}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)' }}>
-                      {d.size_gb ? `${d.size_gb} GB` : 'غير محدد'}
+                      {d.size_gb ? `${d.size_gb} GB` : t('غير محدد')}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
                       {d.bus_type || d.BusType || 'NVMe/SATA'}
@@ -456,18 +457,18 @@ export function NetworkStoragePage() {
       {activeTab === 'volumes' && (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-            وحدات التخزين والتقسيمات (Windows Volumes via Get-Volume)
+            {t('وحدات التخزين والتقسيمات (Windows Volumes via Get-Volume)')}
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>حرف الوحدة</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>تسمية الوحدة (Label)</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>نظام الملفات</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>السعة الإجمالية</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المساحة المتاحة</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>نسبة الشغور</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('حرف الوحدة')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('تسمية الوحدة (Label)')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نظام الملفات')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('السعة الإجمالية')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المساحة المتاحة')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نسبة الشغور')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -513,7 +514,7 @@ export function NetworkStoragePage() {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button variant="primary" onClick={() => setShareModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Plus size={15} />
-              <span>إنشاء مشاركة SMB جديدة</span>
+              <span>{t('إنشاء مشاركة SMB جديدة')}</span>
             </Button>
           </div>
 
@@ -522,11 +523,11 @@ export function NetworkStoragePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                 <thead>
                   <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم المشاركة (Share Name)</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>المسار المحلي (Local Path)</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الوصف</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>الإجراءات</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم المشاركة (Share Name)')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المسار المحلي (Local Path)')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوصف')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>{t('الإجراءات')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -539,7 +540,7 @@ export function NetworkStoragePage() {
                         {s.path}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
-                        {s.description || 'مشاركة شبكة'}
+                        {s.description || t('مشاركة شبكة')}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span className="badge badge--success" style={{ fontSize: 11 }}>
@@ -573,7 +574,7 @@ export function NetworkStoragePage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontFamily: 'monospace', color: 'var(--text-1)' }}>
               <Folder size={16} style={{ color: 'var(--accent)' }} />
-              <span>المسار الحالي:</span>
+              <span>{t('المسار الحالي:')}</span>
               <span style={{ padding: '4px 8px', borderRadius: 4, background: 'var(--glass-tint)', border: '1px solid var(--glass-rim)' }}>
                 {currentPath}
               </span>
@@ -584,7 +585,7 @@ export function NetworkStoragePage() {
               <Button variant="secondary" onClick={() => fetchExplorer('D:\\')} style={{ fontSize: 11, padding: '4px 10px' }}>D:\</Button>
               {explorerData?.parent_path && (
                 <Button variant="primary" onClick={() => fetchExplorer(explorerData.parent_path)} style={{ fontSize: 11, padding: '4px 10px' }}>
-                  المجلد الأعلى ..
+                  {t('المجلد الأعلى ..')}
                 </Button>
               )}
             </div>
@@ -595,10 +596,10 @@ export function NetworkStoragePage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
-                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الاسم</th>
-                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>النوع</th>
-                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحجم</th>
-                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>تاريخ التعديل</th>
+                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الاسم')}</th>
+                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('النوع')}</th>
+                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحجم')}</th>
+                  <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('تاريخ التعديل')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -628,7 +629,7 @@ export function NetworkStoragePage() {
                         </div>
                       </td>
                       <td style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)' }}>
-                        {isDir ? 'مجلد (Directory)' : 'ملف (File)'}
+                        {isDir ? t('مجلد (Directory)') : t('ملف (File)')}
                       </td>
                       <td style={{ padding: '10px 14px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-2)' }}>
                         {isDir ? '-' : (item.size_mb ? `${item.size_mb} MB` : (item.size_bytes ? `${Math.round(item.size_bytes / 1024)} KB` : '0 KB'))}
@@ -665,19 +666,19 @@ export function NetworkStoragePage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, borderTop: '1px solid var(--glass-rim-low)', paddingTop: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-3)' }}>عنوان IPv4:</span>
+                  <span style={{ color: 'var(--text-3)' }}>{t('عنوان IPv4:')}</span>
                   <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-1)' }}>
                     {a.ipv4 || a.IPAddress || '—'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-3)' }}>عنوان MAC الفيزيائي:</span>
+                  <span style={{ color: 'var(--text-3)' }}>{t('عنوان MAC الفيزيائي:')}</span>
                   <span style={{ fontFamily: 'monospace', color: 'var(--text-2)' }}>
                     {a.mac_address || a.MacAddress || '—'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-3)' }}>سرعة الرابط (Link Speed):</span>
+                  <span style={{ color: 'var(--text-3)' }}>{t('سرعة الرابط (Link Speed):')}</span>
                   <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
                     {a.link_speed || a.LinkSpeed || '1 Gbps'}
                   </span>
@@ -694,21 +695,21 @@ export function NetworkStoragePage() {
           {/* Firewall Profiles Card */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
             <Card style={{ padding: 14 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>ملف النطاق (Domain Profile)</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('ملف النطاق (Domain Profile)')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-safe)', marginTop: 4 }}>
-                {firewallStatus?.domain_profile?.enabled ? 'مفعّل ونشط' : 'مفعّل'}
+                {firewallStatus?.domain_profile?.enabled ? t('مفعّل ونشط') : t('مفعّل')}
               </div>
             </Card>
             <Card style={{ padding: 14 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>الملف الخاص (Private Profile)</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('الملف الخاص (Private Profile)')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-safe)', marginTop: 4 }}>
-                {firewallStatus?.private_profile?.enabled ? 'مفعّل ونشط' : 'مفعّل'}
+                {firewallStatus?.private_profile?.enabled ? t('مفعّل ونشط') : t('مفعّل')}
               </div>
             </Card>
             <Card style={{ padding: 14 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>الملف العام (Public Profile)</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('الملف العام (Public Profile)')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-safe)', marginTop: 4 }}>
-                {firewallStatus?.public_profile?.enabled ? 'مفعّل ونشط' : 'مفعّل'}
+                {firewallStatus?.public_profile?.enabled ? t('مفعّل ونشط') : t('مفعّل')}
               </div>
             </Card>
           </div>
@@ -717,14 +718,14 @@ export function NetworkStoragePage() {
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-                قواعد جدار الحماية (Windows Firewall Rules via NetSecurity)
+                {t('قواعد جدار الحماية (Windows Firewall Rules via NetSecurity)')}
               </span>
               <div style={{ position: 'relative', width: 280 }}>
                 <Search size={15} style={{ position: 'absolute', right: 10, top: 9, color: 'var(--text-3)' }} />
                 <TextInput
                   value={firewallSearch}
                   onChange={(e) => setFirewallSearch(e.target.value)}
-                  placeholder="بحث في القواعد..."
+                  placeholder={t('بحث في القواعد...')}
                   style={{ paddingRight: 32, height: 34, fontSize: 12 }}
                 />
               </div>
@@ -734,11 +735,11 @@ export function NetworkStoragePage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>اسم القاعدة</th>
-                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الاتجاه (Direction)</th>
-                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الإجراء</th>
-                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>الحالة</th>
-                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>تبديل الحالة</th>
+                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم القاعدة')}</th>
+                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الاتجاه (Direction)')}</th>
+                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الإجراء')}</th>
+                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                    <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>{t('تبديل الحالة')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -758,7 +759,7 @@ export function NetworkStoragePage() {
                       </td>
                       <td style={{ padding: '10px 16px' }}>
                         <span className={`badge ${r.enabled ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 10 }}>
-                          {r.enabled ? 'مفعلة' : 'معطلة'}
+                          {r.enabled ? t('مفعلة') : t('معطلة')}
                         </span>
                       </td>
                       <td style={{ padding: '10px 16px', textAlign: 'end' }}>
@@ -768,7 +769,7 @@ export function NetworkStoragePage() {
                           onClick={() => handleToggleFirewallRule(r.name, r.enabled)}
                           style={{ fontSize: 11, padding: '4px 8px' }}
                         >
-                          {r.enabled ? 'تعطيل' : 'تفعيل'}
+                          {r.enabled ? t('تعطيل') : t('تفعيل')}
                         </Button>
                       </td>
                     </tr>
@@ -787,30 +788,30 @@ export function NetworkStoragePage() {
           <Card style={{ padding: 18 }}>
             <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-1)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Radio size={18} style={{ color: 'var(--accent)' }} />
-              <span>فحص الاستجابة (ICMP Ping Diagnostic)</span>
+              <span>{t('فحص الاستجابة (ICMP Ping Diagnostic)')}</span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 14px' }}>
-              إرسال حزم صدى ICMP حقيقية للتحقق من الاتصال عبر طبقة الشبكة وحساب زمن الوصول بالمللي ثانية.
+              {t('إرسال حزم صدى ICMP حقيقية للتحقق من الاتصال عبر طبقة الشبكة وحساب زمن الوصول بالمللي ثانية.')}
             </p>
 
             <form onSubmit={handleRunPing} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>عنوان المضيف أو IP</label>
-                <TextInput value={pingHost} onChange={(e) => setPingHost(e.target.value)} placeholder="مثال: 1.1.1.1 أو google.com" required />
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('عنوان المضيف أو IP')}</label>
+                <TextInput value={pingHost} onChange={(e) => setPingHost(e.target.value)} placeholder={t('مثال: 1.1.1.1 أو google.com')} required />
               </div>
               <Button variant="primary" type="submit" disabled={pinging}>
-                {pinging ? 'جارٍ إرسال الحزم...' : 'بدء فحص Ping'}
+                {pinging ? t('جارٍ إرسال الحزم...') : t('بدء فحص Ping')}
               </Button>
             </form>
 
             {pingResult && (
               <div style={{ marginTop: 14, padding: 12, borderRadius: 6, background: 'var(--glass-tint)', border: '1px solid var(--glass-rim)', fontSize: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ color: 'var(--text-3)' }}>متوسط زمن الاستجابة:</span>
+                  <span style={{ color: 'var(--text-3)' }}>{t('متوسط زمن الاستجابة:')}</span>
                   <span style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'monospace' }}>{pingResult.avg_latency_ms} ms</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-3)' }}>نسبة فقدان الحزم:</span>
+                  <span style={{ color: 'var(--text-3)' }}>{t('نسبة فقدان الحزم:')}</span>
                   <span style={{ fontWeight: 700, color: pingResult.packet_loss_percent === 0 ? 'var(--status-safe)' : 'var(--status-danger)', fontFamily: 'monospace' }}>
                     {pingResult.packet_loss_percent}%
                   </span>
@@ -823,32 +824,32 @@ export function NetworkStoragePage() {
           <Card style={{ padding: 18 }}>
             <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-1)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Wifi size={18} style={{ color: 'var(--accent)' }} />
-              <span>فحص مقبس المنفذ (TCP Port Probe)</span>
+              <span>{t('فحص مقبس المنفذ (TCP Port Probe)')}</span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '0 0 14px' }}>
-              إنشاء مصافحة ثلاثية TCP حقيقية (SYN/ACK) للتحقق من فتح واستجابة منفذ الخدمة على الهدف.
+              {t('إنشاء مصافحة ثلاثية TCP حقيقية (SYN/ACK) للتحقق من فتح واستجابة منفذ الخدمة على الهدف.')}
             </p>
 
             <form onSubmit={handleTestTcp} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>المضيف المستهدف</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('المضيف المستهدف')}</label>
                 <TextInput value={tcpHost} onChange={(e) => setTcpHost(e.target.value)} required />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>رقم المنفذ (TCP Port)</label>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('رقم المنفذ (TCP Port)')}</label>
                 <TextInput type="number" value={tcpPort} onChange={(e) => setTcpPort(parseInt(e.target.value) || 80)} required />
               </div>
               <Button variant="primary" type="submit" disabled={testingTcp}>
-                {testingTcp ? 'جارٍ فحص المقبس...' : 'بدء فحص مقبس TCP'}
+                {testingTcp ? t('جارٍ فحص المقبس...') : t('بدء فحص مقبس TCP')}
               </Button>
             </form>
 
             {tcpResult && (
               <div style={{ marginTop: 14, padding: 12, borderRadius: 6, background: 'var(--glass-tint)', border: '1px solid var(--glass-rim)', fontSize: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-3)' }}>حالة المنفذ:</span>
+                  <span style={{ color: 'var(--text-3)' }}>{t('حالة المنفذ:')}</span>
                   <span className={`badge ${tcpResult.connected ? 'badge--success' : 'badge--danger'}`}>
-                    {tcpResult.connected ? 'مفتوح ومتصل (Connected)' : 'مغلق أو محجوب (Refused/Timeout)'}
+                    {tcpResult.connected ? t('مفتوح ومتصل (Connected)') : t('مغلق أو محجوب (Refused/Timeout)')}
                   </span>
                 </div>
               </div>
@@ -858,24 +859,24 @@ export function NetworkStoragePage() {
       )}
 
       {/* Modal: Create SMB Share */}
-      <Modal open={shareModalOpen} onClose={() => setShareModalOpen(false)} title="إنشاء مشاركة شبكة SMB جديدة">
+      <Modal open={shareModalOpen} onClose={() => setShareModalOpen(false)} title={t('إنشاء مشاركة شبكة SMB جديدة')}>
         <form onSubmit={handleCreateShare} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>اسم المشاركة (Share Name)</label>
-            <TextInput value={newShareName} onChange={(e) => setNewShareName(e.target.value)} placeholder="مثال: ProjectsData" required />
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('اسم المشاركة (Share Name)')}</label>
+            <TextInput value={newShareName} onChange={(e) => setNewShareName(e.target.value)} placeholder={t('مثال: ProjectsData')} required />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>المسار المحلي على القرص (Local Path)</label>
-            <TextInput value={newSharePath} onChange={(e) => setNewSharePath(e.target.value)} placeholder="مثال: C:\Shares\Projects" required />
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('المسار المحلي على القرص (Local Path)')}</label>
+            <TextInput value={newSharePath} onChange={(e) => setNewSharePath(e.target.value)} placeholder={t('مثال: C:\\Shares\\Projects')} required />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>الوصف التوضيحي</label>
-            <TextInput value={newShareDesc} onChange={(e) => setNewShareDesc(e.target.value)} placeholder="مشاركة بيانات مشاريع المطورين" />
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{t('الوصف التوضيحي')}</label>
+            <TextInput value={newShareDesc} onChange={(e) => setNewShareDesc(e.target.value)} placeholder={t('مشاركة بيانات مشاريع المطورين')} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-            <Button variant="ghost" type="button" onClick={() => setShareModalOpen(false)}>إلغاء</Button>
+            <Button variant="ghost" type="button" onClick={() => setShareModalOpen(false)}>{t('إلغاء')}</Button>
             <Button variant="primary" type="submit" disabled={submittingShare}>
-              {submittingShare ? 'جارٍ الإنشاء...' : 'إنشاء المشاركة'}
+              {submittingShare ? t('جارٍ الإنشاء...') : t('إنشاء المشاركة')}
             </Button>
           </div>
         </form>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { LockKeyhole, ShieldCheck, Plus, Trash2, Eye, Copy, RefreshCw, Key } from 'lucide-react';
 import { apiV1, type V1Account, type V1Asset } from '../lib/apiV1';
 import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { t } from '../lib/i18n';
 
 interface VaultRow {
   id: string;
@@ -59,7 +60,7 @@ export function VaultPage() {
         })),
       );
     } catch (err: any) {
-      toast(err.message || 'فشل جلب اعتمادات الخزنة', 'error');
+      toast(err.message || t('فشل جلب اعتمادات الخزنة'), 'error');
     } finally {
       setLoading(false);
     }
@@ -72,7 +73,7 @@ export function VaultPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assetName || !username || !password) {
-      toast('يرجى ملء جميع الحقول المطلوبة', 'error');
+      toast(t('يرجى ملء جميع الحقول المطلوبة'), 'error');
       return;
     }
     setSubmitting(true);
@@ -92,14 +93,14 @@ export function VaultPage() {
         protocol: protocol as 'rdp' | 'ssh' | 'sftp' | 'winrm' | 'vnc' | 'telnet',
         secret: password,
       });
-      toast(`تم تشفير وحفظ اعتماد [${username}] بنجاح بواسطة AES-256-GCM`, 'success');
+      toast(`${t('تم تشفير وحفظ اعتماد [')}${username}${t('] بنجاح بواسطة AES-256-GCM')}`, 'success');
       setAddModalOpen(false);
       setAssetName('');
       setUsername('');
       setPassword('');
       fetchAccounts();
     } catch (err: any) {
-      toast(err.message || 'فشل إضافة الاعتماد', 'error');
+      toast(err.message || t('فشل إضافة الاعتماد'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -116,27 +117,27 @@ export function VaultPage() {
         });
         setRevealModalOpen(true);
       } else {
-        toast('تعذّر كشف كلمة المرور', 'error');
+        toast(t('تعذّر كشف كلمة المرور'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'فشل استرجاع السر', 'error');
+      toast(err.message || t('فشل استرجاع السر'), 'error');
     }
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`هل أنت متأكد من حذف الاعتماد المشفّر لـ [${name}]؟`)) return;
+    if (!confirm(`${t('هل أنت متأكد من حذف الاعتماد المشفّر لـ [')}${name}${t(']؟')}`)) return;
     try {
       await apiV1.deleteAccount(id);
-      toast('تم حذف الاعتماد من الخزنة بنجاح', 'success');
+      toast(t('تم حذف الاعتماد من الخزنة بنجاح'), 'success');
       fetchAccounts();
     } catch (err: any) {
-      toast(err.message || 'فشل حذف الاعتماد', 'error');
+      toast(err.message || t('فشل حذف الاعتماد'), 'error');
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast('تم نسخ كلمة المرور إلى الحافظة بنجاح', 'success');
+    toast(t('تم نسخ كلمة المرور إلى الحافظة بنجاح'), 'success');
   };
 
   return (
@@ -157,23 +158,23 @@ export function VaultPage() {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--paid)', fontWeight: 700, fontSize: 13 }}>
-            <ShieldCheck size={16} /> خزنة السيادة المركزية (Sovereign Encrypted Vault)
+            <ShieldCheck size={16} /> {t('خزنة السيادة المركزية (Sovereign Encrypted Vault)')}
           </div>
-          <h1 style={{ margin: '8px 0 6px', fontSize: 24, color: 'var(--text-1)' }}>حسابات الأصول والاعتمادات المشفرة</h1>
+          <h1 style={{ margin: '8px 0 6px', fontSize: 24, color: 'var(--text-1)' }}>{t('حسابات الأصول والاعتمادات المشفرة')}</h1>
           <p style={{ margin: 0, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 860, fontSize: 14 }}>
-            إدارة مركزية لكلمات مرور Windows Server، جلسات RDP، مفاتيح SSH، وسجلات Docker المشفرة بمفتاح AES-256-GCM المستقل ومراقبة بسجل Merkle.
+            {t('إدارة مركزية لكلمات مرور Windows Server، جلسات RDP، مفاتيح SSH، وسجلات Docker المشفرة بمفتاح AES-256-GCM المستقل ومراقبة بسجل Merkle.')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <Button
             variant="ghost"
-            label="تحديث"
+            label={t('تحديث')}
             iconNode={<RefreshCw size={15} className={loading ? 'spin' : ''} />}
             onClick={fetchAccounts}
           />
           <Button
             variant="primary"
-            label="إضافة اعتماد مشفر"
+            label={t('إضافة اعتماد مشفر')}
             iconNode={<Plus size={15} />}
             onClick={() => setAddModalOpen(true)}
           />
@@ -182,18 +183,18 @@ export function VaultPage() {
 
       {/* Accounts List Card */}
       <Card
-        title={`الاعتمادات المسجلة في الخزنة (${accounts.length})`}
+        title={`${t('الاعتمادات المسجلة في الخزنة (')}${accounts.length})`}
       >
         <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-2)' }}>
-          كافة الأسرار مشفرة في قاعدة البيانات بواسطة AES-256-GCM وتتطلب صلاحية مسؤول لكشفها أو استخدامها
+          {t('كافة الأسرار مشفرة في قاعدة البيانات بواسطة AES-256-GCM وتتطلب صلاحية مسؤول لكشفها أو استخدامها')}
         </p>
         {accounts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-2)' }}>
             <Key size={36} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-            <p>لا توجد اعتمادات مسجلة حالياً في الخزنة.</p>
+            <p>{t('لا توجد اعتمادات مسجلة حالياً في الخزنة.')}</p>
             <Button
               variant="outline"
-              label="إضافة الاعتماد الأول"
+              label={t('إضافة الاعتماد الأول')}
               onClick={() => setAddModalOpen(true)}
               style={{ marginTop: 10 }}
             />
@@ -203,12 +204,12 @@ export function VaultPage() {
             <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--glass-rim)', textAlign: 'right' }}>
-                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>الأصل / الخادم</th>
-                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>اسم الحساب</th>
-                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>البروتوكول</th>
-                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>خوارزمية التشفير</th>
-                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>آخر تحديث</th>
-                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13, textAlign: 'center' }}>الإجراءات</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('الأصل / الخادم')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('اسم الحساب')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('البروتوكول')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('خوارزمية التشفير')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('آخر تحديث')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13, textAlign: 'center' }}>{t('الإجراءات')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,14 +241,14 @@ export function VaultPage() {
                           variant="ghost"
                           size="sm"
                           iconNode={<Eye size={14} />}
-                          label="كشف"
+                          label={t('كشف')}
                           onClick={() => handleReveal(acc.id, acc.asset_name || acc.username)}
                         />
                         <Button
                           variant="ghost"
                           size="sm"
                           iconNode={<Trash2 size={14} color="var(--status-danger)" />}
-                          label="حذف"
+                          label={t('حذف')}
                           onClick={() => handleDelete(acc.id, acc.asset_name || acc.username)}
                         />
                       </div>
@@ -264,24 +265,24 @@ export function VaultPage() {
       <Modal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
-        title="إضافة اعتماد مشفر جديد إلى الخزنة"
+        title={t('إضافة اعتماد مشفر جديد إلى الخزنة')}
       >
         <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
-              اسم الأصل أو الخادم*
+              {t('اسم الأصل أو الخادم*')}
             </label>
             <TextInput
               value={assetName}
               onChange={(e) => setAssetName(e.target.value)}
-              placeholder="مثال: SRV-PROD-LOCAL أو PostgreSQL Cluster"
+              placeholder={t('مثال: SRV-PROD-LOCAL أو PostgreSQL Cluster')}
               required
             />
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
-              اسم المستخدم (Username)*
+              {t('اسم المستخدم (Username)*')}
             </label>
             <TextInput
               value={username}
@@ -294,7 +295,7 @@ export function VaultPage() {
 
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
-              نوع البروتوكول / التطبيق*
+              {t('نوع البروتوكول / التطبيق*')}
             </label>
             <select
               value={protocol}
@@ -318,7 +319,7 @@ export function VaultPage() {
 
           <div>
             <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
-              كلمة المرور أو المفتاح السري*
+              {t('كلمة المرور أو المفتاح السري*')}
             </label>
             <TextInput
               type="password"
@@ -331,10 +332,10 @@ export function VaultPage() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-            <Button variant="ghost" label="إلغاء" onClick={() => setAddModalOpen(false)} />
+            <Button variant="ghost" label={t('إلغاء')} onClick={() => setAddModalOpen(false)} />
             <Button
               variant="primary"
-              label={submitting ? 'جارٍ التشفير...' : 'حفظ مشفراً (AES-256)'}
+              label={submitting ? t('جارٍ التشفير...') : t('حفظ مشفراً (AES-256)')}
               type="submit"
               disabled={submitting}
             />
@@ -349,20 +350,20 @@ export function VaultPage() {
           setRevealModalOpen(false);
           setRevealedSecret(null);
         }}
-        title="كشف الاعتماد المشفّر"
+        title={t('كشف الاعتماد المشفّر')}
       >
         {revealedSecret && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-tint-strong)', border: '1px solid var(--accent-soft)' }}>
-              <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>الأصل</div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>{t('الأصل')}</div>
               <div style={{ fontWeight: 700, color: 'var(--text-1)' }}>{revealedSecret.asset}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 8, marginBottom: 4 }}>المستخدم</div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 8, marginBottom: 4 }}>{t('المستخدم')}</div>
               <div style={{ fontFamily: 'monospace', color: 'var(--text-1)' }}>{revealedSecret.username}</div>
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
-                كلمة المرور المفكوكة
+                {t('كلمة المرور المفكوكة')}
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <TextInput
@@ -374,7 +375,7 @@ export function VaultPage() {
                 <Button
                   variant="primary"
                   iconNode={<Copy size={15} />}
-                  label="نسخ"
+                  label={t('نسخ')}
                   onClick={() => copyToClipboard(revealedSecret.secret)}
                 />
               </div>
@@ -383,7 +384,7 @@ export function VaultPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
               <Button
                 variant="ghost"
-                label="إغلاق النافذة"
+                label={t('إغلاق النافذة')}
                 onClick={() => {
                   setRevealModalOpen(false);
                   setRevealedSecret(null);
