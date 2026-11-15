@@ -9,6 +9,7 @@ const JOB_TYPES = [
   { value: 'service.list', label: 'قائمة الخدمات' },
   { value: 'disk.list', label: 'الأقراص' },
   { value: 'inventory.collect', label: 'جمع الجرد' },
+  { value: 'session.list', label: 'جلسات ويندوز النشطة' },
 ];
 
 const asArray = <T,>(res: unknown): T[] =>

@@ -66,6 +66,9 @@ class AssetRequest(BaseModel):
     hostname: str
     platform: str = "windows"
     node_id: str | None = None
+    port: int | None = Field(default=None, ge=1, le=65535)
+    protocol: str | None = Field(default=None, pattern="^(rdp|ssh|sftp|winrm|vnc|telnet|database|k8s)?$")
+    metadata: dict = Field(default_factory=dict)
 
 
 class AccountRequest(BaseModel):
@@ -106,7 +109,7 @@ class MfaVerifyRequest(BaseModel):
 # Read-only job types the agent is allowed to execute. Write/destructive
 # actions stay behind the legacy ActionEngine until a reviewed allowlist
 # and confirmation flow exist.
-ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect"}
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list"}
 
 
 class JobCreateRequest(BaseModel):
@@ -266,17 +269,42 @@ def verify_mfa(payload: MfaVerifyRequest, user: User = Depends(_current_user)) -
 @router.get("/assets")
 def list_assets(_: User = Depends(_current_user)) -> list[dict]:
     with db_session() as db:
-        return [{"id": x.id, "name": x.name, "hostname": x.hostname, "platform": x.platform, "status": x.status, "node_id": x.node_id} for x in db.scalars(select(Asset).order_by(Asset.name))]
+        return [
+            {
+                "id": x.id,
+                "name": x.name,
+                "hostname": x.hostname,
+                "platform": x.platform,
+                "port": x.port,
+                "protocol": x.protocol,
+                "metadata": json.loads(x.metadata_json or "{}"),
+                "status": x.status,
+                "node_id": x.node_id,
+                "created_at": x.created_at.isoformat() if x.created_at else None,
+            }
+            for x in db.scalars(select(Asset).order_by(Asset.name))
+        ]
 
 
 @router.post("/assets", status_code=201)
 def create_asset(payload: AssetRequest, user: User = Depends(_current_user)) -> dict:
     _require_writer(user)
     with db_session() as db:
-        asset = Asset(id=uuid.uuid4().hex, name=payload.name, hostname=payload.hostname, platform=payload.platform, node_id=payload.node_id, status="unknown", created_at=datetime.now(UTC))
+        asset = Asset(
+            id=uuid.uuid4().hex,
+            name=payload.name,
+            hostname=payload.hostname,
+            platform=payload.platform,
+            node_id=payload.node_id,
+            port=payload.port,
+            protocol=payload.protocol,
+            metadata_json=json.dumps(payload.metadata, sort_keys=True),
+            status="unknown",
+            created_at=datetime.now(UTC),
+        )
         db.add(asset)
         append_audit(db, actor_id=user.id, action="asset.create", target_id=asset.id, payload=payload.model_dump())
-        return {"id": asset.id, "name": asset.name, "hostname": asset.hostname, "status": asset.status}
+        return {"id": asset.id, "name": asset.name, "hostname": asset.hostname, "port": asset.port, "protocol": asset.protocol, "status": asset.status}
 
 
 @router.get("/accounts")

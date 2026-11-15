@@ -42,6 +42,9 @@ class Asset(Base):
     hostname: Mapped[str] = mapped_column(String(255))
     node_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     platform: Mapped[str] = mapped_column(String(32), default="windows")
+    port: Mapped[int | None] = mapped_column(nullable=True)
+    protocol: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(String(32), default="unknown")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

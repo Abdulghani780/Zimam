@@ -39,7 +39,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     // the control plane and must never be added here without a reviewed design.
     private static readonly HashSet<string> AllowedJobs = new(StringComparer.Ordinal)
     {
-        "system.info", "process.list", "service.list", "disk.list", "inventory.collect"
+        "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -168,6 +168,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
             .Where(d => d.IsReady)
             .Select(d => new { name = d.Name, total_gb = Math.Round(d.TotalSize / 1073741824.0, 1), free_gb = Math.Round(d.AvailableFreeSpace / 1073741824.0, 1) })
             .ToArray(),
+        "session.list" => SessionProbe.ListSessions(),
         "inventory.collect" => new
         {
             hostname = Environment.MachineName,
@@ -188,6 +189,56 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         req.Headers.Add("X-Agent-Key", agentKey);
         var resp = await client.SendAsync(req, ct);
         resp.EnsureSuccessStatusCode();
+    }
+}
+
+internal static class SessionProbe
+{
+    // Read-only session snapshot via qwinsta — no logoff/disconnect calls.
+    public static object[] ListSessions()
+    {
+        var psi = new ProcessStartInfo("qwinsta.exe")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = Process.Start(psi)!;
+        var output = proc.StandardOutput.ReadToEnd();
+        proc.StandardError.ReadToEnd();
+        proc.WaitForExit(10000);
+        var sessions = new List<object>();
+        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Skip(1))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0) continue;
+            var isCurrent = trimmed.StartsWith('>');
+            var parts = trimmed.TrimStart('>').Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            // qwinsta columns vary (SESSIONNAME [USERNAME] ID STATE [TYPE] [DEVICE]);
+            // locate the state token and the numeric session id instead of
+            // assuming fixed positions.
+            var state = parts.FirstOrDefault(p =>
+                p.Equals("Active", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("Disc", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("Listen", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("Conn", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("Down", StringComparison.OrdinalIgnoreCase) ||
+                p.Equals("Idle", StringComparison.OrdinalIgnoreCase)) ?? "";
+            var idPart = parts.FirstOrDefault(p => int.TryParse(p, out _));
+            var idIndex = Array.IndexOf(parts, idPart);
+            var username = idIndex > 1 ? string.Join(' ', parts[1..idIndex]) : "";
+            sessions.Add(new
+            {
+                session_name = parts[0],
+                username,
+                id = int.TryParse(idPart, out var id) ? id : (int?)null,
+                state = state.ToLowerInvariant(),
+                current = isCurrent,
+                raw = trimmed
+            });
+        }
+        return sessions.ToArray();
     }
 }
 

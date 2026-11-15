@@ -78,7 +78,12 @@ export interface V1Asset {
   name: string;
   hostname: string;
   platform?: string;
+  port?: number | null;
+  protocol?: string | null;
+  metadata?: Record<string, unknown>;
+  status?: string;
   node_id?: string | null;
+  created_at?: string | null;
   [key: string]: unknown;
 }
 
@@ -202,8 +207,15 @@ export const apiV1 = {
 
   // Assets, accounts, policies
   assets: () => request<V1Asset[] | { assets?: V1Asset[] }>('/assets'),
-  createAsset: (asset: { name: string; hostname: string; platform?: string; node_id?: string }) =>
-    post<V1Asset>('/assets', asset),
+  createAsset: (asset: {
+    name: string;
+    hostname: string;
+    platform?: string;
+    node_id?: string | null;
+    port?: number | null;
+    protocol?: string | null;
+    metadata?: Record<string, unknown>;
+  }) => post<V1Asset>('/assets', asset),
   accounts: () => request<V1Account[] | { accounts?: V1Account[] }>('/accounts'),
   createAccount: (account: {
     asset_id: string;

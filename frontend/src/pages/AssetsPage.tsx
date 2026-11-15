@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, Field, TextInput, Glass, useToast } from '../asaas-ui';
 import { api, type AssetItem } from '../lib/api';
+import { apiV1, type V1Asset } from '../lib/apiV1';
 import {
   Server,
   Plus,
@@ -17,6 +18,18 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react';
+
+const toAssetItem = (a: V1Asset): AssetItem => ({
+  id: a.id,
+  name: a.name,
+  host: a.hostname,
+  type: String(a.metadata?.asset_type || a.platform || '—'),
+  port: a.port ?? 0,
+  protocol: a.protocol ?? undefined,
+  status: a.status || 'unknown',
+  latency_ms: 0,
+  last_check: '—',
+});
 
 export function AssetsPage() {
   const toast = useToast();
@@ -37,9 +50,9 @@ export function AssetsPage() {
 
   const fetchAssets = async () => {
     try {
-      const list = await api.getAssets();
-      const raw = Array.isArray(list) ? list : (list as any)?.assets || [];
-      setAssets(raw);
+      const res = await apiV1.assets();
+      const raw = Array.isArray(res) ? res : (res as { assets?: V1Asset[] })?.assets || [];
+      setAssets(raw.map(toAssetItem));
     } catch {
       setAssets([]);
     }
@@ -84,7 +97,14 @@ export function AssetsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.addAsset({ name, host, type, port: Number(port) });
+      await apiV1.createAsset({
+        name,
+        hostname: host,
+        platform: type.toLowerCase().includes('windows') ? 'windows' : 'linux',
+        port: Number(port) || null,
+        protocol: type.toLowerCase().includes('windows') ? 'rdp' : 'ssh',
+        metadata: { asset_type: type },
+      });
       toast('تم تسجيل الخادم الجديد بنجاح.', 'success');
       setModalOpen(false);
       setName('');

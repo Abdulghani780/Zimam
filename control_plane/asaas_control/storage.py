@@ -30,6 +30,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 def init_db() -> None:
     Base.metadata.create_all(engine)
     _ensure_user_columns()
+    _ensure_asset_columns()
     sync_legacy_identities()
 
 
@@ -51,6 +52,24 @@ def _ensure_user_columns() -> None:
         for column, ddl_type in _USER_COLUMN_MIGRATIONS.items():
             if column not in existing:
                 conn.execute(text(f"ALTER TABLE users ADD COLUMN {column} {ddl_type}"))
+
+
+# Same pattern for assets: connection-target fields added later.
+_ASSET_COLUMN_MIGRATIONS = {
+    "port": "INTEGER",
+    "protocol": "VARCHAR(32)",
+    "metadata_json": "TEXT DEFAULT '{}'",
+}
+
+
+def _ensure_asset_columns() -> None:
+    from sqlalchemy import inspect, text
+
+    with engine.begin() as conn:
+        existing = {c["name"] for c in inspect(conn).get_columns("assets")}
+        for column, ddl_type in _ASSET_COLUMN_MIGRATIONS.items():
+            if column not in existing:
+                conn.execute(text(f"ALTER TABLE assets ADD COLUMN {column} {ddl_type}"))
 
 
 def _legacy_db_path() -> str | None:
