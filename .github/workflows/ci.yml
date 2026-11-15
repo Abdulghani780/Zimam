@@ -58,3 +58,14 @@ jobs:
           print(f'Database initialized successfully with {users_cnt} default users.')
           assert users_cnt >= 3, 'Default RBAC users missing'
           "
+
+      - name: Run Backend Unit & Contract Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Install Control Plane Dependencies
+        run: pip install -r control_plane/requirements.txt
+
+      - name: Run Control Plane Security Tests
+        env:
+          PYTHONPATH: control_plane
+        run: python -m unittest discover -s control_plane/tests -v
