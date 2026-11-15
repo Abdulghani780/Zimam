@@ -6,28 +6,38 @@ import {
   useId,
 } from 'react';
 import { CURRENCY } from '../lib/format';
+import { cx } from '../lib/cx';
 
 interface FieldProps {
   label: string;
   hint?: ReactNode;
-  children: (id: string) => ReactNode;
+  /** Shows a required marker next to the label. */
+  required?: boolean;
+  /** Marks the field invalid; passed to children as the second render arg. */
+  error?: boolean;
+  children: (id: string, isError: boolean) => ReactNode;
 }
 
-export function Field({ label, hint, children }: FieldProps) {
+export function Field({ label, hint, required, error, children }: FieldProps) {
   const id = useId();
   return (
     <div className="field">
       <label className="field__label" htmlFor={id}>
         {label}
+        {required && <span aria-hidden="true" style={{ color: 'var(--unpaid)' }}> *</span>}
       </label>
-      {children(id)}
+      {children(id, Boolean(error))}
       {hint && <div className="field__hint">{hint}</div>}
     </div>
   );
 }
 
-export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className="input" {...props} />;
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  error?: boolean;
+}
+
+export function TextInput({ error, className, ...props }: InputProps) {
+  return <input className={cx('input', error && 'input--error', className)} aria-invalid={error || undefined} {...props} />;
 }
 
 export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {

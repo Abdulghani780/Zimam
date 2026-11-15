@@ -119,7 +119,7 @@ export function UsersPage() {
     }
   };
 
-  const handleAppRoleChange = async (user: AppUser, role: string) => {
+  const handleAppRoleChange = async (user: V1User, role: string) => {
     if (role === user.role) return;
     if (!confirm(`تغيير دور الحساب [${user.username}] إلى (${role})؟`)) {
       fetchAppUsers();

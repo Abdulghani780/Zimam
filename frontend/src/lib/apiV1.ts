@@ -144,9 +144,22 @@ export interface V1DirectoryUser {
 
 export interface V1Agent {
   id: string;
-  hostname?: string;
+  name?: string;
   status?: string;
-  last_seen_at?: string;
+  last_seen_at?: string | null;
+  inventory?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface V1AgentJob {
+  id: string;
+  agent_id: string;
+  job_type: string;
+  status: string;
+  result?: { result?: Record<string, unknown>; error?: string | null } | null;
+  created_by?: string;
+  created_at?: string;
+  completed_at?: string | null;
   [key: string]: unknown;
 }
 
@@ -227,6 +240,9 @@ export const apiV1 = {
 
   // Asset nodes & agents
   assetNodes: () => request<unknown>('/asset-nodes'),
+  agents: () => request<V1Agent[] | { agents?: V1Agent[] }>('/agents'),
+  jobs: (agentId?: string) =>
+    request<V1AgentJob[] | { jobs?: V1AgentJob[] }>(`/jobs${agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''}`),
   enrollAgent: (body: { agent_key?: string; [key: string]: unknown }) =>
     post<{ agent_id?: string; agent_key?: string; signing_public_key?: string }>('/agents/enroll', body),
   createJob: (body: { agent_id: string; job_type: string; payload?: Record<string, unknown> }) =>

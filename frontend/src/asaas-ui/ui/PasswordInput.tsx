@@ -1,14 +1,19 @@
 import { type InputHTMLAttributes, useState } from 'react';
+import { cx } from '../lib/cx';
 import { kitText } from '../lib/i18n';
 import { passwordStrength, strengthLabel } from '../lib/passwordStrength';
 import { Icon } from './Icon';
 
+interface PasswordInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+  error?: boolean;
+}
+
 /** Password field with a show/hide toggle. */
-export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+export function PasswordInput({ error, className, ...props }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="password-input">
-      <input className="input" dir="ltr" type={visible ? 'text' : 'password'} {...props} />
+      <input className={cx('input', error && 'input--error', className)} aria-invalid={error || undefined} dir="ltr" type={visible ? 'text' : 'password'} {...props} />
       <button
         type="button"
         className="password-input__toggle"

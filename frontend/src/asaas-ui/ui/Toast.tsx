@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
 
-type Tone = 'success' | 'error';
+type Tone = 'success' | 'error' | 'info' | 'warn';
 interface ToastItem {
   id: number;
   tone: Tone;
@@ -28,7 +28,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <div className="toast-stack" role="status" aria-live="polite">
           {items.map((t) => (
             <Glass key={t.id} thick pill className={`toast toast--${t.tone}`}>
-              <Icon name={t.tone === 'success' ? 'checkCircle' : 'alert'} />
+              <Icon name={t.tone === 'success' ? 'checkCircle' : t.tone === 'error' ? 'alert' : t.tone === 'warn' ? 'clock' : 'dashboard'} />
               {t.message}
             </Glass>
           ))}

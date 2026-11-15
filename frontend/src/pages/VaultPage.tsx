@@ -382,7 +382,7 @@ export function VaultPage() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
               <Button
-                variant="outline"
+                variant="ghost"
                 label="إغلاق النافذة"
                 onClick={() => {
                   setRevealModalOpen(false);

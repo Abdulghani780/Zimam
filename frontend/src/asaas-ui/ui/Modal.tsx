@@ -12,6 +12,8 @@ interface ModalProps {
   children: ReactNode;
   footer?: ReactNode;
   wide?: boolean;
+  /** When false the dialog renders nothing (default true). */
+  open?: boolean;
 }
 
 const FOCUSABLE =
@@ -21,7 +23,7 @@ const FOCUSABLE =
  * A dialog: focus moves into it on open, Tab stays inside it, Escape and the
  * backdrop close it, and focus returns to the control that opened it.
  */
-export function Modal({ title, onClose, children, footer, wide }: ModalProps) {
+export function Modal({ title, onClose, children, footer, wide, open = true }: ModalProps) {
   const titleId = useId();
   const dialogId = useId();
   // Keep the latest onClose without re-running the effect (inline arrows change every render).
@@ -31,6 +33,7 @@ export function Modal({ title, onClose, children, footer, wide }: ModalProps) {
   });
 
   useEffect(() => {
+    if (!open) return;
     const dialog = document.getElementById(dialogId);
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusables = () => Array.from(dialog?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
@@ -74,7 +77,9 @@ export function Modal({ title, onClose, children, footer, wide }: ModalProps) {
       document.body.style.overflow = previousOverflow;
       if (opener?.isConnected) opener.focus();
     };
-  }, [dialogId]);
+  }, [dialogId, open]);
+
+  if (!open) return null;
 
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>

@@ -26,6 +26,7 @@ const JitElevationPage = lazyPage(() => import('./pages/JitElevationPage'), 'Jit
 const SessionReplayPage = lazyPage(() => import('./pages/SessionReplayPage'), 'SessionReplayPage');
 const DatabasesPage = lazyPage(() => import('./pages/DatabasesPage'), 'DatabasesPage');
 const BastionPage = lazyPage(() => import('./pages/BastionPage'), 'BastionPage');
+const AgentsPage = lazyPage(() => import('./pages/AgentsPage'), 'AgentsPage');
 const ZeroTrustLoginPage = lazyPage(() => import('./pages/ZeroTrustLoginPage'), 'ZeroTrustLoginPage');
 const PerimeterLockoutPage = lazyPage(() => import('./pages/PerimeterLockoutPage'), 'PerimeterLockoutPage');
 
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="governor" element={<GovernorPage />} />
           <Route path="assets" element={<AssetsPage />} />
           <Route path="vault" element={<VaultPage />} />
+          <Route path="agents" element={<AgentsPage />} />
           <Route path="ports" element={<PortsPage />} />
           <Route path="security" element={<SecurityPage />} />
           <Route path="storage" element={<StoragePage />} />

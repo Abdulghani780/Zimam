@@ -509,6 +509,12 @@ def _job_signature_payload(job_id: str, agent_id: str, job_type: str, payload_js
     return f"asaas-job|{job_id}|{agent_id}|{job_type}|{payload_json}".encode()
 
 
+@router.get("/agents")
+def list_agents(_: User = Depends(_current_user)) -> list[dict]:
+    with db_session() as db:
+        return [{"id": a.id, "name": a.name, "status": a.status, "last_seen_at": a.last_seen_at, "inventory": json.loads(a.inventory_json or "{}")} for a in db.scalars(select(Agent).order_by(Agent.name))]
+
+
 @router.post("/agents/enroll", status_code=201)
 def enroll_agent(name: str, x_agent_enrollment_token: str | None = Header(default=None)) -> dict:
     if not settings.agent_enrollment_token or not x_agent_enrollment_token or not secrets.compare_digest(x_agent_enrollment_token, settings.agent_enrollment_token):

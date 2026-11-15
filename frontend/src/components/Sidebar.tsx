@@ -20,6 +20,7 @@ import {
   Timer,
   History,
   Globe,
+  Bot,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { to: '/databases', label: 'قواعد البيانات', icon: Database },
   { to: '/assets', label: 'الأصول والعناوين', icon: Globe },
   { to: '/vault', label: 'الخزنة الآمنة', icon: Vault },
+  { to: '/agents', label: 'وكلاء الأصول', icon: Bot },
   { to: '/storage', label: 'التحكم بالتخزين', icon: HardDrive },
   { to: '/security', label: 'مركز الحماية', icon: Shield },
   { to: '/network-storage', label: 'مراقبة الشبكة', icon: Wifi },
