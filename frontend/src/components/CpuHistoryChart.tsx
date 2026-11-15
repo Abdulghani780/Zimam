@@ -1,442 +1,107 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Card } from '../asaas-ui';
-import { Activity, Cpu } from 'lucide-react';
-import { api } from '../lib/api';
+import { useId } from 'react';
 
-interface CpuHistoryChartProps {
-  cpuPerCore?: number[];
-  cpuTotal?: number;
-  cpuModel?: string;
+export interface ChartPoint {
+  label: string;
+  value: number;
 }
 
-// 8 distinct, vibrant, accessible core signals
-const CORE_COLORS = [
-  '#f87171', // Core 1 - Red / Coral
-  '#fb923c', // Core 2 - Orange
-  '#fbbf24', // Core 3 - Amber
-  '#34d399', // Core 4 - Emerald
-  '#38bdf8', // Core 5 - Sky
-  '#818cf8', // Core 6 - Indigo
-  '#c084fc', // Core 7 - Purple
-  '#f472b6', // Core 8 - Rose
-];
+interface CpuHistoryChartProps {
+  points: ChartPoint[];
+  value: number;
+}
 
-const MAX_POINTS = 60; // 60 seconds of continuous telemetry
+function buildPath(points: ChartPoint[], closeArea: boolean): string {
+  if (points.length === 0) return '';
+  const step = points.length > 1 ? 99 / (points.length - 1) : 0;
+  const coords = points.map((point, index) => {
+    const x = points.length > 1 ? 0.5 + index * step : 50;
+    const value = Number.isFinite(point.value) ? Math.max(0, Math.min(100, point.value)) : 0;
+    const y = 100 - value;
+    return [x, y] as const;
+  });
 
-export function CpuHistoryChart({ cpuPerCore, cpuTotal = 0, cpuModel }: CpuHistoryChartProps) {
-  const historyRef = useRef<number[][]>([]);
-  const [tick, setTick] = useState(0);
-  const [hiddenCores, setHiddenCores] = useState<Record<number, boolean>>({});
+  let path = `M ${coords[0][0].toFixed(2)} ${coords[0][1].toFixed(2)}`;
+  for (let index = 1; index < coords.length; index += 1) {
+    const previous = coords[index - 1];
+    const current = coords[index];
+    const midX = (previous[0] + current[0]) / 2;
+    path += ` C ${midX.toFixed(2)} ${previous[1].toFixed(2)}, ${midX.toFixed(2)} ${current[1].toFixed(2)}, ${current[0].toFixed(2)} ${current[1].toFixed(2)}`;
+  }
+  if (closeArea) {
+    path += ' L 99.5 100 L 0.5 100 Z';
+  }
+  return path;
+}
 
-  // Fetch initial history
-  useEffect(() => {
-    let isMounted = true;
-    api.getCpuHistory()
-      .then((res: any) => {
-        if (!isMounted) return;
-        const coresObj = res?.history?.cores || res?.cores;
-        if (coresObj && typeof coresObj === 'object') {
-          const keys = Object.keys(coresObj).map(Number).sort((a, b) => a - b);
-          if (keys.length > 0) {
-            historyRef.current = keys.map((k, idx) => {
-              const raw = coresObj[k] || [];
-              const padded = [...raw];
-              const fallbackBase = (cpuPerCore && cpuPerCore[idx]) ?? raw.at(-1) ?? 0;
-              while (padded.length < MAX_POINTS) {
-                padded.unshift(Math.max(0, Math.min(100, Number(fallbackBase))));
-              }
-              return padded.slice(-MAX_POINTS);
-            });
-            setTick((t) => t + 1);
-          }
-        }
-      })
-      .catch(() => {});
+function axisLabels(points: ChartPoint[]): string[] {
+  if (points.length === 0) return [];
+  const count = Math.min(6, points.length);
+  const labels: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const pointIndex = Math.round((index / Math.max(1, count - 1)) * (points.length - 1));
+    labels.push(points[pointIndex]?.label || '');
+  }
+  return labels;
+}
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Update live stream
-  useEffect(() => {
-    const currentCores = cpuPerCore && cpuPerCore.length > 0 ? cpuPerCore : [];
-    const n = currentCores.length;
-
-    if (n === 0) {
-      historyRef.current = [];
-      setTick((t) => t + 1);
-      return;
-    }
-
-    if (historyRef.current.length !== n) {
-      historyRef.current = Array.from({ length: n }, (_, c) => {
-        const base = Math.min(100, Math.max(0, currentCores[c] ?? 0));
-        return Array.from({ length: MAX_POINTS }, () => base);
-      });
-    }
-
-    for (let c = 0; c < n; c++) {
-      const val = Math.min(100, Math.max(0, currentCores[c] ?? 0));
-      historyRef.current[c].push(val);
-      if (historyRef.current[c].length > MAX_POINTS) {
-        historyRef.current[c].shift();
-      }
-    }
-
-    setTick((t) => t + 1);
-  }, [cpuPerCore]);
-
-  const activeCores = cpuPerCore && cpuPerCore.length > 0 ? cpuPerCore : [];
-
-  const toggleCore = (idx: number) => {
-    setHiddenCores((prev) => ({
-      ...prev,
-      [idx]: !prev[idx],
-    }));
-  };
-
-  // Dimensions
-  const width = 800;
-  const height = 190;
-  const paddingLeft = 14;
-  const paddingRight = 50;
-  const paddingTop = 20;
-  const paddingBottom = 30;
-  const plotW = width - paddingLeft - paddingRight;
-  const plotH = height - paddingTop - paddingBottom;
-
-  // Build smooth bezier curves
-  const paths = useMemo(() => {
-    return historyRef.current.map((points, coreIdx) => {
-      if (hiddenCores[coreIdx]) return '';
-      if (!points || points.length === 0) return '';
-      const totalPoints = points.length;
-      const stepX = plotW / (MAX_POINTS - 1);
-
-      const coords = points.map((val, idx) => {
-        const x = paddingLeft + (idx + (MAX_POINTS - totalPoints)) * stepX;
-        const y = paddingTop + plotH - (val / 100) * plotH;
-        return { x, y };
-      });
-
-      if (coords.length < 2) return '';
-
-      let d = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
-      for (let i = 0; i < coords.length - 1; i++) {
-        const p0 = coords[Math.max(0, i - 1)];
-        const p1 = coords[i];
-        const p2 = coords[i + 1];
-        const p3 = coords[Math.min(coords.length - 1, i + 2)];
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-        d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-      }
-      return d;
-    });
-  }, [tick, hiddenCores, plotW, plotH, paddingLeft, paddingTop]);
+export function CpuHistoryChart({ points, value }: CpuHistoryChartProps) {
+  const gradientId = `cpu-line-${useId().replace(/:/g, '')}`;
+  const linePath = buildPath(points, false);
+  const labels = axisLabels(points);
+  const last = points[points.length - 1];
+  const lastY = last ? 100 - Math.max(0, Math.min(100, last.value)) : 0;
 
   return (
-    <Card
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
-            مصفوفة الأنوية والموجات البيانية
-          </span>
-          <bdi
-            dir="ltr"
-            style={{
-              fontSize: 12,
-              color: 'var(--accent)',
-              fontWeight: 700,
-              fontFamily: 'monospace',
-              background: 'var(--accent-soft)',
-              padding: '2px 8px',
-              borderRadius: 6,
-            }}
-          >
-            CPU Oscilloscope (60s)
-          </bdi>
-        </div>
-      }
-      icon="dashboard"
-      actions={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span
-            className="badge badge--accent"
-            style={{
-              fontFamily: 'var(--font)',
-              padding: '4px 10px',
-              borderRadius: 20,
-              fontWeight: 700,
-            }}
-          >
-            {activeCores.length} أنوية نشطة
-          </span>
-          <span
-            className="badge badge--success"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '4px 10px',
-              borderRadius: 20,
-              fontWeight: 700,
-            }}
-          >
-            <Activity size={12} className="animate-pulse" />
-            <span>بث مباشر (1Hz)</span>
-          </span>
-        </div>
-      }
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Description & Overview Metric */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 12,
-            padding: '10px 14px',
-            background: 'var(--glass-tint)',
-            border: '1px solid var(--glass-rim-low)',
-            borderRadius: 'var(--radius-sm)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Cpu size={18} style={{ color: 'var(--accent)' }} />
-            <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-              رسم تخطيطي لحظي لنبض الأنوية عبر Windows Performance Telemetry
-            </span>
-            {cpuModel && (
-              <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'monospace' }}>
-                ({cpuModel})
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>الحمل العام:</span>
-            <span
-              style={{
-                fontSize: 16,
-                fontWeight: 800,
-                color: cpuTotal > 80 ? 'var(--status-danger)' : 'var(--accent)',
-                fontFamily: 'var(--font)',
-              }}
-            >
-              {cpuTotal.toFixed(1)}%
-            </span>
-          </div>
-        </div>
-
-        {/* Liquid Glass Oscilloscope Canvas */}
-        <div
-          style={{
-            position: 'relative',
-            background: 'var(--glass-tint-strong)',
-            border: '1px solid var(--glass-rim)',
-            borderRadius: 'var(--radius-md)',
-            overflow: 'hidden',
-            boxShadow: 'var(--glass-shadow), inset 0 1px 0 var(--glass-rim)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-          }}
-        >
-          {activeCores.length === 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-3)',
-                fontSize: 13,
-                gap: 8,
-              }}
-            >
-              <Activity size={16} className="animate-spin" />
-              <span>جاري استدعاء قياسات الأنوية من النواة السيادية...</span>
-            </div>
-          )}
-
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            style={{ width: '100%', height: 'auto', display: 'block' }}
-            preserveAspectRatio="none"
-          >
-            <defs>
-              <filter id="coreGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {/* Horizontal Grid lines & Percentage labels */}
-            {[0, 25, 50, 75, 100].map((pct) => {
-              const y = paddingTop + plotH - (pct / 100) * plotH;
-              return (
-                <g key={pct}>
-                  <line
-                    x1={paddingLeft}
-                    y1={y}
-                    x2={width - paddingRight}
-                    y2={y}
-                    stroke="var(--hairline)"
-                    strokeDasharray={pct === 0 || pct === 100 ? undefined : '3,3'}
-                    strokeWidth={pct === 0 || pct === 100 ? 1 : 0.75}
-                  />
-                  <text
-                    x={width - paddingRight + 8}
-                    y={y + 3.5}
-                    fill="var(--text-3)"
-                    fontSize="10"
-                    fontWeight="600"
-                    fontFamily="monospace"
-                    direction="ltr"
-                    textAnchor="start"
-                  >
-                    {pct}%
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Vertical Time Grid lines & Seconds labels */}
-            {[0, 15, 30, 45, 60].map((sec) => {
-              const x = paddingLeft + ((60 - sec) / 60) * plotW;
-              return (
-                <g key={sec}>
-                  <line
-                    x1={x}
-                    y1={paddingTop}
-                    x2={x}
-                    y2={paddingTop + plotH}
-                    stroke="var(--hairline)"
-                    strokeDasharray="2,4"
-                    strokeWidth="0.75"
-                  />
-                  <text
-                    x={x}
-                    y={height - 8}
-                    fill="var(--text-3)"
-                    fontSize="9"
-                    fontWeight="600"
-                    fontFamily="monospace"
-                    textAnchor="middle"
-                    direction="ltr"
-                  >
-                    {sec === 0 ? '0s' : `-${sec}s`}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Core Bezier Wave Curves */}
-            {paths.map((d, idx) => {
-              if (!d) return null;
-              const color = CORE_COLORS[idx % CORE_COLORS.length];
-              return (
-                <path
-                  key={idx}
-                  d={d}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  filter="url(#coreGlow)"
-                  opacity="0.95"
-                />
-              );
-            })}
+    <section className="panel chart-card" aria-label="استهلاك المعالج">
+      <header className="panel__head">
+        <h2 className="panel__title">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <rect x="9" y="9" width="6" height="6" rx="1" />
+            <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3" />
           </svg>
-        </div>
-
-        {/* Core Selector Pill Badges */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-            gap: 10,
-          }}
-        >
-          {activeCores.map((load, index) => {
-            const color = CORE_COLORS[index % CORE_COLORS.length];
-            const isHidden = !!hiddenCores[index];
-
-            return (
-              <button
-                key={index}
-                type="button"
-                onClick={() => toggleCore(index)}
-                title={`انقر للتبديل بين إظهار وإخفاء موجة نواة ${index + 1}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  background: isHidden ? 'transparent' : 'var(--glass-tint)',
-                  border: isHidden
-                    ? '1px dashed var(--hairline)'
-                    : `1px solid ${color}88`,
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  opacity: isHidden ? 0.4 : 1,
-                  transition: 'all 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
-                  boxShadow: isHidden
-                    ? 'none'
-                    : `0 2px 10px -2px ${color}33, inset 0 1px 0 rgba(255,255,255,0.2)`,
-                  outline: 'none',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: color,
-                      boxShadow: isHidden ? 'none' : `0 0 8px ${color}`,
-                      flexShrink: 0,
-                    }}
+          استهلاك المعالج (CPU)
+        </h2>
+        <span className="chart-pill" dir="ltr">{value}%</span>
+      </header>
+      <div className="panel__body">
+        {points.length < 2 ? (
+          <div className="chart-empty">جارٍ تجميع نقاط القياس الحية…</div>
+        ) : (
+          <>
+            <div className="chart">
+              <div className="chart__plot">
+                <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`متوسط استهلاك المعالج ${value}%`}>
+                  <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e8c47b" stopOpacity="0.16" />
+                      <stop offset="100%" stopColor="#e8c47b" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d={buildPath(points, true)} fill={`url(#${gradientId})`} stroke="none" />
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="#e8c47b"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
                   />
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: isHidden ? 'var(--text-3)' : 'var(--text)',
-                    }}
-                  >
-                    نواة {String(index + 1).padStart(2, '0')}
-                  </span>
-                </div>
-
-                <span
-                  dir="ltr"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 800,
-                    fontFamily: 'var(--font)',
-                    color: isHidden ? 'var(--text-3)' : (load > 85 ? 'var(--status-danger)' : color),
-                  }}
-                >
-                  {load.toFixed(1)}%
-                </span>
-              </button>
-            );
-          })}
-        </div>
+                </svg>
+                <span className="chart__dot" style={{ left: '99.5%', top: `${lastY}%` }} />
+                <span className="chart__value" style={{ top: `calc(${lastY}% - 16px)` }}>{value}%</span>
+              </div>
+              <div className="chart__axis-y" aria-hidden="true">
+                <span>100%</span><span>80%</span><span>60%</span><span>40%</span><span>20%</span><span>0%</span>
+              </div>
+            </div>
+            <div className="chart__axis-x" aria-hidden="true">
+              {labels.map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}
+            </div>
+          </>
+        )}
       </div>
-    </Card>
+    </section>
   );
 }

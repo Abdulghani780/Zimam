@@ -1,186 +1,107 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Card, Button } from '../asaas-ui';
-import { api, type HistoricalPoint } from '../lib/api';
+import { useId } from 'react';
+import type { ChartPoint } from './CpuHistoryChart';
 
-export function HistoricalMetricsChart() {
-  const [range, setRange] = useState<'24h' | '7d'>('24h');
-  const [points, setPoints] = useState<HistoricalPoint[]>([]);
+interface HistoricalMetricsChartProps {
+  points: ChartPoint[];
+  value: number;
+  usedGb: number;
+  totalGb: number;
+}
 
-  const fetchHistory = async (r: '24h' | '7d') => {
-    try {
-      const res = await api.getHistoricalMetrics(r);
-      if (res.ok && Array.isArray(res.history)) {
-        setPoints(res.history);
-      }
-    } catch {
-      // ignore
-    }
-  };
+function buildArea(points: ChartPoint[]): string {
+  if (points.length === 0) return '';
+  const step = points.length > 1 ? 99 / (points.length - 1) : 0;
+  const coords = points.map((point, index) => {
+    const x = points.length > 1 ? 0.5 + index * step : 50;
+    const value = Number.isFinite(point.value) ? Math.max(0, Math.min(100, point.value)) : 0;
+    return [x, 100 - value] as const;
+  });
 
-  useEffect(() => {
-    fetchHistory(range);
-    const interval = setInterval(() => fetchHistory(range), 30000);
-    return () => clearInterval(interval);
-  }, [range]);
+  let path = `M ${coords[0][0].toFixed(2)} ${coords[0][1].toFixed(2)}`;
+  for (let index = 1; index < coords.length; index += 1) {
+    const previous = coords[index - 1];
+    const current = coords[index];
+    const midX = (previous[0] + current[0]) / 2;
+    path += ` C ${midX.toFixed(2)} ${previous[1].toFixed(2)}, ${midX.toFixed(2)} ${current[1].toFixed(2)}, ${current[0].toFixed(2)} ${current[1].toFixed(2)}`;
+  }
+  path += ' L 99.5 100 L 0.5 100 Z';
+  return path;
+}
 
-  // Chart dimensions
-  const width = 800;
-  const height = 160;
-  const paddingL = 30;
-  const paddingR = 15;
-  const paddingT = 15;
-  const paddingB = 25;
-  const plotW = width - paddingL - paddingR;
-  const plotH = height - paddingT - paddingB;
+function buildLine(points: ChartPoint[]): string {
+  return buildArea(points).replace(/ L 99\.5 100 L 0\.5 100 Z$/, '');
+}
 
-  const { cpuPath, ramPath, cpuArea, ramArea } = useMemo(() => {
-    if (points.length < 2) return { cpuPath: '', ramPath: '', cpuArea: '', ramArea: '' };
+function axisLabels(points: ChartPoint[]): string[] {
+  if (points.length === 0) return [];
+  const count = Math.min(6, points.length);
+  const labels: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const pointIndex = Math.round((index / Math.max(1, count - 1)) * (points.length - 1));
+    labels.push(points[pointIndex]?.label || '');
+  }
+  return labels;
+}
 
-    const n = points.length;
-    const stepX = plotW / (n - 1);
-
-    const cpuCoords = points.map((p, i) => ({
-      x: paddingL + i * stepX,
-      y: paddingT + plotH - (Math.min(100, Math.max(0, p.cpu)) / 100) * plotH,
-    }));
-
-    const ramCoords = points.map((p, i) => ({
-      x: paddingL + i * stepX,
-      y: paddingT + plotH - (Math.min(100, Math.max(0, p.ram)) / 100) * plotH,
-    }));
-
-    let cPath = `M ${cpuCoords[0].x.toFixed(1)} ${cpuCoords[0].y.toFixed(1)}`;
-    for (let i = 1; i < cpuCoords.length; i++) {
-      cPath += ` L ${cpuCoords[i].x.toFixed(1)} ${cpuCoords[i].y.toFixed(1)}`;
-    }
-
-    let rPath = `M ${ramCoords[0].x.toFixed(1)} ${ramCoords[0].y.toFixed(1)}`;
-    for (let i = 1; i < ramCoords.length; i++) {
-      rPath += ` L ${ramCoords[i].x.toFixed(1)} ${ramCoords[i].y.toFixed(1)}`;
-    }
-
-    const cArea = `${cPath} L ${cpuCoords[cpuCoords.length - 1].x.toFixed(1)} ${paddingT + plotH} L ${cpuCoords[0].x.toFixed(1)} ${paddingT + plotH} Z`;
-    const rArea = `${rPath} L ${ramCoords[ramCoords.length - 1].x.toFixed(1)} ${paddingT + plotH} L ${ramCoords[0].x.toFixed(1)} ${paddingT + plotH} Z`;
-
-    return { cpuPath: cPath, ramPath: rPath, cpuArea: cArea, ramArea: rArea };
-  }, [points, plotW, plotH, paddingL, paddingT]);
-
-  const avgCpu = points.length ? Math.round(points.reduce((acc, p) => acc + p.cpu, 0) / points.length) : 0;
-  const avgRam = points.length ? Math.round(points.reduce((acc, p) => acc + p.ram, 0) / points.length) : 0;
+export function HistoricalMetricsChart({ points, value, usedGb, totalGb }: HistoricalMetricsChartProps) {
+  const gradientId = `ram-area-${useId().replace(/:/g, '')}`;
+  const labels = axisLabels(points);
+  const last = points[points.length - 1];
+  const lastY = last ? 100 - Math.max(0, Math.min(100, last.value)) : 0;
+  const used = Number.isFinite(usedGb) ? usedGb.toFixed(1) : '0';
+  const total = Number.isFinite(totalGb) ? totalGb.toFixed(1) : '0';
 
   return (
-    <Card
-      title="سجل الأداء التراكمي في قاعدة البيانات (Historical Telemetry Persistence - SQLite)"
-      icon="vault"
-      actions={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginInlineEnd: 10, fontSize: 12 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--partial)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--partial)', display: 'inline-block' }} />
-              متوسط المعالج: <strong dir="ltr">{avgCpu}%</strong>
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--chart-out)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--chart-out)', display: 'inline-block' }} />
-              متوسط الرام: <strong dir="ltr">{avgRam}%</strong>
-            </span>
-          </div>
-
-          <Button
-            size="sm"
-            variant={range === '24h' ? 'primary' : 'ghost'}
-            onClick={() => setRange('24h')}
-            style={{ padding: '4px 10px', fontSize: 11 }}
-          >
-            آخر 24 ساعة
-          </Button>
-          <Button
-            size="sm"
-            variant={range === '7d' ? 'primary' : 'ghost'}
-            onClick={() => setRange('7d')}
-            style={{ padding: '4px 10px', fontSize: 11 }}
-          >
-            آخر 7 أيام
-          </Button>
-        </div>
-      }
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div
-          style={{
-            position: 'relative',
-            width: '100%',
-            background: 'var(--shadow-soft)',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--accent-soft)',
-            padding: '10px 14px',
-            overflow: 'hidden',
-          }}
-        >
-          {points.length < 2 ? (
-            <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-              جارٍ جمع وحفظ قراءات الأداء في SQLite... (يتم التحديث كل 30 ثانية)
+    <section className="panel chart-card" aria-label="استهلاك الذاكرة">
+      <header className="panel__head">
+        <h2 className="panel__title">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="M7 9h10M7 13h6M7 17h8" />
+          </svg>
+          استهلاك الذاكرة (RAM)
+        </h2>
+        <span className="chart-pill" dir="ltr" title={`${used} / ${total} GB`}>{value}%</span>
+      </header>
+      <div className="panel__body">
+        {points.length < 2 ? (
+          <div className="chart-empty">جارٍ تجميع نقاط القياس الحية…</div>
+        ) : (
+          <>
+            <div className="chart">
+              <div className="chart__plot">
+                <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`استهلاك الذاكرة ${value}%`}>
+                  <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e8c47b" stopOpacity="0.38" />
+                      <stop offset="55%" stopColor="#d8ad5c" stopOpacity="0.16" />
+                      <stop offset="100%" stopColor="#d8ad5c" stopOpacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  <path d={buildArea(points)} fill={`url(#${gradientId})`} stroke="none" />
+                  <path
+                    d={buildLine(points)}
+                    fill="none"
+                    stroke="#e8c47b"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                <span className="chart__dot" style={{ left: '99.5%', top: `${lastY}%` }} />
+                <span className="chart__value" style={{ top: `calc(${lastY}% - 16px)` }}>{value}%</span>
+              </div>
+              <div className="chart__axis-y" aria-hidden="true">
+                <span>100%</span><span>80%</span><span>60%</span><span>40%</span><span>20%</span><span>0%</span>
+              </div>
             </div>
-          ) : (
-            <svg
-              viewBox={`0 0 ${width} ${height}`}
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--partial)" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="var(--partial)" stopOpacity="0.0" />
-                </linearGradient>
-                <linearGradient id="ramGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--chart-out)" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="var(--chart-out)" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-
-              {/* Grid Lines */}
-              {[0, 25, 50, 75, 100].map((pct) => {
-                const y = paddingT + plotH - (pct / 100) * plotH;
-                return (
-                  <g key={pct}>
-                    <line
-                      x1={paddingL}
-                      y1={y}
-                      x2={width - paddingR}
-                      y2={y}
-                      stroke="var(--glass-rim-low)"
-                      strokeDasharray={pct === 0 || pct === 100 ? undefined : '3,3'}
-                    />
-                    <text
-                      x={paddingL - 6}
-                      y={y + 3}
-                      fill="var(--glass-rim-low)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                      textAnchor="end"
-                      direction="ltr"
-                    >
-                      {pct}%
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* Area Fills */}
-              <path d={ramArea} fill="url(#ramGrad)" />
-              <path d={cpuArea} fill="url(#cpuGrad)" />
-
-              {/* Strokes */}
-              <path d={ramPath} fill="none" stroke="var(--chart-out)" strokeWidth="1.8" />
-              <path d={cpuPath} fill="none" stroke="var(--partial)" strokeWidth="2" />
-            </svg>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)' }}>
-          <span>سياسة الاحتفاظ: تنظيف تلقائي للبيانات الأقدم من 7 أيام دورياً.</span>
-          <span>إجمالي النقاط المسجلة: <strong style={{ color: 'var(--accent)' }}>{points.length}</strong> نقطة قياس</span>
-        </div>
+            <div className="chart__axis-x" aria-hidden="true">
+              {labels.map((label, index) => <span key={`${label}-${index}`}>{label}</span>)}
+            </div>
+          </>
+        )}
       </div>
-    </Card>
+    </section>
   );
 }

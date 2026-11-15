@@ -1,12 +1,27 @@
 import { useState } from 'react';
-import { useTheme, Button, useToast } from '../asaas-ui';
+import { NavLink } from 'react-router-dom';
+import { useTheme, useToast } from '../asaas-ui';
 import { api, type HealthInfo, type AppUser } from '../lib/api';
-import { RefreshCw, Megaphone, Zap, ShieldAlert, Sun, Moon, Maximize, CheckCircle2, AlertCircle, UserCheck } from 'lucide-react';
+import {
+  Bell,
+  Settings,
+  ChevronDown,
+  Server,
+  RefreshCw,
+  Sparkles,
+  Zap,
+  ShieldAlert,
+  Sun,
+  Moon,
+  Maximize,
+  UserRound,
+} from 'lucide-react';
 
 interface HeaderBarProps {
   isConnected: boolean;
   health: HealthInfo | null;
   currentUser: AppUser | null;
+  hostname?: string;
   onRefresh: () => void;
   onOpenBroadcast: () => void;
   onOpenAiDiag: () => void;
@@ -17,6 +32,7 @@ export function HeaderBar({
   isConnected,
   health,
   currentUser,
+  hostname,
   onRefresh,
   onOpenBroadcast,
   onOpenAiDiag,
@@ -24,15 +40,22 @@ export function HeaderBar({
 }: HeaderBarProps) {
   const [theme, toggleTheme] = useTheme();
   const toast = useToast();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [trimming, setTrimming] = useState(false);
   const [elevating, setElevating] = useState(false);
 
   const handleTrim = async () => {
+    setMenuOpen(false);
     setTrimming(true);
     try {
       const res = await api.trimGovernor();
       const reclaimed = res.reclaimed_mb ?? res.result?.reclaimed_mb ?? 0;
-      toast(reclaimed > 0 ? `تم استرداد ${reclaimed} MB من ذاكرة الجلسات الخاملة بنجاح.` : 'السيرفر يعمل بكفاءة قصوى، لا توجد جلسات خاملة حالياً.', 'success');
+      toast(
+        reclaimed > 0
+          ? `تم استرداد ${reclaimed} MB من ذاكرة الجلسات الخاملة بنجاح.`
+          : 'السيرفر يعمل بكفاءة قصوى، لا توجد جلسات خاملة حالياً.',
+        'success',
+      );
     } catch (err: any) {
       toast(err.message || 'فشل تفريغ الذاكرة', 'error');
     } finally {
@@ -41,6 +64,7 @@ export function HeaderBar({
   };
 
   const handleElevate = async () => {
+    setMenuOpen(false);
     setElevating(true);
     try {
       const res = await api.requestElevation();
@@ -53,6 +77,7 @@ export function HeaderBar({
   };
 
   const toggleFullScreen = () => {
+    setMenuOpen(false);
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
     } else {
@@ -60,178 +85,119 @@ export function HeaderBar({
     }
   };
 
-  const roleColor = currentUser?.role === 'admin' ? 'var(--status-safe)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--status-info)';
-  const roleLabel = currentUser?.role === 'admin' ? 'مدير النظام (Admin)' : currentUser?.role === 'operator' ? 'مشغل (Operator)' : 'مراجع (Viewer)';
+  const displayName = currentUser?.full_name || currentUser?.username || 'مدير النظام';
+  const roleLabel = currentUser?.role === 'operator'
+    ? 'مشغل عمليات'
+    : currentUser?.role === 'viewer'
+      ? 'مراجع'
+      : 'مدير النظام';
+  const initials = (currentUser?.full_name || currentUser?.username || 'A').trim().charAt(0).toUpperCase();
 
   return (
-    <header
-      className="site-header"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        backgroundColor: 'var(--surface-ground)',
-        borderBottom: '1px solid var(--glass-rim)',
-        boxShadow: 'var(--glass-shadow)',
-        width: '100%',
-      }}
-    >
-      <div
-        className="header-inner"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          padding: '10px 24px',
-          maxWidth: 1600,
-          margin: '0 auto',
-          width: '100%',
-          boxSizing: 'border-box',
-          flexWrap: 'wrap',
-          backgroundColor: 'transparent',
-        }}
-      >
-        {/* Status Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div
-            className={`badge ${isConnected ? 'badge--success' : 'badge--danger'}`}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-          >
-            {isConnected ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-            <span>{isConnected ? 'متصل مباشر (Live SSE)' : 'جارٍ الاتصال بالسيرفر...'}</span>
-          </div>
+    <header className="site-header">
+      <div className="header-inner">
+        <NavLink to="/" className="header-brand header-brand--mobile" aria-label="منظومة أساس - لوحة القيادة">
+          <img className="header-brand__logo" src="/logo-light.png" alt="" width={36} height={36} />
+          <span className="header-brand__text">
+            <strong>ASAAS</strong>
+            <span>Server Control</span>
+          </span>
+        </NavLink>
 
-          <div
-            className="badge badge--accent"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+        <div className="header-center">
+          <NavLink
+            to="/servers"
+            className="server-select"
+            title={hostname ? `إدارة السيرفر ${hostname}` : 'إدارة السيرفرات'}
           >
-            <span>{health?.os_display || 'جارٍ قراءة بيانات المضيف'}</span>
-          </div>
+            <Server size={15} />
+            <span className="server-select__name" dir="ltr">{hostname || 'SRV-LOCAL'}</span>
+            <span className="server-select__meta">{health?.os_display ? 'Windows Server' : 'Server'}</span>
+            <ChevronDown size={14} className="server-select__chev" />
+          </NavLink>
 
-          <button
-            type="button"
-            onClick={onOpenAiDiag}
-            className="badge badge--warning hover:brightness-110 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
-            style={{
-              border: '1px solid var(--status-warning-border)',
-              background: 'var(--status-warning-surface)',
-              color: 'var(--status-warning)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-            aria-label="فتح رادار الذكاء الاصطناعي لتشخيص المنظومة"
-          >
-            <span>رادار الذكاء الاصطناعي (AI Ops)</span>
-          </button>
+          <span className={`conn-pill ${isConnected ? '' : 'conn-pill--off'}`}>
+            <span className="conn-dot" />
+            {isConnected ? 'متصل' : 'غير متصل'}
+          </span>
         </div>
 
-        {/* Action Cluster */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {/* User Account / Role Switcher Pill */}
+        <div className="header-actions">
+          <div className="header-menu-wrap">
+            <button
+              type="button"
+              className="header-icon-btn"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="إعدادات سريعة"
+              aria-expanded={menuOpen}
+              title="إعدادات سريعة"
+            >
+              <Settings size={18} />
+            </button>
+
+            {menuOpen && (
+              <>
+                <button
+                  type="button"
+                  className="header-menu-backdrop"
+                  aria-label="إغلاق القائمة"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="header-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onRefresh(); }}>
+                    <RefreshCw size={15} /> تحديث البيانات الآن
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenAiDiag(); }}>
+                    <Sparkles size={15} /> رادار الذكاء الاصطناعي
+                  </button>
+                  <button type="button" role="menuitem" onClick={handleTrim} disabled={trimming}>
+                    <Zap size={15} /> {trimming ? 'جارٍ تفريغ الذاكرة…' : 'تفريغ ذاكرة الجلسات الخاملة'}
+                  </button>
+                  {health && !health.is_admin && (
+                    <button type="button" role="menuitem" onClick={handleElevate} disabled={elevating}>
+                      <ShieldAlert size={15} /> {elevating ? 'جارٍ طلب الترقية…' : 'ترقية السيرفر كمسؤول'}
+                    </button>
+                  )}
+                  <div className="header-menu__sep" />
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); toggleTheme(); }}>
+                    {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                    {theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
+                  </button>
+                  <button type="button" role="menuitem" onClick={toggleFullScreen}>
+                    <Maximize size={15} /> ملء الشاشة
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenUserAccount(); }}>
+                    <UserRound size={15} /> حساب المستخدم والصلاحيات
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             type="button"
-            onClick={onOpenUserAccount}
-            aria-label={`تغيير المستخدم والدور: ${currentUser?.username || 'Administrator'} (${roleLabel})`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              background: 'var(--glass-rim-low)',
-              border: `1px solid ${roleColor}`,
-              color: 'var(--text)',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-            className="hover:bg-surface-glass-tint active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary"
+            className="header-icon-btn"
+            onClick={onOpenBroadcast}
+            aria-label="التنبيهات والبث الإداري"
+            title="التنبيهات والبث الإداري"
           >
-            <UserCheck size={14} color={roleColor} />
-            <span>{currentUser?.username || 'Administrator'}</span>
-            <span
-              style={{
-                fontSize: 10,
-                padding: '2px 6px',
-                borderRadius: 4,
-                background: roleColor,
-                color: 'var(--on-accent)',
-                fontWeight: 700,
-              }}
-            >
-              {roleLabel}
-            </span>
+            <Bell size={18} />
+            <span className="header-icon-btn__badge">3</span>
           </button>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onRefresh}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+          <button
+            type="button"
+            className="header-user"
+            onClick={onOpenUserAccount}
+            aria-label={`إدارة الحساب: ${displayName} (${roleLabel})`}
+            title="حساب المستخدم"
           >
-            <RefreshCw size={14} />
-            <span>تحديث</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onOpenBroadcast}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-          >
-            <Megaphone size={14} />
-            <span>تنبيه</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="glass"
-            loading={trimming}
-            onClick={handleTrim}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent, var(--accent))', whiteSpace: 'nowrap' }}
-          >
-            <Zap size={14} />
-            <span>تفريغ الخمول</span>
-          </Button>
-
-          {health && !health.is_admin && (
-            <Button
-              size="sm"
-              variant="primary"
-              loading={elevating}
-              onClick={handleElevate}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-            >
-              <ShieldAlert size={14} />
-              <span>ترقية كمسؤول</span>
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={toggleTheme}
-            style={{ padding: '6px 10px' }}
-            label={theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
-          >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </Button>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={toggleFullScreen}
-            style={{ padding: '6px 10px' }}
-            label="ملء الشاشة"
-          >
-            <Maximize size={16} />
-          </Button>
+            <span className="header-user__meta">
+              <strong>{displayName}</strong>
+              <span>{roleLabel}</span>
+            </span>
+            <span className="header-user__avatar">{initials || <UserRound size={15} />}</span>
+          </button>
         </div>
       </div>
     </header>

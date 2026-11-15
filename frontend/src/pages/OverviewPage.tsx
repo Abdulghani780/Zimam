@@ -1,395 +1,511 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
-import { useTelemetry } from '../lib/useTelemetry';
-import { api, type UserSession } from '../lib/api';
-import { SessionDrawer } from '../components/SessionDrawer';
-import { BroadcastModal } from '../components/BroadcastModal';
-import { CpuHistoryChart } from '../components/CpuHistoryChart';
-import { GovernorSettingsModal } from '../components/GovernorSettingsModal';
-import { HistoricalMetricsChart } from '../components/HistoricalMetricsChart';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Cpu,
-  Database,
-  Users,
-  HardDrive,
-  Zap,
-  ShieldCheck,
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
   ChevronLeft,
+  Clock3,
+  Cpu,
+  HardDrive,
+  LogIn,
+  LogOut,
+  MemoryStick,
+  Network,
+  RefreshCw,
+  Server,
+  Settings2,
+  ShieldCheck,
+  Users,
+  Zap,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useTelemetry } from '../lib/useTelemetry';
+import {
+  api,
+  type AuditLog,
+  type HistoricalPoint,
+  type ManagedServer,
+  type SecurityEvent,
+  type SecurityStats,
+  type SystemHistory,
+} from '../lib/api';
+import { CpuHistoryChart, type ChartPoint } from '../components/CpuHistoryChart';
+import { HistoricalMetricsChart } from '../components/HistoricalMetricsChart';
+
+interface FirewallStatus {
+  ok: boolean;
+  profiles?: Record<string, boolean>;
+}
+
+interface BackupRecord {
+  filename: string;
+  modified_at: string;
+  size_mb: number;
+}
+
+const RANGE_KEY = 'asaas-overview-range';
+
+function formatTimeLabel(value: string, range: '24h' | '7d'): string {
+  const date = new Date(value.includes('T') ? value : value.replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) return value.slice(11, 16) || value;
+  if (range === '7d') {
+    return `${date.getDate()}/${date.getMonth() + 1}`;
+  }
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatSpeed(kb: number): string {
+  const safe = Number.isFinite(kb) ? Math.max(0, kb) : 0;
+  if (safe >= 1024) return `${(safe / 1024).toFixed(1)} MB/s`;
+  return `${safe.toFixed(1)} KB/s`;
+}
+
+function formatMbps(kb: number): string {
+  const safe = Number.isFinite(kb) ? Math.max(0, kb) : 0;
+  const mbps = (safe * 8) / 1024;
+  if (mbps >= 100) return mbps.toFixed(0);
+  if (mbps >= 10) return mbps.toFixed(1);
+  return mbps.toFixed(2);
+}
+
+function formatGb(value: number, digits = 0): string {
+  if (!Number.isFinite(value)) return '0';
+  return value.toFixed(digits);
+}
+
+function relativeFrom(value: string): string {
+  const date = new Date(value.includes('T') ? value : value.replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) return value;
+  const diffMinutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (diffMinutes < 60) return `منذ ${diffMinutes || 1} دقيقة`;
+  const hours = Math.floor(diffMinutes / 60);
+  if (hours < 24) return `منذ ${hours} ساعة`;
+  const days = Math.floor(hours / 24);
+  return `منذ ${days} يوم`;
+}
+
+function clockOf(value: string): string {
+  const date = new Date(value.includes('T') ? value : value.replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) return value.slice(11, 16);
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+const ACTION_META: Record<string, { title: string; icon: typeof Zap }> = {
+  LOGIN_SUCCESS: { title: 'تسجيل دخول ناجح', icon: LogIn },
+  SESSION_LOGOFF: { title: 'إنهاء جلسة مستخدم', icon: LogOut },
+  RAM_TRIMMED: { title: 'تفريغ الذاكرة الخاملة', icon: Zap },
+  SERVICE_CONTROL: { title: 'تعديل حالة خدمة', icon: Settings2 },
+  USER_CREATED: { title: 'إنشاء مستخدم جديد', icon: Users },
+};
 
 export function OverviewPage() {
-  const { snapshot, governor, health, refresh } = useTelemetry();
-  const toast = useToast();
+  const { snapshot, health, refresh } = useTelemetry();
   const navigate = useNavigate();
 
-  const [selectedSession, setSelectedSession] = useState<UserSession | null>(null);
-  const [directMsgSession, setDirectMsgSession] = useState<{ id: number; user: string } | null>(null);
-  const [terminatingPid, setTerminatingPid] = useState<number | null>(null);
-  const [governorModalOpen, setGovernorModalOpen] = useState(false);
+  const [range, setRange] = useState<'24h' | '7d'>(() => {
+    try {
+      const saved = localStorage.getItem(RANGE_KEY);
+      return saved === '7d' ? '7d' : '24h';
+    } catch {
+      return '24h';
+    }
+  });
+  const [history, setHistory] = useState<HistoricalPoint[]>([]);
+  const [systemHistory, setSystemHistory] = useState<SystemHistory | null>(null);
+  const [servers, setServers] = useState<ManagedServer[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
+  const [securityStats, setSecurityStats] = useState<SecurityStats | null>(null);
+  const [firewall, setFirewall] = useState<FirewallStatus | null>(null);
+  const [backups, setBackups] = useState<BackupRecord[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const host = snapshot?.host;
-  const sessions = snapshot?.sessions || [];
-  const processes = (snapshot?.processes || []).slice(0, 10);
+  const sessions = snapshot?.sessions ?? [];
+  const services = snapshot?.services ?? [];
 
-  // Keep selectedSession live with snapshot updates
-  useEffect(() => {
-    if (selectedSession) {
-      const fresh = sessions.find((s) => s.id === selectedSession.id);
-      if (fresh) {
-        setSelectedSession(fresh);
-      }
-    }
-  }, [sessions]);
-
-  const handleKillProc = async (pid: number, name: string) => {
-    if (!confirm(`هل أنت متأكد من رغبتك في إنهاء العملية ${name} (PID: ${pid})؟`)) return;
-    setTerminatingPid(pid);
+  const loadHistory = useCallback(async (selectedRange: '24h' | '7d') => {
     try {
-      const res = await api.terminateProcess(pid);
-      if (res.ok) {
-        toast(`تم إنهاء ${name} بنجاح.`, 'success');
-        refresh();
-      } else {
-        toast(res.error || 'فشل إنهاء العملية', 'error');
+      const res = await api.getHistoricalMetrics(selectedRange);
+      setHistory(Array.isArray(res.history) ? res.history : []);
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+
+  const loadLiveExtras = useCallback(async () => {
+    const [serverRes, auditRes, securityRes, securityStatRes, firewallRes, backupRes] = await Promise.all([
+      api.getServers().catch(() => null),
+      api.getAuditLogs(8).catch(() => []),
+      api.getSecurityEvents().catch(() => []),
+      api.getSecurityStats().catch(() => null),
+      api.getFirewallStatus().catch(() => null),
+      api.getDatabaseBackups().catch(() => null),
+    ]);
+    if (serverRes?.servers) setServers(serverRes.servers);
+    if (Array.isArray(auditRes)) setAuditLogs(auditRes);
+    if (Array.isArray(securityRes)) setSecurityEvents(securityRes);
+    if (securityStatRes) setSecurityStats(securityStatRes);
+    if (firewallRes) setFirewall(firewallRes as FirewallStatus);
+    if (backupRes?.backups) setBackups(backupRes.backups as BackupRecord[]);
+  }, []);
+
+  useEffect(() => {
+    loadHistory(range);
+    const timer = window.setInterval(() => loadHistory(range), 30000);
+    return () => window.clearInterval(timer);
+  }, [range, loadHistory]);
+
+  useEffect(() => {
+    const loadSystem = async () => {
+      try {
+        const res = await api.getSystemHistory();
+        if (res?.history) setSystemHistory(res.history);
+      } catch {
+        /* keep the previous sample */
       }
-    } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+    };
+    loadSystem();
+    const timer = window.setInterval(loadSystem, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    loadLiveExtras();
+    const timer = window.setInterval(loadLiveExtras, 30000);
+    return () => window.clearInterval(timer);
+  }, [loadLiveExtras]);
+
+  const refreshAll = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([refresh(), loadHistory(range), loadLiveExtras()]);
     } finally {
-      setTerminatingPid(null);
+      setLoading(false);
     }
   };
 
+  const selectRange = (next: '24h' | '7d') => {
+    setRange(next);
+    try {
+      localStorage.setItem(RANGE_KEY, next);
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  const cpuPoints: ChartPoint[] = useMemo(
+    () => history.map((point) => ({ label: formatTimeLabel(point.timestamp, range), value: point.cpu })),
+    [history, range],
+  );
+  const ramPoints: ChartPoint[] = useMemo(
+    () => history.map((point) => ({ label: formatTimeLabel(point.timestamp, range), value: point.ram })),
+    [history, range],
+  );
+
+  const lastCpu = cpuPoints.length ? Math.round(cpuPoints[cpuPoints.length - 1].value) : Math.round(host?.cpu ?? 0);
+  const lastRam = ramPoints.length ? Math.round(ramPoints[ramPoints.length - 1].value) : Math.round(host?.ram ?? 0);
+
+  const activeSessions = sessions.filter((session) => (session.state || session.status) === 'Active');
+  const runningServices = services.filter((service) => service.status === 'Running');
+  const criticalServices = services.filter((service) => service.critical);
+  const criticalRunning = criticalServices.length > 0 && criticalServices.every((service) => service.status === 'Running');
+
+  const securityAlerts = securityEvents.filter((event) => event.severity === 'danger' || event.severity === 'warning');
+  const firewallActive = firewall?.profiles ? Object.values(firewall.profiles).every(Boolean) : Boolean(securityStats?.firewall_active);
+  const lastBackup = backups[0];
+
+  const networkRx = systemHistory?.network.rx_rate_kb ?? 0;
+  const networkTx = systemHistory?.network.tx_rate_kb ?? 0;
+  const networkTotal = networkRx + networkTx;
+
+  const cpuValue = Math.round(host?.cpu ?? 0);
+  const ramValue = Math.round(host?.ram ?? 0);
+  const diskValue = Math.round(host?.disk?.percent ?? 0);
+  const diskTotal = Number(host?.disk?.total ?? 0);
+  const totalSessions = sessions.length;
+
+  const recentActivity = auditLogs.slice(0, 5);
+  const shellTop = host?.cpuCores ?? host?.cpuPerCore?.length ?? 0;
+
   return (
     <div className="page">
-      {/* 1. Main Stat Cards */}
-      <div className="stat-grid">
-        <Glass className="stat-card">
-          <div className="stat-card__header">
-            <span>استخدام المعالج</span>
-            <Cpu size={18} color="var(--accent)" />
+      <div className="page-head">
+        <div className="page-head__title">
+          <span className="page-head__bar" />
+          <div>
+            <h1>لوحة القيادة</h1>
+            <p>نظرة شاملة على حالة السيرفر والموارد والخدمات الأمنية</p>
           </div>
-          <div className="stat-card__value">
-            <span dir="ltr">{host?.cpu ?? 0}%</span>
+        </div>
+        <div className="page-head__actions">
+          <div className="range-switch" role="group" aria-label="نطاق القياس الزمني">
+            <button type="button" data-active={range === '24h'} onClick={() => selectRange('24h')}>آخر 24 ساعة</button>
+            <button type="button" data-active={range === '7d'} onClick={() => selectRange('7d')}>آخر 7 أيام</button>
           </div>
-          <div className="stat-card__sub">
-            <span>{host?.cpuCores ?? 0} أنوية مقروءة من Agent</span>
-          </div>
-        </Glass>
-
-        <Glass className="stat-card">
-          <div className="stat-card__header">
-            <span>الذاكرة المستخدمة</span>
-            <Database size={18} color="var(--accent)" />
-          </div>
-          <div className="stat-card__value" dir="ltr" style={{ justifyContent: 'flex-start' }}>
-            <span>{host?.usedRam ?? 0}</span> <span style={{ fontSize: 16, fontWeight: 500, marginInlineStart: 4 }}>GB</span>
-          </div>
-          <div className="stat-card__sub">
-            <span><span dir="ltr">{host?.ram ?? 0}%</span> من إجمالي <span dir="ltr">{host?.totalRam ?? 0} GB</span></span>
-          </div>
-        </Glass>
-
-        <Glass className="stat-card">
-          <div className="stat-card__header">
-            <span>الجلسات النشطة</span>
-            <Users size={18} color="var(--accent)" />
-          </div>
-          <div className="stat-card__value">
-            {sessions.length}
-          </div>
-          <div className="stat-card__sub">
-            <span>{sessions.filter((s) => s.status === 'Active').length} متصلة حالياً</span>
-          </div>
-        </Glass>
-
-        <Glass className="stat-card">
-          <div className="stat-card__header">
-            <span>التخزين والملفات</span>
-            <HardDrive size={18} color="var(--accent)" />
-          </div>
-          <div className="stat-card__value">
-            <span dir="ltr">{host?.disk?.percent ?? 0}%</span>
-          </div>
-          <div className="stat-card__sub">
-            <span><span dir="ltr">{host?.disk?.used ?? 0} GB</span> من <span dir="ltr">{host?.disk?.total ?? 0} GB</span></span>
-          </div>
-        </Glass>
+          <span className="period-pill">
+            <Clock3 size={14} />
+            {new Date().toLocaleDateString('en-GB')}
+          </span>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={refreshAll}
+            disabled={loading}
+            aria-label="تحديث بيانات اللوحة"
+            title="تحديث بيانات اللوحة"
+          >
+            <RefreshCw size={16} className={loading ? 'spin' : ''} />
+          </button>
+        </div>
       </div>
 
-      {/* 2. Resource Governor & Control Plane status */}
-      <div className="hero-grid">
-        <Glass className="hero-banner" style={{ background: 'var(--glass-tint-strong)' }}>
-          <div className="hero-banner__content">
-            <div className="hero-banner__title">
-              <Zap size={20} color="var(--accent)" />
-              <span>حاكم الموارد الذكي</span>
-              <bdi dir="ltr" style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600 }}>(Resource Governor)</bdi>
-              <span className="badge badge--success">
-                {governor?.auto_trim ? 'الحاكم: نشط' : 'وضع يدوي'}
-              </span>
-            </div>
-            <div className="hero-banner__desc">
-              مكافحة استنزاف الرام والمعالج وسحب الموارد من الحسابات الخاملة وضخها للمستخدم النشط.
-            </div>
+      <div className="kpi-grid">
+        <article className="kpi">
+          <div className="kpi__top">
+            <span className="kpi__label">المعالج (CPU)</span>
+            <span className="kpi__icon"><Cpu size={19} /></span>
           </div>
+          <div className="kpi__value">{cpuValue}%</div>
+          <div className="kpi__foot">{shellTop} نواة</div>
+          <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, cpuValue))}%` }} /></div>
+        </article>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ textAlign: 'start' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>المستعاد</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--font)' }} dir="ltr">
-                {governor?.reclaimed_mb || 0} MB
+        <article className="kpi">
+          <div className="kpi__top">
+            <span className="kpi__label">الذاكرة (RAM)</span>
+            <span className="kpi__icon"><MemoryStick size={19} /></span>
+          </div>
+          <div className="kpi__value">{ramValue}%</div>
+          <div className="kpi__foot">من {formatGb(host?.totalRam ?? 0)} GB</div>
+          <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, ramValue))}%` }} /></div>
+        </article>
+
+        <article className="kpi">
+          <div className="kpi__top">
+            <span className="kpi__label">القرص (C:)</span>
+            <span className="kpi__icon"><HardDrive size={19} /></span>
+          </div>
+          <div className="kpi__value">{diskValue}%</div>
+          <div className="kpi__foot">من {formatGb(diskTotal)} GB</div>
+          <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, diskValue))}%` }} /></div>
+        </article>
+
+        <article className="kpi">
+          <div className="kpi__top">
+            <span className="kpi__label">الشبكة</span>
+            <span className="kpi__icon"><Network size={19} /></span>
+          </div>
+          <div className="kpi__value">{formatMbps(networkTotal)} <small>Mbps</small></div>
+          <div className="kpi__foot">
+            <span className="up">↑ {formatSpeed(networkTx)}</span>
+            <span className="down">↓ {formatSpeed(networkRx)}</span>
+          </div>
+          <div className="kpi__meter meter"><div className="meter__fill meter__fill--blue" style={{ width: `${Math.min(100, Math.max(2, (networkTotal / 12800) * 100))}%` }} /></div>
+        </article>
+
+        <article className="kpi">
+          <div className="kpi__top">
+            <span className="kpi__label">جلسات RDP النشطة</span>
+            <span className="kpi__icon"><Users size={19} /></span>
+          </div>
+          <div className="kpi__value">{activeSessions.length}</div>
+          <div className="kpi__foot">من أصل {totalSessions} جلسة مسجلة</div>
+          <div className="kpi__meter meter"><div className="meter__fill meter__fill--green" style={{ width: `${totalSessions ? Math.max(3, (activeSessions.length / totalSessions) * 100) : 0}%` }} /></div>
+        </article>
+
+        <article className="kpi kpi--danger">
+          <div className="kpi__top">
+            <span className="kpi__label">التنبيهات الأمنية</span>
+            <span className="kpi__icon"><ShieldCheck size={19} /></span>
+          </div>
+          <div className="kpi__value">{securityAlerts.length}</div>
+          <div className="kpi__foot">{securityAlerts.length ? 'بحاجة إلى مراجعة' : 'لا توجد تنبيهات معلقة'}</div>
+          <div className="kpi__meter meter"><div className="meter__fill meter__fill--red" style={{ width: `${Math.min(100, securityAlerts.length * 8 + (securityAlerts.length ? 6 : 0))}%` }} /></div>
+        </article>
+      </div>
+
+      <div className="overview-charts">
+        <CpuHistoryChart points={cpuPoints} value={lastCpu} />
+        <HistoricalMetricsChart
+          points={ramPoints}
+          value={lastRam}
+          usedGb={host?.usedRam ?? 0}
+          totalGb={host?.totalRam ?? 0}
+        />
+
+        <section className="panel chart-card server-rail-card" aria-label="حالة السيرفر">
+          <header className="panel__head">
+            <h2 className="panel__title">
+              <Activity size={17} />
+              حالة السيرفر
+            </h2>
+            <span className={`badge ${health?.ok ? 'badge--success' : 'badge--warning'}`}>
+              <span className="badge-dot" />
+              {health?.ok ? 'متصل' : 'قيد الفحص'}
+            </span>
+          </header>
+          <div className="panel__body">
+            <div className="status-rows">
+              <div className="status-row">
+                <span>النظام يعمل بشكل طبيعي</span>
+                <span className={`status-${health?.ok ? 'ok' : 'warn'}`}>
+                  {health?.ok ? <CheckCircle2 /> : <AlertTriangle />}
+                </span>
+              </div>
+              <div className="status-row">
+                <span>الخدمات الأساسية ({runningServices.length}/{services.length})</span>
+                <span className={`status-${criticalRunning ? 'ok' : 'warn'}`}>
+                  {criticalRunning ? <CheckCircle2 /> : <AlertTriangle />}
+                </span>
+              </div>
+              <div className="status-row">
+                <span>جدار الحماية</span>
+                <span className={`status-${firewallActive ? 'ok' : 'warn'}`}>
+                  {firewallActive ? <CheckCircle2 /> : <AlertTriangle />}
+                </span>
+              </div>
+              <div className="status-row">
+                <span>حماية الحسابات والتصعيد</span>
+                <span className={`status-${securityStats?.auto_ban_enabled ? 'ok' : 'warn'}`}>
+                  {securityStats?.auto_ban_enabled ? <CheckCircle2 /> : <AlertTriangle />}
+                </span>
+              </div>
+              <div className="status-row">
+                <span>النسخ الاحتياطي</span>
+                <span className={`status-${lastBackup ? 'ok' : 'warn'}`}>
+                  {lastBackup ? <CheckCircle2 /> : <Clock3 />}
+                </span>
               </div>
             </div>
-            <Button variant="primary" size="sm" onClick={() => setGovernorModalOpen(true)}>
-              إعدادات الحاكم
-            </Button>
-          </div>
-        </Glass>
-
-        <Glass className="hero-banner">
-          <div className="hero-banner__content">
-            <div className="hero-banner__title">
-              <ShieldCheck size={20} color="var(--accent)" />
-              <span>حالة طبقة التحكم والوصول</span>
-              <bdi dir="ltr" style={{ fontSize: 13, color: 'var(--text-3)', fontWeight: 600 }}>(Control Plane)</bdi>
-              <span className="badge badge--accent">Policy Ready</span>
-            </div>
-            <div className="hero-banner__desc">
-              تظهر هنا حالة الأصول والسياسات والتدقيق الحقيقي. جلسات RDP/SSH لا تُفتح حتى تُربط بوابة البروتوكول.
+            <div className="status-backup">
+              <span>النسخ الاحتياطي التلقائي</span>
+              <span>{lastBackup ? `آخر نسخة ${relativeFrom(lastBackup.modified_at)}` : 'لا توجد نسخة مسجلة'}</span>
             </div>
           </div>
-
-          <div className="cluster">
-            <Button size="sm" variant="glass" onClick={() => navigate('/security')}>
-              درع الأمان
-            </Button>
-            <Button size="sm" variant="glass" onClick={() => navigate('/vault')}>
-              خزنة الحسابات
-            </Button>
-          </div>
-        </Glass>
+        </section>
       </div>
 
-      {/* 3. Hardware Cores Matrix & Realtime Wave Oscilloscope */}
-      <CpuHistoryChart
-        cpuPerCore={host?.cpuPerCore}
-        cpuTotal={host?.cpu}
-        cpuModel={host?.os}
-      />
-
-      {/* 3.1 Historical Telemetry Persistence (24h & 7d - Story 5) */}
-      <HistoricalMetricsChart />
-
-      {/* 4. Active RDP User Sessions */}
-      <Card
-        title="جلسات سطح المكتب النشطة (RDP User Sessions)"
-        icon="users"
-        actions={
-          <div className="cluster">
-            <span style={{ fontSize: 13, color: 'var(--text-3)' }}>
-              انقر على أي مستخدم للمشاهدة أو التحكم بالجلسة
-            </span>
-          </div>
-        }
-      >
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead style={{ width: 100, textAlign: 'center' }}>معرف الجلسة</TableHead>
-                <TableHead style={{ minWidth: 200 }}>اسم المستخدم</TableHead>
-                <TableHead style={{ width: 120, textAlign: 'center' }}>الحالة</TableHead>
-                <TableHead style={{ width: 130, textAlign: 'center' }}>وقت الخمول (Idle)</TableHead>
-                <TableHead style={{ width: 140, textAlign: 'end' }}>الذاكرة المستخدمة</TableHead>
-                <TableHead style={{ width: 90, textAlign: 'center' }}>العمليات</TableHead>
-                <TableHead style={{ width: 150, textAlign: 'center' }}>وقت الدخول</TableHead>
-                <TableHead style={{ width: 130, textAlign: 'end' }}>الإجراءات</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.length === 0 ? (
-                <TableEmpty colSpan={8} message="لا توجد جلسات مستخدمين نشطة حالياً." />
-              ) : (
-                sessions.map((s) => (
-                  <TableRow
-                    key={s.id}
-                    tabIndex={0}
-                    onClick={() => setSelectedSession(s)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedSession(s);
-                      }
-                    }}
-                    className="cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
-                    aria-label={`جلسة ${s.user} رقم ${s.id}`}
-                  >
-                    <TableCell style={{ width: 100, textAlign: 'center' }}>
-                      <span className="badge badge--accent font-telemetry">#{s.id}</span>
-                    </TableCell>
-                    <TableCell style={{ minWidth: 200 }}>
-                      <div className="flex items-center gap-2.5">
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--accent-soft)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-soft)', color: 'var(--accent)', flexShrink: 0, fontSize: 12, fontWeight: 700 }}>
-                          {s.user.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-title" style={{ color: 'var(--text)' }}>{s.user}</span>
-                            {s.is_current && (
-                              <span
-                                style={{
-                                  whiteSpace: 'nowrap',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  padding: '2px 8px',
-                                  borderRadius: 9999,
-                                  fontSize: 10,
-                                  fontWeight: 800,
-                                  backgroundColor: 'var(--accent)',
-                                  color: 'var(--on-accent)',
-                                }}
-                              >
-                                أنت هنا
-                              </span>
-                            )}
+      <div className="overview-rail">
+        <section className="panel" aria-label="السيرفرات والخدمات">
+          <header className="panel__head">
+            <h2 className="panel__title">
+              <Server size={17} />
+              السيرفرات والخدمات
+            </h2>
+            <NavLink to="/servers" className="panel__action" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+              عرض الكل
+              <ChevronLeft size={13} />
+            </NavLink>
+          </header>
+          <div className="panel__body panel__body--flush">
+            <div className="table-shell">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>اسم السيرفر / الخدمة</th>
+                    <th>الحالة</th>
+                    <th>المعالج</th>
+                    <th>الذاكرة</th>
+                    <th>القرص</th>
+                    <th>مدة التشغيل</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {servers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: 30, color: 'var(--text-3)' }}>
+                        جارٍ تحميل سجل السيرفرات…
+                      </td>
+                    </tr>
+                  )}
+                  {servers.map((server) => {
+                    const isLocal = Boolean(server.is_local);
+                    const serverCpu = isLocal ? (host?.cpu ?? server.cpu) : server.cpu;
+                    const serverRam = isLocal ? (host?.ram ?? server.ram) : server.ram;
+                    const serverDisk = isLocal ? (host?.disk?.percent ?? server.storage) : server.storage;
+                    const online = server.status === 'online';
+                    return (
+                      <tr key={server.id}>
+                        <td>
+                          <span className="cell-user">
+                            <Server size={13} />
+                            <span className="cell-strong" dir="ltr">{server.name}</span>
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`pill-status ${online ? 'pill-status--on' : 'pill-status--off'}`}>
+                            <span className="badge-dot" />
+                            {online ? 'متصل' : 'غير متصل'}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'grid', gap: 3, minWidth: 66 }}>
+                            <span style={{ fontSize: 10.5, color: '#c8d0d4' }}>{Math.round(serverCpu)}%</span>
+                            <div className="meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, serverCpu))}%` }} /></div>
                           </div>
-                          <div className="text-xs text-muted" style={{ color: 'var(--text-3)' }}>{s.station || 'RDP'}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell style={{ width: 120, textAlign: 'center' }}>
-                      <span className={`badge ${s.status === 'Active' ? 'badge--success' : 'badge--danger'}`}>
-                        {s.status === 'Active' ? 'نشطة' : 'منفصلة (Disc)'}
-                      </span>
-                    </TableCell>
-                    <TableCell style={{ width: 130, textAlign: 'center' }} className="font-telemetry text-muted text-xs">
-                      {s.idle_time || (s as any).idle_formatted || (s.idle !== null && s.idle !== undefined ? String(s.idle) : 'نشط الآن')}
-                    </TableCell>
-                    <TableCell style={{ width: 140, textAlign: 'end' }} className="font-telemetry font-bold text-title">
-                      <span dir="ltr" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {s.ram_formatted || (s.ram_mb ? (s.ram_mb >= 1024 ? `${(s.ram_mb / 1024).toFixed(2)} GB` : `${Math.round(s.ram_mb)} MB`) : s.ram ? `${s.ram} GB` : '—')}
-                      </span>
-                    </TableCell>
-                    <TableCell style={{ width: 90, textAlign: 'center' }} className="font-telemetry text-title">
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{s.processes_count || s.procs || 0}</span>
-                    </TableCell>
-                    <TableCell style={{ width: 150, textAlign: 'center' }} className="text-xs text-muted font-telemetry">
-                      <span dir="ltr">{s.login_time || s.login || 'الآن'}</span>
-                    </TableCell>
-                    <TableCell style={{ width: 130, textAlign: 'end' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setSelectedSession(s)}
-                          className="text-xs px-2.5"
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
-                          تفاصيل الجلسة
-                          <ChevronLeft size={14} />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                        </td>
+                        <td>
+                          <div style={{ display: 'grid', gap: 3, minWidth: 66 }}>
+                            <span style={{ fontSize: 10.5, color: '#c8d0d4' }}>{Math.round(serverRam)}%</span>
+                            <div className="meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, serverRam))}%` }} /></div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'grid', gap: 3, minWidth: 66 }}>
+                            <span style={{ fontSize: 10.5, color: '#c8d0d4' }}>{Math.round(serverDisk)}%</span>
+                            <div className="meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, serverDisk))}%` }} /></div>
+                          </div>
+                        </td>
+                        <td className="cell-muted" style={{ fontSize: 10.5 }}>
+                          {isLocal ? (host?.uptime || '—') : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section className="panel activity-card" aria-label="النشاط الأخير">
+          <header className="panel__head">
+            <h2 className="panel__title">
+              <Clock3 size={17} />
+              النشاط الأخير
+            </h2>
+          </header>
+          <div className="panel__body" style={{ paddingTop: 6 }}>
+            <div className="activity-list">
+              {recentActivity.length === 0 && (
+                <div style={{ padding: '18px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 11 }}>
+                  لا توجد أحداث تدقيق حديثة
+                </div>
               )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Card>
-
-      {/* 5. Top Resource Processes */}
-      <Card title="أعلى العمليات استهلاكاً للذاكرة (Active Processes)" icon="list">
-        <TableContainer>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead style={{ width: 90, textAlign: 'start' }}>PID</TableHead>
-                <TableHead style={{ minWidth: 200, textAlign: 'start' }}>اسم العملية</TableHead>
-                <TableHead style={{ minWidth: 160, textAlign: 'start' }}>المستخدم / الجلسة</TableHead>
-                <TableHead style={{ width: 140, textAlign: 'end' }}>الذاكرة (RAM)</TableHead>
-                <TableHead style={{ width: 110, textAlign: 'end' }}>إنهاء العملية</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {processes.length === 0 ? (
-                <TableEmpty colSpan={5} message="جارٍ حصر العمليات..." />
-              ) : (
-                processes.map((p) => (
-                  <TableRow key={p.pid}>
-                    <TableCell style={{ width: 90, textAlign: 'start' }} className="font-telemetry font-semibold text-muted">
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{p.pid}</span>
-                    </TableCell>
-                    <TableCell style={{ minWidth: 200, textAlign: 'start' }} className="font-bold text-title">
-                      <span style={{ color: 'var(--text)', fontWeight: 700 }}>{p.name}</span>
-                    </TableCell>
-                    <TableCell style={{ minWidth: 160, textAlign: 'start' }} className="text-muted text-xs">
-                      <span style={{ color: 'var(--text-3)' }}>{p.user} (جلسة #{p.session})</span>
-                    </TableCell>
-                    <TableCell style={{ width: 140, textAlign: 'end' }} className="font-telemetry font-bold text-primary">
-                      <span dir="ltr" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--accent)' }}>
-                        {(p as any).ram_mb ? (
-                          (p as any).ram_mb >= 1024
-                            ? `${((p as any).ram_mb / 1024).toFixed(1)} GB`
-                            : `${(p as any).ram_mb} MB`
-                        ) : p.ram ? (
-                          p.ram >= 1
-                            ? `${p.ram.toFixed(1)} GB`
-                            : `${Math.round(p.ram * 1024)} MB`
-                        ) : '—'}
-                      </span>
-                    </TableCell>
-                    <TableCell style={{ width: 110, textAlign: 'end' }}>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        loading={terminatingPid === p.pid}
-                        onClick={() => handleKillProc(p.pid, p.name)}
-                        className="text-xs px-3"
-                        style={{ whiteSpace: 'nowrap' }}
-                      >
-                        إنهاء
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Card>
-
-      {/* Drawers and Dialogs */}
-      <SessionDrawer
-        session={selectedSession}
-        isAdmin={health?.is_admin ?? false}
-        onClose={() => setSelectedSession(null)}
-        onSendMessage={(sid, user) => {
-          setSelectedSession(null);
-          setDirectMsgSession({ id: sid, user });
-        }}
-        onRefresh={refresh}
-        onRequestElevation={async () => {
-          try {
-            const res = await api.requestElevation();
-            toast(res.message || 'تم إرسال طلب الترقية كمسؤول.', 'success');
-          } catch (e: any) {
-            toast(e.message || 'فشل الترقية', 'error');
-          }
-        }}
-      />
-
-      <GovernorSettingsModal open={governorModalOpen} onClose={() => setGovernorModalOpen(false)} onSaved={refresh} />
-
-      {directMsgSession && (
-        <BroadcastModal
-          open={true}
-          onClose={() => setDirectMsgSession(null)}
-          targetSessionId={directMsgSession.id}
-          targetUser={directMsgSession.user}
-        />
-      )}
+              {recentActivity.map((entry) => {
+                const meta = ACTION_META[entry.action] || { title: entry.action, icon: Settings2 };
+                const Icon = meta.icon;
+                return (
+                  <div className="activity-row" key={entry.id}>
+                    <span className="activity-row__time">{clockOf(entry.timestamp)}</span>
+                    <span className="activity-row__icon"><Icon /></span>
+                    <span className="activity-row__main">
+                      <span className="activity-row__title">{meta.title}</span>
+                      <span className="activity-row__meta">{entry.user} · {entry.ip || '127.0.0.1'}</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <button type="button" className="activity-more" onClick={() => navigate('/audit')}>
+              عرض جميع السجلات
+              <ArrowLeft size={13} />
+            </button>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

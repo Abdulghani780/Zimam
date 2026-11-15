@@ -1,60 +1,128 @@
-/* ASAAS product identity: ink, gold, sand and liquid glass. */
+/* ASAAS Server Control — sovereign dark identity: slate ink, warm gold, signal green. */
 @import '../../tokens/design-tokens.css';
 
 :root {
-  --brand-ink: #221f1f;
-  --brand-gold: #ba9555;
-  --brand-sand: #d3c6b4;
-  --brand-clay: #c3ad8d;
-  --brand-cream: #ede7da;
-  --brand-paper: #fcf9f5;
-  --brand-mark: url('/logo-dark.png');
+  --brand-ink: #0b0f13;
+  --brand-gold: #d6aa54;
+  --brand-sand: #c8bda9;
+  --brand-clay: #9a855f;
+  --brand-cream: #f3ede2;
+  --brand-paper: #fbf8f1;
+  --brand-mark: url('/logo-light.png');
 
   --font: 'Thmanyah Sans', system-ui, sans-serif;
-  --font-display: 'Thmanyah Serif Display', 'Thmanyah Sans', serif;
-  --font-text: 'Thmanyah Serif Text', 'Thmanyah Sans', serif;
+  --font-display: 'Thmanyah Sans', system-ui, sans-serif;
+  --font-text: 'Thmanyah Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;
 
-  --radius-xl: 30px;
-  --radius-lg: 22px;
-  --radius-md: 16px;
-  --radius-sm: 12px;
+  --radius-xl: 14px;
+  --radius-lg: 12px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
   --radius-pill: 999px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-  --gutter: 20px;
-  --page-max: 1320px;
-  --page-pad: clamp(16px, 4vw, 32px);
-  --header-h: 64px;
-  --tap: 44px;
-  --fs-display: clamp(30px, 4.2vw + 14px, 56px);
-  --fs-title: clamp(24px, 2vw + 16px, 36px);
+  --gutter: 16px;
+  --page-max: 1600px;
+  --page-pad: clamp(14px, 1.6vw, 22px);
+  --header-h: 72px;
+  --tap: 40px;
+  --fs-display: clamp(26px, 2.4vw + 12px, 38px);
+  --fs-title: clamp(20px, 1.6vw + 10px, 28px);
   --dir-x: -1;
 
+  color-scheme: dark;
+
+  /* Canvas & surfaces */
+  --bg: #0b0f13;
+  --surface-ground: #090d10;
+  --panel: #12171b;
+  --panel-raised: #161c21;
+  --panel-soft: #0f1418;
+  --panel-inset: #0d1115;
+  --orb-1: rgba(198, 158, 79, 0.09);
+  --orb-2: rgba(81, 110, 130, 0.08);
+  --orb-3: rgba(30, 44, 54, 0.32);
+  --pattern: rgba(226, 233, 237, 0.025);
+
+  /* Type */
+  --text: #eef1f2;
+  --text-2: #a9b2b7;
+  --text-3: #737e85;
+
+  /* Lines & glass */
+  --hairline: #222a30;
+  --hairline-strong: #323c43;
+  --glass-tint: rgba(255, 255, 255, 0.025);
+  --glass-tint-strong: rgba(255, 255, 255, 0.05);
+  --glass-rim: rgba(255, 255, 255, 0.1);
+  --glass-rim-low: var(--hairline);
+  --glass-rim-high: var(--hairline-strong);
+  --glass-sheen: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 18px 44px -30px rgba(0, 0, 0, 0.9);
+  --glass-inset: rgba(255, 255, 255, 0.035);
+  --overlay: rgba(4, 7, 9, 0.74);
+
+  /* Accent */
+  --accent: #d8ad5c;
+  --accent-fill: #c3973f;
+  --accent-glow: rgba(216, 173, 92, 0.32);
+  --accent-soft: rgba(216, 173, 92, 0.11);
+  --accent-gradient: linear-gradient(135deg, #ecc477 0%, #c08c33 100%);
+  --nav-active-gradient: linear-gradient(90deg, #9f7a34 0%, #58441f 100%);
+  --on-accent: #161105;
+  --shadow-soft: rgba(0, 0, 0, 0.5);
+
+  /* Status */
+  --paid: #4bd477;
+  --paid-bg: rgba(75, 212, 119, 0.1);
+  --partial: #e5b452;
+  --partial-bg: rgba(229, 180, 82, 0.11);
+  --unpaid: #f0746c;
+  --unpaid-bg: rgba(240, 116, 108, 0.11);
+  --chart-in: #d8ad5c;
+  --chart-out: #58a9e6;
+  --chart-grid: rgba(236, 243, 247, 0.075);
+}
+
+:root[dir='ltr'] { --dir-x: 1; }
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
   color-scheme: light;
-  --bg: #ece5d7;
-  --orb-1: rgba(186, 149, 85, 0.62);
-  --orb-2: rgba(214, 196, 168, 0.9);
-  --orb-3: rgba(120, 92, 52, 0.28);
-  --pattern: rgba(34, 31, 31, 0.05);
-  --text: #221f1f;
-  --text-2: rgba(34, 31, 31, 0.7);
-  --text-3: rgba(34, 31, 31, 0.5);
-  --hairline: rgba(34, 31, 31, 0.08);
-  --glass-tint: rgba(255, 253, 249, 0.38);
-  --glass-tint-strong: rgba(255, 253, 249, 0.66);
-  --glass-rim: rgba(255, 255, 255, 0.95);
-  --glass-rim-low: rgba(255, 255, 255, 0.3);
-  --glass-rim-high: rgba(255, 255, 255, 0.98);
-  --glass-sheen: rgba(255, 255, 255, 0.55);
-  --glass-shadow: 0 1px 2px rgba(34, 31, 31, 0.05), 0 18px 44px -18px rgba(74, 54, 22, 0.32);
+  --bg: #f0ece2;
+  --surface-ground: #e9e4d8;
+  --panel: #fbf9f4;
+  --panel-raised: #ffffff;
+  --panel-soft: #f4f0e7;
+  --panel-inset: #ece7dc;
+  --orb-1: rgba(186, 149, 85, 0.2);
+  --orb-2: rgba(214, 196, 168, 0.35);
+  --orb-3: rgba(120, 92, 52, 0.1);
+  --pattern: rgba(34, 31, 31, 0.035);
+  --text: #1d2327;
+  --text-2: #5b6368;
+  --text-3: #8a9095;
+  --hairline: #ded7c9;
+  --hairline-strong: #cfc6b5;
+  --glass-tint: rgba(255, 255, 255, 0.55);
+  --glass-tint-strong: rgba(255, 255, 255, 0.82);
+  --glass-rim: rgba(34, 31, 31, 0.1);
+  --glass-rim-low: var(--hairline);
+  --glass-rim-high: var(--hairline-strong);
+  --glass-sheen: rgba(255, 255, 255, 0.8);
+  --glass-shadow: 0 14px 34px -26px rgba(74, 54, 22, 0.4);
   --glass-inset: rgba(34, 31, 31, 0.045);
-  --overlay: rgba(34, 28, 20, 0.28);
-  --accent: #8f6626;
+  --overlay: rgba(34, 28, 20, 0.35);
+  --accent: #946d24;
   --accent-fill: #ba9555;
-  --accent-glow: rgba(186, 149, 85, 0.45);
+  --accent-glow: rgba(186, 149, 85, 0.32);
   --accent-soft: rgba(186, 149, 85, 0.14);
-  --shadow-soft: rgba(34, 31, 31, 0.28);
+  --accent-gradient: linear-gradient(135deg, #d8b36f 0%, #a97f35 100%);
+  --nav-active-gradient: linear-gradient(90deg, #c7a35d 0%, #8a6728 100%);
   --on-accent: #ffffff;
   --paid: #23744a;
   --paid-bg: rgba(35, 116, 74, 0.12);
@@ -63,65 +131,28 @@
   --unpaid: #b0342c;
   --unpaid-bg: rgba(176, 52, 44, 0.1);
   --chart-in: #a8771f;
-  --chart-out: #00849e;
+  --chart-out: #2b7eae;
   --chart-grid: rgba(34, 31, 31, 0.08);
+  --shadow-soft: rgba(34, 31, 31, 0.14);
+  --brand-mark: url('/logo-dark.png');
 }
 
-:root[dir='ltr'] { --dir-x: 1; }
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #141111;
-  --orb-1: rgba(186, 149, 85, 0.42);
-  --orb-2: rgba(195, 173, 141, 0.16);
-  --orb-3: rgba(120, 82, 34, 0.45);
-  --pattern: rgba(246, 240, 229, 0.035);
-  --text: #f6f0e5;
-  --text-2: rgba(246, 240, 229, 0.72);
-  --text-3: rgba(246, 240, 229, 0.5);
-  --hairline: rgba(246, 240, 229, 0.08);
-  --glass-tint: rgba(255, 246, 230, 0.05);
-  --glass-tint-strong: rgba(255, 246, 230, 0.11);
-  --glass-rim: rgba(255, 244, 222, 0.4);
-  --glass-rim-low: rgba(255, 244, 222, 0.07);
-  --glass-rim-high: rgba(255, 244, 222, 0.62);
-  --glass-sheen: rgba(255, 244, 222, 0.14);
-  --glass-shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 24px 60px -24px rgba(0, 0, 0, 0.8);
-  --glass-inset: rgba(255, 246, 230, 0.055);
-  --overlay: rgba(8, 6, 5, 0.7);
-  --accent: #d8b36f;
-  --accent-fill: #ba9555;
-  --accent-glow: rgba(186, 149, 85, 0.42);
-  --accent-soft: rgba(216, 179, 111, 0.13);
-  --shadow-soft: rgba(0, 0, 0, 0.42);
-  --on-accent: #221f1f;
-  --paid: #65bd8a;
-  --paid-bg: rgba(35, 116, 74, 0.18);
-  --partial: #e1b35f;
-  --partial-bg: rgba(240, 182, 90, 0.14);
-  --unpaid: #f4877b;
-  --unpaid-bg: rgba(244, 135, 123, 0.13);
-  --chart-in: #b5842a;
-  --chart-out: #2e9cb2;
-  --chart-grid: rgba(246, 240, 229, 0.08);
-  --brand-mark: url('/logo-light.png');
-}
-
-/* Compatibility aliases for existing server-control views. */
+/* Compatibility aliases used across the existing server-control views. */
 :root {
   --text-1: var(--text);
   --text-title: var(--text);
   --text-body: var(--text-2);
   --text-muted: var(--text-3);
   --surface-canvas: var(--bg);
-  --surface-ground: color-mix(in srgb, var(--bg) 86%, var(--brand-ink));
-  --surface-container-lowest: var(--glass-tint);
-  --surface-container-low: var(--glass-tint-strong);
-  --surface-glass: var(--glass-tint-strong);
+  --surface-container-lowest: var(--panel-inset);
+  --surface-container-low: var(--panel-soft);
+  --surface-container: var(--panel);
+  --surface-container-high: var(--panel-raised);
+  --surface-glass: var(--panel);
   --surface-glass-tint: var(--glass-tint);
   --surface-glass-tint-strong: var(--glass-tint-strong);
   --surface-glass-sheen: var(--glass-sheen);
-  --surface-glass-blur: 24px;
+  --surface-glass-blur: 0px;
   --border-hairline: var(--hairline);
   --border-gold-rim: var(--glass-rim);
   --border-gold-rim-strong: var(--glass-rim-high);
@@ -130,13 +161,13 @@
   --action-primary-fg: var(--on-accent);
   --status-safe: var(--paid);
   --status-safe-surface: var(--paid-bg);
-  --status-safe-border: color-mix(in srgb, var(--paid) 42%, transparent);
+  --status-safe-border: color-mix(in srgb, var(--paid) 38%, transparent);
   --status-warning: var(--partial);
   --status-warning-surface: var(--partial-bg);
-  --status-warning-border: color-mix(in srgb, var(--partial) 42%, transparent);
+  --status-warning-border: color-mix(in srgb, var(--partial) 38%, transparent);
   --status-danger: var(--unpaid);
   --status-danger-surface: var(--unpaid-bg);
-  --status-danger-border: color-mix(in srgb, var(--unpaid) 42%, transparent);
+  --status-danger-border: color-mix(in srgb, var(--unpaid) 38%, transparent);
   --status-info: var(--chart-out);
   --status-info-surface: color-mix(in srgb, var(--chart-out) 14%, transparent);
   --status-info-border: color-mix(in srgb, var(--chart-out) 35%, transparent);
@@ -147,12 +178,12 @@
   --heading: var(--text);
   --mono: var(--font-mono);
   --sans: var(--font);
-  --card-bg: var(--glass-tint);
-  --card-border: var(--glass-rim-low);
+  --card-bg: var(--panel);
+  --card-border: var(--hairline);
   --card-shadow: var(--glass-shadow);
-  --card-backdrop: 22px;
+  --card-backdrop: 0px;
   --modal-backdrop: var(--overlay);
-  --code-bg: var(--glass-inset);
+  --code-bg: var(--panel-inset);
   --accent-bg: var(--partial-bg);
   --accent-border: var(--glass-rim);
   --gold-glow: var(--accent-glow);
@@ -177,13 +208,13 @@
   --primitive-glow-gold: var(--accent-glow);
   --primitive-glow-safe: 0 0 16px color-mix(in srgb, var(--paid) 45%, transparent);
   --primitive-shadow-card: var(--glass-shadow);
-  --primitive-shadow-modal: 0 32px 80px rgba(0, 0, 0, 0.45);
+  --primitive-shadow-modal: 0 32px 80px rgba(0, 0, 0, 0.55);
   --primitive-color-carbon-950: var(--bg);
   --primitive-color-carbon-900: var(--surface-ground);
-  --primitive-color-carbon-850: var(--surface-ground);
-  --primitive-color-carbon-800: var(--glass-tint);
-  --primitive-color-carbon-700: var(--glass-tint-strong);
-  --primitive-color-carbon-600: var(--glass-tint-strong);
+  --primitive-color-carbon-850: var(--panel-inset);
+  --primitive-color-carbon-800: var(--panel-soft);
+  --primitive-color-carbon-700: var(--panel);
+  --primitive-color-carbon-600: var(--panel-raised);
   --primitive-color-carbon-500: var(--text-3);
   --primitive-color-carbon-300: var(--text-3);
   --primitive-color-carbon-200: var(--text-2);
@@ -200,35 +231,12 @@
   --primitive-color-amber-50: var(--partial-bg);
   --primitive-color-crimson-500: var(--unpaid);
   --primitive-color-crimson-50: var(--unpaid-bg);
-  --primitive-core-01: #dc6c64;
+  --primitive-core-01: #f0746c;
   --primitive-core-02: #d9904f;
-  --primitive-core-03: #b99035;
-  --primitive-core-04: #65a87b;
-  --primitive-core-05: #3c98a9;
+  --primitive-core-03: #e5b452;
+  --primitive-core-04: #4bd477;
+  --primitive-core-05: #58a9e6;
   --primitive-core-06: #7e8dcc;
   --primitive-core-07: #a884c7;
   --primitive-core-08: #cf7eaa;
-}
-
-/* Light theme palette derives from design-tokens semantics.  Without this
-   mapping the light `:root` palette above would win the cascade and shadow the
-   dark-first design tokens, producing a washed-out mixed theme. */
-:root[data-theme='light'] {
-  color-scheme: light;
-  --bg: var(--surface-canvas);
-  --text: var(--text-title);
-  --text-2: var(--text-body);
-  --text-3: var(--text-muted);
-  --hairline: var(--border-hairline);
-  --glass-tint: var(--surface-glass-tint);
-  --glass-tint-strong: var(--surface-glass-tint-strong);
-  --glass-rim: var(--border-gold-rim);
-  --glass-rim-low: var(--surface-glass-tint);
-  --glass-rim-high: var(--border-gold-rim-strong);
-  --glass-sheen: var(--surface-glass-sheen);
-  --accent: var(--action-primary);
-  --accent-fill: var(--action-primary-hover);
-  --accent-soft: rgba(186, 149, 85, 0.16);
-  --on-accent: var(--action-primary-fg);
-  --brand-mark: url('/logo-dark.png');
 }

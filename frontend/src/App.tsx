@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { OverviewPage } from './pages/OverviewPage';
 import { ControlPage } from './pages/ControlPage';
+import { GovernorPage } from './pages/GovernorPage';
 import { AssetsPage } from './pages/AssetsPage';
 import { ServersPage } from './pages/ServersPage';
 import { InfrastructurePage } from './pages/InfrastructurePage';
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="network-storage" element={<NetworkStoragePage />} />
           <Route path="databases" element={<DatabasesPage />} />
           <Route path="control" element={<ControlPage />} />
+          <Route path="governor" element={<GovernorPage />} />
           <Route path="assets" element={<AssetsPage />} />
           <Route path="vault" element={<VaultPage />} />
           <Route path="ports" element={<PortsPage />} />

@@ -4,6 +4,7 @@
 
 export interface SystemHost {
   host: string;
+  hostname?: string;
   os: string;
   platform?: string;
   cpuCores: number;
@@ -19,6 +20,76 @@ export interface SystemHost {
   };
   uptime: string;
   updated?: string;
+}
+
+export interface SystemHistory {
+  timestamps: string[];
+  cpu: {
+    cores: Record<string, number[]>;
+    core_count: number;
+    physical_cores?: number;
+    latest: number[];
+    total: number;
+  };
+  memory: {
+    history: number[];
+    swap_history: number[];
+    total_gb: number;
+    used_gb: number;
+    free_gb: number;
+    percent: number;
+    swap_total_gb: number;
+    swap_used_gb: number;
+    swap_percent: number;
+  };
+  network: {
+    rx_history: number[];
+    tx_history: number[];
+    rx_rate_kb: number;
+    tx_rate_kb: number;
+    total_recv_gb: number;
+    total_sent_gb: number;
+  };
+  disk: {
+    read_history: number[];
+    write_history: number[];
+    read_rate_kb: number;
+    write_rate_kb: number;
+    total_read_gb: number;
+    total_write_gb: number;
+  };
+}
+
+export interface ManagedServer {
+  id: string;
+  name: string;
+  ip: string;
+  os: string;
+  domain?: string;
+  status: string;
+  roles_count?: number;
+  cpu: number;
+  ram: number;
+  storage: number;
+  alerts_count?: number;
+  is_local?: number | boolean;
+  last_seen?: string;
+  created_at?: string;
+  latency_ms?: number;
+}
+
+export interface JitGrant {
+  id: string;
+  user: string;
+  role: string;
+  target_role: string;
+  reason: string;
+  duration_mins: number;
+  remaining_sec: number;
+  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'REJECTED' | string;
+  approver: string;
+  created_at: string;
+  expires_at: string;
 }
 
 export interface UserSession {
@@ -288,8 +359,11 @@ export const api = {
   checkPortConflict: (port: number, username?: string, session_id?: number) =>
     request<{
       available: boolean;
-      status: string;
+      conflict?: boolean;
+      requested_port?: number;
+      status?: string;
       message: string;
+      current_owner?: string | null;
       owner_user?: string;
       owner_session?: number;
       suggested_port?: number;
@@ -299,16 +373,18 @@ export const api = {
       body: JSON.stringify({ port, username, session_id }),
     }),
   getGuardStatus: () =>
-    request<{ ok: boolean; guard_active: boolean; total_listening: number; isolated_user_ports_count: number; isolated_ports: any[]; user_reservations: Record<string, number[]>; db_reservations?: any[] }>('/api/ports/guard/status'),
+    request<{ ok: boolean; guard_active: boolean; total_listening: number; isolated_user_ports_count: number; isolated_ports: any[]; user_reservations: Record<string, string | number[]>; db_reservations?: any[] }>('/api/ports/guard/status'),
   claimPort: (params: { requested_port: number; username?: string; session_id?: number; project_name?: string }) =>
     request<{
       ok: boolean;
       assigned_port: number;
       requested_port: number;
-      was_redirected: boolean;
-      owner_user: string;
-      session_id: number;
-      project_name: string;
+      was_redirected?: boolean;
+      was_reallocated?: boolean;
+      owner_user?: string;
+      user?: string;
+      session_id?: number;
+      project_name?: string;
       message: string;
       command_hint?: string;
     }>('/api/ports/guard/claim', {
@@ -394,7 +470,7 @@ export const api = {
       last_check: a.last_check || '',
     }));
   },
-  addAsset: (asset: { name: string; host: string; type: string; port: number }) =>
+  addAsset: (asset: { name: string; host: string; type: string; port: number; protocol?: string }) =>
     request<any>('/api/assets/add', {
       method: 'POST',
       body: JSON.stringify({
@@ -403,7 +479,7 @@ export const api = {
         platform: asset.type?.toLowerCase().includes('linux') ? 'ubuntu' : 'windows',
         platform_display: asset.type,
         port: Number(asset.port),
-        protocol: Number(asset.port) === 22 ? 'SSH' : 'RDP',
+        protocol: asset.protocol || (Number(asset.port) === 22 ? 'SSH' : 'RDP'),
       }),
     }),
   deleteAsset: (id: string) =>
@@ -638,6 +714,10 @@ export const api = {
   getHistoricalMetrics: (range: '24h' | '7d' = '24h') =>
     request<{ ok: boolean; range: string; points_count: number; history: HistoricalPoint[] }>(`/api/metrics/history?range=${range}`),
 
+  // Live rolling system history (CPU cores, memory, network and disk rates)
+  getSystemHistory: () =>
+    request<{ ok: boolean; history: SystemHistory }>('/api/metrics/system-history'),
+
   // CPU Cores Rolling History
   getCpuHistory: () =>
     request<{ ok: boolean; history: { timestamps: string[]; cores: Record<string, number[]>; core_count: number } }>('/api/metrics/cpu-history'),
@@ -652,11 +732,16 @@ export const api = {
 
   // Legacy JIT compatibility surface; real grants are policy + gateway work.
   getJitGrants: () =>
-    request<{ ok: boolean; grants: any[]; count: number }>('/api/jit/grants'),
+    request<{ ok: boolean; grants: JitGrant[]; count: number }>('/api/jit/grants'),
   requestJitElevation: (params: { role: string; reason: string; duration_mins: number; user?: string }) =>
     request<{ ok: boolean; id: string; message: string; status?: string; grant?: any }>('/api/jit/request', {
       method: 'POST',
-      body: JSON.stringify(params),
+      body: JSON.stringify({
+        role: params.role,
+        reason: params.reason,
+        duration_mins: params.duration_mins,
+        ...(params.user ? { username: params.user } : {}),
+      }),
     }),
   approveJitElevation: (id: string, approve: boolean = true) =>
     request<{ ok: boolean; id: string; user?: string; status?: string; message: string; error?: string }>('/api/jit/approve', {
@@ -678,8 +763,8 @@ export const api = {
   // =====================================================================
 
   // 1. Servers & Server Groups
-  getServers: () => request<{ ok: boolean; servers: any[] }>('/api/servers'),
-  checkServers: () => request<{ ok: boolean; servers: any[] }>('/api/servers/check'),
+  getServers: () => request<{ ok: boolean; servers: ManagedServer[] }>('/api/servers'),
+  checkServers: () => request<{ ok: boolean; servers: ManagedServer[] }>('/api/servers/check'),
   addServer: (server: { name: string; ip: string; os?: string; domain?: string }) =>
     request<{ ok: boolean; id: string; name: string; error?: string }>('/api/servers', {
       method: 'POST',
