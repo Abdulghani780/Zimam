@@ -15,7 +15,8 @@ implemented **and** the consuming page has been switched over.
 | `/api/metrics`, `/metrics/history`, `/snapshot`, `/governor/*` | agent `heartbeat` inventory | 🟡 telemetry pipeline not wired to UI |
 | `/api/sessions`, `/sessions/disconnect|logoff|shadow` | `/api/v1/sessions`, `POST /sessions/{id}/terminate` | 🟡 terminate returns 501 until gateway lands |
 | `/api/users`, `/api/domain/*`, `/api/users/*` (Windows accounts) | `/api/v1/users`, `/api/v1/groups`, `/api/v1/directory/sync` | 🟡 AD/LDAP sync is an open release gate |
-| `/api/vault/accounts*`, `/api/bastion/connect` | `/api/v1/accounts`, `/api/v1/connection-tokens`, `/gateway/connection-tokens/consume` | 🟡 secrets are vault-encrypted; proxy data path 501 |
+| `/api/vault/accounts*` | `/api/v1/assets` + `/api/v1/accounts` (+`/reveal`, `DELETE`) | ✅ **VaultPage migrated** — secrets re-encrypted under control-plane vault; reveal is admin-only + audited |
+| `/api/servers*`, `/api/server-groups*` | `/api/v1/assets`, `/api/v1/asset-nodes` | 🟡 **stays legacy for now** — legacy "servers" carry live telemetry (cpu/ram/roles/health) that the v1 Asset model does not; revisit when agent inventory lands |
 | `/api/jit/*` | `/api/v1/access-policies` + one-time connection tokens | 🟡 grant workflow partial |
 | `/api/audit/*` | `/api/v1/audit/events`, `/audit/verify` | ✅ hash-chained audit exists |
 | `/api/servers*`, `/api/server-groups*` | `/api/v1/assets`, `/api/v1/asset-nodes` | 🟡 multi-asset model exists, UI pending |
@@ -61,6 +62,19 @@ legacy `app_users`), so a single cookie cannot serve both. The bridge:
   Windows SAM section stays on legacy endpoints by design.
 - Legacy `/api/auth/users*` endpoints remain for compatibility but write to
   the projection only — new code must use `/api/v1/users`.
+
+## Vault slice (implemented)
+
+- `Account.protocol` widened to `rdp|ssh|sftp|winrm|vnc|telnet` (matches the
+  BastionService protocol set; connection tokens remain rdp/ssh/sftp only).
+- New endpoints: `POST /accounts/{id}/reveal` (admin-only, audited) and
+  `DELETE /accounts/{id}` (admin-only, audited); `GET /accounts` now joins
+  asset names and exposes `has_secret`/`created_at`.
+- `_require_writer` guards all mutating v1 endpoints — viewers are read-only
+  (previously any authenticated user could create assets/accounts/policies).
+- `VaultPage` migrated: find-or-create asset by name → create account →
+  reveal/delete via `/api/v1`. The legacy `vault_credentials` table is
+  unused going forward (its AES key differs from the control-plane vault).
 
 ## Rules
 

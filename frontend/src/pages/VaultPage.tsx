@@ -1,11 +1,30 @@
 import { useEffect, useState } from 'react';
 import { LockKeyhole, ShieldCheck, Plus, Trash2, Eye, Copy, RefreshCw, Key } from 'lucide-react';
-import { api, type VaultAccount } from '../lib/api';
+import { apiV1, type V1Account, type V1Asset } from '../lib/apiV1';
 import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+
+interface VaultRow {
+  id: string;
+  asset_id: string;
+  asset_name: string;
+  username: string;
+  protocol: string;
+  created_at?: string;
+}
+
+const PROTOCOL_OPTIONS: { value: string; label: string }[] = [
+  { value: 'rdp', label: 'Remote Desktop (RDP - 3389)' },
+  { value: 'ssh', label: 'Secure Shell (SSH - 22)' },
+  { value: 'sftp', label: 'SFTP Transfer' },
+  { value: 'winrm', label: 'Windows Remote Management (WinRM - 5985)' },
+  { value: 'vnc', label: 'Virtual Network Computing (VNC)' },
+  { value: 'telnet', label: 'Telnet (legacy)' },
+];
 
 export function VaultPage() {
   const toast = useToast();
-  const [accounts, setAccounts] = useState<VaultAccount[]>([]);
+  const [accounts, setAccounts] = useState<VaultRow[]>([]);
+  const [assets, setAssets] = useState<V1Asset[]>([]);
   const [loading, setLoading] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [revealModalOpen, setRevealModalOpen] = useState(false);
@@ -14,15 +33,31 @@ export function VaultPage() {
   // Form states
   const [assetName, setAssetName] = useState('');
   const [username, setUsername] = useState('');
-  const [protocol, setProtocol] = useState('RDP');
+  const [protocol, setProtocol] = useState('rdp');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const normalize = <T,>(res: T[] | { items?: T[] } | unknown): T[] =>
+    Array.isArray(res) ? res : Array.isArray((res as { items?: T[] })?.items) ? (res as { items: T[] }).items : [];
 
   const fetchAccounts = async () => {
     setLoading(true);
     try {
-      const items = await api.getVaultAccounts();
-      setAccounts(Array.isArray(items) ? items : []);
+      const [assetRes, accountRes] = await Promise.all([apiV1.assets(), apiV1.accounts()]);
+      const assetList = normalize<V1Asset>(assetRes as V1Asset[] | { assets?: V1Asset[] });
+      const accountList = normalize<V1Account>(accountRes as V1Account[] | { accounts?: V1Account[] });
+      const assetNames = new Map(assetList.map((a) => [a.id, a.name]));
+      setAssets(assetList);
+      setAccounts(
+        accountList.map((a) => ({
+          id: a.id,
+          asset_id: a.asset_id,
+          asset_name: a.asset_name || assetNames.get(a.asset_id) || a.asset_id,
+          username: a.username,
+          protocol: a.protocol,
+          created_at: a.created_at,
+        })),
+      );
     } catch (err: any) {
       toast(err.message || 'فشل جلب اعتمادات الخزنة', 'error');
     } finally {
@@ -42,20 +77,27 @@ export function VaultPage() {
     }
     setSubmitting(true);
     try {
-      const res = await api.addVaultAccount({
-        asset_name: assetName,
-        username,
-        protocol,
-        password,
-      });
-      if (res.ok) {
-        toast(`تم تشفير وحفظ اعتماد [${username}] بنجاح بواسطة AES-256-GCM`, 'success');
-        setAddModalOpen(false);
-        setAssetName('');
-        setUsername('');
-        setPassword('');
-        fetchAccounts();
+      // Find-or-create the asset, then store the vault-bound account secret.
+      const wanted = assetName.trim();
+      let asset = assets.find((a) => a.name.trim().toLowerCase() === wanted.toLowerCase())
+        || assets.find((a) => a.hostname.trim().toLowerCase() === wanted.toLowerCase());
+      if (!asset) {
+        asset = await apiV1.createAsset({ name: wanted, hostname: wanted });
+        setAssets((prev) => [...prev, asset as V1Asset]);
       }
+      await apiV1.createAccount({
+        asset_id: asset.id,
+        name: username.trim(),
+        username: username.trim(),
+        protocol: protocol as 'rdp' | 'ssh' | 'sftp' | 'winrm' | 'vnc' | 'telnet',
+        secret: password,
+      });
+      toast(`تم تشفير وحفظ اعتماد [${username}] بنجاح بواسطة AES-256-GCM`, 'success');
+      setAddModalOpen(false);
+      setAssetName('');
+      setUsername('');
+      setPassword('');
+      fetchAccounts();
     } catch (err: any) {
       toast(err.message || 'فشل إضافة الاعتماد', 'error');
     } finally {
@@ -65,8 +107,8 @@ export function VaultPage() {
 
   const handleReveal = async (id: string, name: string) => {
     try {
-      const res = await api.revealVaultSecret(id);
-      if (res.ok && res.secret) {
+      const res = await apiV1.revealAccountSecret(id);
+      if (res?.secret) {
         setRevealedSecret({
           username: res.username || '',
           secret: res.secret,
@@ -74,7 +116,7 @@ export function VaultPage() {
         });
         setRevealModalOpen(true);
       } else {
-        toast(res.error || 'تعذّر كشف كلمة المرور', 'error');
+        toast('تعذّر كشف كلمة المرور', 'error');
       }
     } catch (err: any) {
       toast(err.message || 'فشل استرجاع السر', 'error');
@@ -84,11 +126,9 @@ export function VaultPage() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`هل أنت متأكد من حذف الاعتماد المشفّر لـ [${name}]؟`)) return;
     try {
-      const res = await api.deleteVaultAccount(id);
-      if (res.ok) {
-        toast('تم حذف الاعتماد من الخزنة بنجاح', 'success');
-        fetchAccounts();
-      }
+      await apiV1.deleteAccount(id);
+      toast('تم حذف الاعتماد من الخزنة بنجاح', 'success');
+      fetchAccounts();
     } catch (err: any) {
       toast(err.message || 'فشل حذف الاعتماد', 'error');
     }
@@ -185,14 +225,14 @@ export function VaultPage() {
                     </td>
                     <td style={{ padding: '14px' }}>
                       <span className="badge badge--info" style={{ fontWeight: 700, fontSize: 11 }}>
-                        {acc.protocol || 'RDP'}
+                        {acc.protocol?.toUpperCase() || 'RDP'}
                       </span>
                     </td>
                     <td style={{ padding: '14px', color: 'var(--paid)', fontSize: 12, fontWeight: 600 }}>
                       AES-256-GCM
                     </td>
                     <td style={{ padding: '14px', color: 'var(--text-2)', fontSize: 12 }}>
-                      {acc.updated_at ? acc.updated_at.split('T')[0] : 'اليوم'}
+                      {acc.created_at ? acc.created_at.split('T')[0] : '—'}
                     </td>
                     <td style={{ padding: '14px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
@@ -270,11 +310,9 @@ export function VaultPage() {
                 outline: 'none',
               }}
             >
-              <option value="RDP">Remote Desktop (RDP - 3389)</option>
-              <option value="SSH">Secure Shell (SSH - 22)</option>
-              <option value="WINRM">Windows Remote Management (WinRM - 5985)</option>
-              <option value="DOCKER">Docker Registry / Daemon</option>
-              <option value="DATABASE">Database Credentials (Postgres/SQL)</option>
+              {PROTOCOL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
 

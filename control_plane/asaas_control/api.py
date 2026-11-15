@@ -29,6 +29,13 @@ _VALID_ROLES = {"admin", "operator", "viewer"}
 def _require_admin(user: User) -> None:
     if not (user.is_admin or user.role == "admin"):
         raise HTTPException(status_code=403, detail="Administrator role required")
+
+
+def _require_writer(user: User) -> None:
+    """Mutating endpoints are open to admin/operator; viewers are read-only."""
+    role = user.role or ("admin" if user.is_admin else "viewer")
+    if role == "viewer":
+        raise HTTPException(status_code=403, detail="Viewer role is read-only")
 _connection_store = ConnectionTokenStore(hashlib.sha256((settings.gateway_token or "disabled").encode()).digest())
 
 # In-memory sliding-window login throttling: 8 failures per IP+username per 5 minutes.
@@ -64,7 +71,7 @@ class AccountRequest(BaseModel):
     asset_id: str
     name: str
     username: str
-    protocol: str = Field(pattern="^(rdp|ssh|sftp)$")
+    protocol: str = Field(pattern="^(rdp|ssh|sftp|winrm|vnc|telnet)$")
     secret: str = Field(min_length=1)
 
 
@@ -245,6 +252,7 @@ def list_assets(_: User = Depends(_current_user)) -> list[dict]:
 
 @router.post("/assets", status_code=201)
 def create_asset(payload: AssetRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
     with db_session() as db:
         asset = Asset(id=uuid.uuid4().hex, name=payload.name, hostname=payload.hostname, platform=payload.platform, node_id=payload.node_id, status="unknown", created_at=datetime.now(UTC))
         db.add(asset)
@@ -255,11 +263,13 @@ def create_asset(payload: AssetRequest, user: User = Depends(_current_user)) -> 
 @router.get("/accounts")
 def list_accounts(_: User = Depends(_current_user)) -> list[dict]:
     with db_session() as db:
-        return [{"id": x.id, "asset_id": x.asset_id, "name": x.name, "username": x.username, "protocol": x.protocol} for x in db.scalars(select(Account).order_by(Account.name))]
+        assets = {a.id: a for a in db.scalars(select(Asset))}
+        return [{"id": x.id, "asset_id": x.asset_id, "asset_name": assets[x.asset_id].name if x.asset_id in assets else x.asset_id, "name": x.name, "username": x.username, "protocol": x.protocol, "created_at": x.created_at, "has_secret": bool(x.secret_blob)} for x in db.scalars(select(Account).order_by(Account.name))]
 
 
 @router.post("/accounts", status_code=201)
 def create_account(payload: AccountRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
     with db_session() as db:
         if not db.get(Asset, payload.asset_id):
             raise HTTPException(status_code=404, detail="Asset not found")
@@ -270,6 +280,37 @@ def create_account(payload: AccountRequest, user: User = Depends(_current_user))
         return {"id": account.id, "asset_id": account.asset_id, "name": account.name, "username": account.username, "protocol": account.protocol}
 
 
+@router.post("/accounts/{account_id}/reveal")
+def reveal_account_secret(account_id: str, user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    with db_session() as db:
+        account = db.get(Account, account_id)
+        if not account or not account.secret_blob:
+            raise HTTPException(status_code=404, detail="Account or stored secret not found")
+        try:
+            # AAD binds the secret to the asset id (see create_account).
+            secret = EnvelopeVault(settings.vault_key()).open(
+                EnvelopeVault.loads(account.secret_blob), account_id=account.asset_id
+            ).decode("utf-8")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Unable to decrypt stored secret") from exc
+        asset = db.get(Asset, account.asset_id)
+        append_audit(db, actor_id=user.id, action="account.secret_reveal", target_id=account.id, payload={"asset_id": account.asset_id, "username": account.username})
+        return {"account_id": account.id, "username": account.username, "protocol": account.protocol, "asset_name": asset.name if asset else account.asset_id, "secret": secret}
+
+
+@router.delete("/accounts/{account_id}")
+def delete_account(account_id: str, user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    with db_session() as db:
+        account = db.get(Account, account_id)
+        if not account:
+            raise HTTPException(status_code=404, detail="Account not found")
+        db.delete(account)
+        append_audit(db, actor_id=user.id, action="account.delete", target_id=account_id)
+        return {"deleted": True, "account_id": account_id}
+
+
 @router.get("/access-policies")
 def list_policies(_: User = Depends(_current_user)) -> list[dict]:
     with db_session() as db:
@@ -278,6 +319,7 @@ def list_policies(_: User = Depends(_current_user)) -> list[dict]:
 
 @router.post("/access-policies", status_code=201)
 def create_policy(payload: PolicyRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
     with db_session() as db:
         item = AccessPolicyRow(id=uuid.uuid4().hex, name=payload.name, subject_ids=json.dumps(payload.subject_ids), asset_ids=json.dumps(payload.asset_ids), account_ids=json.dumps(payload.account_ids), protocols=json.dumps(payload.protocols), actions=json.dumps(payload.actions), effect=payload.effect, valid_from=payload.valid_from, valid_until=payload.valid_until)
         db.add(item)
@@ -287,6 +329,7 @@ def create_policy(payload: PolicyRequest, user: User = Depends(_current_user)) -
 
 @router.post("/connection-tokens")
 def issue_connection_token(payload: ConnectionRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
     if not settings.gateway_token:
         raise HTTPException(status_code=503, detail="Session gateway is not configured")
     with db_session() as db:

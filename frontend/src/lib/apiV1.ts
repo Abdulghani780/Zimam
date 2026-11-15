@@ -85,9 +85,12 @@ export interface V1Asset {
 export interface V1Account {
   id: string;
   asset_id: string;
+  asset_name?: string;
   name: string;
   username: string;
   protocol: string;
+  created_at?: string;
+  has_secret?: boolean;
   [key: string]: unknown;
 }
 
@@ -183,9 +186,15 @@ export const apiV1 = {
     asset_id: string;
     name: string;
     username: string;
-    protocol: 'rdp' | 'ssh' | 'sftp';
+    protocol: 'rdp' | 'ssh' | 'sftp' | 'winrm' | 'vnc' | 'telnet';
     secret: string;
   }) => post<V1Account>('/accounts', account),
+  revealAccountSecret: (accountId: string) =>
+    post<{ secret?: string; username?: string; asset_name?: string; protocol?: string }>(
+      `/accounts/${encodeURIComponent(accountId)}/reveal`,
+    ),
+  deleteAccount: (accountId: string) =>
+    request<unknown>(`/accounts/${encodeURIComponent(accountId)}`, { method: 'DELETE' }),
   accessPolicies: () =>
     request<V1AccessPolicy[] | { policies?: V1AccessPolicy[] }>('/access-policies'),
   createAccessPolicy: (policy: Partial<V1AccessPolicy> & { name: string }) =>

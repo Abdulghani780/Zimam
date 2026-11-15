@@ -90,7 +90,7 @@ def sync_legacy_identities() -> int:
 
     imported = 0
     with db_session() as db:
-        existing = {u.username.lower() for u in db.scalars(select(User.username))}
+        existing = {name.lower() for name in db.scalars(select(User.username))}
         for row in rows:
             username = (row["username"] or "").strip()
             if not username or username.lower() in existing:
