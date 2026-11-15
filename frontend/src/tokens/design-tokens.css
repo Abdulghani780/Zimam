@@ -2,7 +2,7 @@
  * ==============================================================================
  * ASAAS SOVEREIGN DESIGN SYSTEM - THREE-LAYER DESIGN TOKENS
  * Architecture: Primitives -> Semantics (Light/Dark) -> Components
- * Standard: Cyber Dark Luxury Glassmorphism & High-Density NOC/SOC Telemetry
+ * Standard: Sovereign Signature — warm obsidian, heritage gold, editorial glass
  * ==============================================================================
  */
 
@@ -112,53 +112,53 @@
 /* ==========================================================================
    LAYER 2: SEMANTIC TOKENS (Contextual Purpose Aliases)
    Maps primitives to meaningful semantic roles.
-   Default: Cyber Dark Enclave
+   Default: Sovereign Signature Dark
    ========================================================================== */
 :root,
 [data-theme='dark'],
 .dark {
   color-scheme: dark;
 
-  /* 2.1 Surface Architecture — deep void blues */
-  --surface-canvas:            #04060d;
-  --surface-ground:            #070b16;
-  --surface-alt:               #0a1020;
-  --surface-container-lowest:  #0d1526;
-  --surface-container-low:     #101a2e;
-  --surface-container:         #14203a;
-  --surface-container-high:    #1a2a4a;
-  --surface-container-highest: #22355c;
+  /* 2.1 Surface Architecture — warm obsidian */
+  --surface-canvas:            #0e0c0a;
+  --surface-ground:            #14110d;
+  --surface-alt:               #1a1712;
+  --surface-container-lowest:  #1e1a15;
+  --surface-container-low:     #23201a;
+  --surface-container:         #2a251d;
+  --surface-container-high:    #332d23;
+  --surface-container-highest: #3e372a;
 
-  /* Glassmorphism Plane */
-  --surface-glass:             rgba(10, 16, 32, 0.78);
-  --surface-glass-tint:        rgba(125, 211, 252, 0.045);
-  --surface-glass-tint-strong: rgba(125, 211, 252, 0.09);
-  --surface-glass-sheen:       rgba(165, 243, 252, 0.18);
+  /* Glassmorphism Plane — warm gold-tinted glass */
+  --surface-glass:             rgba(20, 18, 14, 0.72);
+  --surface-glass-tint:        rgba(212, 175, 106, 0.05);
+  --surface-glass-tint-strong: rgba(212, 175, 106, 0.09);
+  --surface-glass-sheen:       rgba(232, 201, 138, 0.14);
   --surface-glass-blur:        24px;
 
-  /* 2.2 Borders & Outlines — ionized cyan rims */
-  --border-hairline:           rgba(125, 211, 252, 0.11);
-  --border-hairline-strong:    rgba(125, 211, 252, 0.22);
-  --border-gold-rim:           rgba(34, 211, 238, 0.28);
-  --border-gold-rim-strong:    rgba(34, 211, 238, 0.55);
-  --border-gold-glow:          rgba(34, 211, 238, 0.65);
+  /* 2.2 Borders & Outlines — heritage gold hairlines */
+  --border-hairline:           rgba(245, 239, 228, 0.09);
+  --border-hairline-strong:    rgba(245, 239, 228, 0.18);
+  --border-gold-rim:           rgba(212, 175, 106, 0.22);
+  --border-gold-rim-strong:    rgba(212, 175, 106, 0.45);
+  --border-gold-glow:          rgba(212, 175, 106, 0.55);
 
   /* 2.3 Text & Typography Contrast */
-  --text-title:                #eaf4ff;
-  --text-body:                 #c7d8f5;
-  --text-secondary:            #9db8dd;
-  --text-muted:                #6d87b3;
-  --text-gold:                 #67e8f9;
-  --text-inverse:              #03121a;
+  --text-title:                #f5efe4;
+  --text-body:                 #d8cdb8;
+  --text-secondary:            #b3a892;
+  --text-muted:                #8a7f6a;
+  --text-gold:                 #d4af6a;
+  --text-inverse:              #141110;
 
-  /* 2.4 Interactive Actions — plasma cyan → violet */
-  --action-primary:            #22d3ee;
-  --action-primary-hover:      #67e8f9;
-  --action-primary-fg:         #03121a;
-  --action-secondary:          #16233f;
-  --action-secondary-hover:    #1e2f52;
-  --action-secondary-fg:       #dbeafe;
-  --action-accent:             #a78bfa;
+  /* 2.4 Interactive Actions — heritage gold gradient */
+  --action-primary:            #d4af6a;
+  --action-primary-hover:      #e8c98a;
+  --action-primary-fg:         #17130c;
+  --action-secondary:          #2a251d;
+  --action-secondary-hover:    #352e22;
+  --action-secondary-fg:       #ede7da;
+  --action-accent:             #c9a45c;
 
   /* 2.5 Operational Diagnostics & Statuses */
   --status-safe:               var(--primitive-color-emerald-500);
@@ -189,7 +189,7 @@
 
   /* Compatibility aliases → official ASAAS kit tokens */
   --text-1:                 var(--text);
-  --accent-soft:            rgba(34, 211, 238, 0.16);
+  --accent-soft:            rgba(212, 175, 106, 0.16);
   --danger:                 var(--unpaid);
   --mono:                   var(--primitive-font-mono);
   --panel:                  var(--surface-container-low);

@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -7,7 +7,7 @@ h1 { font-size: 26px; }
 h2 { font-size: 19px; }
 h3 { font-size: 16px; }
 
-/* ───────── Global Viewport & Responsive Containment ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Global Viewport & Responsive Containment â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 html, body {
   max-width: 100vw;
   overflow-x: hidden;
@@ -38,7 +38,7 @@ button, input, select, textarea, .btn, .badge {
   font-variant-numeric: tabular-nums;
 }
 
-/* ───────── Shared ASAAS authentication surfaces ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Shared ASAAS authentication surfaces â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-page {
   position: relative;
   z-index: 1;
@@ -293,7 +293,7 @@ button, input, select, textarea, .btn, .badge {
   .access-state-card__actions .btn { width: 100%; }
 }
 
-/* ───────── ASAAS Server Control Application Styles ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ ASAAS Server Control Application Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .app-layout {
   display: flex;
@@ -835,7 +835,7 @@ button, input, select, textarea, .btn, .badge {
   background: var(--text-3);
 }
 
-/* ───────── Mobile Navigation Bar & Drawer (Desktop Isolation) ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Mobile Navigation Bar & Drawer (Desktop Isolation) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .mobile-tabbar {
   display: none !important;
 }
@@ -1012,7 +1012,7 @@ button, input, select, textarea, .btn, .badge {
 
 
 
-/* ───────── Impeccable Craft Polish Layer ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Impeccable Craft Polish Layer â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /* 1. Browser Surfaces Theming (Selection, Caret, Scrollbars) */
 ::selection {
@@ -1138,7 +1138,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   }
 }
 
-/* ───────── 9. LUXURY UI / UX PRO MAX ENHANCEMENTS ───────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ 9. LUXURY UI / UX PRO MAX ENHANCEMENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 /* Luxury Card Elevation with Specular Edge */
 .card-luxury {
@@ -1286,7 +1286,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
 }
 
 /* =====================================================================
-   ASAAS v3.0 — Slate & Gold Dashboard Design System
+   ASAAS v3.0 â€” Slate & Gold Dashboard Design System
    Shared shell, navigation, panels, KPI cards, charts, tables and the
    RDP / PAM / Port-Isolation workspaces.
    ===================================================================== */
@@ -5767,11 +5767,11 @@ textarea.ui-input {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   SIGNATURE LUXURY LAYER — cinematic depth, living ambient, gold light
-   ═══════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   SIGNATURE LUXURY LAYER â€” cinematic depth, living ambient, gold light
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
-/* ── 1. Living ambient: slow aurora drift behind the glass ── */
+/* â”€â”€ 1. Living ambient: slow aurora drift behind the glass â”€â”€ */
 .ambient {
   background:
     radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-fill) 10%, transparent), transparent 60%),
@@ -5835,7 +5835,7 @@ textarea.ui-input {
   to   { opacity: 1; }
 }
 
-/* ── 2. Page entrance choreography ── */
+/* â”€â”€ 2. Page entrance choreography â”€â”€ */
 .page > * {
   animation: lux-rise 0.65s var(--ease-out) both;
 }
@@ -5853,7 +5853,7 @@ textarea.ui-input {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── 3. Signature hero: lit gold hairline, inner glow, gradient title ── */
+/* â”€â”€ 3. Signature hero: lit gold hairline, inner glow, gradient title â”€â”€ */
 .page-hero {
   position: relative;
   overflow: hidden;
@@ -5891,7 +5891,7 @@ textarea.ui-input {
   color: transparent !important;
 }
 
-/* ── 4. Sidebar: lit gold active pill ── */
+/* â”€â”€ 4. Sidebar: lit gold active pill â”€â”€ */
 .sidebar-link {
   position: relative;
 }
@@ -5929,7 +5929,7 @@ textarea.ui-input {
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-fill) 60%, transparent), transparent);
 }
 
-/* ── 5. Stat cards: hairline glow + hover lift ── */
+/* â”€â”€ 5. Stat cards: hairline glow + hover lift â”€â”€ */
 .stat-card {
   border: 1px solid color-mix(in srgb, var(--accent-fill) 14%, transparent);
   transition: transform 0.4s var(--ease-spring), box-shadow 0.4s var(--ease-out), border-color 0.3s;
@@ -5958,7 +5958,7 @@ textarea.ui-input {
   color: transparent !important;
 }
 
-/* ── 6. Primary button: liquid gold sheen sweep ── */
+/* â”€â”€ 6. Primary button: liquid gold sheen sweep â”€â”€ */
 .btn--primary {
   overflow: hidden;
 }
@@ -5977,7 +5977,7 @@ textarea.ui-input {
   transform: translateX(120%);
 }
 
-/* ── 7. Tables: gold-lit header rule and row sheen ── */
+/* â”€â”€ 7. Tables: gold-lit header rule and row sheen â”€â”€ */
 thead {
   position: relative;
 }
@@ -5996,7 +5996,7 @@ thead::after {
   transition: background-color 0.2s var(--ease-out);
 }
 
-/* ── 8. Auth card: premium rim glow on the first screen ── */
+/* â”€â”€ 8. Auth card: premium rim glow on the first screen â”€â”€ */
 .auth-card {
   border: 1px solid color-mix(in srgb, var(--accent-fill) 30%, transparent) !important;
   box-shadow:
@@ -6004,7 +6004,7 @@ thead::after {
     var(--glass-shadow) !important;
 }
 
-/* ── 9. Chrome: gold selection, caret and scrollbar ── */
+/* â”€â”€ 9. Chrome: gold selection, caret and scrollbar â”€â”€ */
 ::selection {
   background: color-mix(in srgb, var(--accent-fill) 35%, transparent);
   color: var(--text);
@@ -6019,7 +6019,7 @@ thead::after {
   border-radius: 999px;
 }
 
-/* ── 10. Respect reduced motion ── */
+/* â”€â”€ 10. Respect reduced motion â”€â”€ */
 @media (prefers-reduced-motion: reduce) {
   .ambient__orb,
   .ambient::before,
@@ -6030,106 +6030,212 @@ thead::after {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   CYBERPUNK SECURE OPS LAYER — ionized cyan/violet on deep void
-   ═══════════════════════════════════════════════════════════════════ */
 
-/* Scanline sweep across the whole viewport — barely-there CRT texture */
-.app-shell::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 3px,
-    rgba(125, 211, 252, 0.012) 3px,
-    rgba(125, 211, 252, 0.012) 4px
-  );
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   SOVEREIGN SIGNATURE LAYER — warm obsidian, heritage gold, editorial depth
+   Supersedes cyberpunk layer: restores brand identity with material craft.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Neon corner brackets on hero panels — targeting reticle feel */
+/* ── 1. Editorial page heroes: serif display + warm gold wash ── */
 .page-hero {
-  border-color: rgba(34, 211, 238, 0.3) !important;
+  position: relative;
+  border-color: var(--border-hairline) !important;
 }
 
 .page-hero::before {
   background:
-    radial-gradient(55% 130% at 88% -10%, rgba(34, 211, 238, 0.16), transparent 60%),
-    radial-gradient(40% 120% at 4% 110%, rgba(167, 139, 250, 0.12), transparent 60%);
+    radial-gradient(55% 130% at 88% -10%, rgba(212, 175, 106, 0.14), transparent 60%),
+    radial-gradient(40% 120% at 4% 110%, rgba(139, 58, 58, 0.1), transparent 60%);
 }
 
 .page-hero h1 {
-  background: linear-gradient(115deg, #eaf4ff 20%, #67e8f9 60%, #a78bfa 100%);
+  background: linear-gradient(115deg, var(--text-title) 30%, var(--text-gold, #d4af6a) 85%);
   -webkit-background-clip: text;
   background-clip: text;
+  font-family: var(--font-display, 'Thmanyah Serif Display', serif);
+  letter-spacing: -0.015em;
 }
 
-/* Telemetry numbers render in mono — SOC/NOC readout style */
+/* Swash flourish on the last word of hero titles (brand signature) */
+.page-hero h1 .swash,
+.page-hero h1 [data-swash] {
+  font-feature-settings: 'swsh' 1;
+}
+
+/* ── 2. Numbers: tabular Sans (NOT mono — keeps editorial voice) ── */
 .num,
-.font-telemetry,
 .stat-card__value,
 .table td,
 .table th {
-  font-family: var(--mono, 'JetBrains Mono', 'Cascadia Code', Consolas, monospace);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
 .stat-card__value {
-  background: linear-gradient(115deg, #eaf4ff 40%, #67e8f9 90%);
+  background: linear-gradient(115deg, var(--text-title) 40%, var(--text-gold, #d4af6a) 95%);
   -webkit-background-clip: text;
   background-clip: text;
 }
 
-/* Sidebar: ionized rail */
+/* ── 3. Sidebar: sovereign gold rail ── */
 .sidebar-link.active {
-  background: linear-gradient(115deg, rgba(34, 211, 238, 0.16), rgba(167, 139, 250, 0.1)) !important;
+  background: linear-gradient(115deg, rgba(212, 175, 106, 0.16), rgba(212, 175, 106, 0.07)) !important;
   box-shadow:
-    inset 0 0 0 1px rgba(103, 232, 249, 0.4),
-    0 0 22px -6px rgba(34, 211, 238, 0.55) !important;
+    inset 0 0 0 1px rgba(212, 175, 106, 0.35),
+    0 4px 20px -8px rgba(212, 175, 106, 0.4) !important;
 }
 
 .sidebar-link.active::before {
-  background: linear-gradient(180deg, #67e8f9, #a78bfa);
-  box-shadow: 0 0 14px rgba(34, 211, 238, 0.8);
+  background: linear-gradient(180deg, var(--text-gold, #d4af6a), #b8935a);
+  box-shadow: 0 0 12px rgba(212, 175, 106, 0.6);
 }
 
-/* Status pills get a neon outer glow */
+/* ── 4. Status pills: warm glows, never neon ── */
 [class*='status-safe'],
 .bg-status-safe-surface {
-  box-shadow: 0 0 14px -4px rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 12px -6px rgba(123, 201, 143, 0.45);
 }
 
 [class*='status-danger'],
 .bg-status-danger-surface {
-  box-shadow: 0 0 14px -4px rgba(251, 113, 133, 0.5);
+  box-shadow: 0 0 12px -6px rgba(224, 122, 106, 0.45);
 }
 
-/* Focus rings become laser-cyan */
+[class*='status-warning'],
+.bg-status-warning-surface,
+.bg-status-partial-surface {
+  box-shadow: 0 0 12px -6px rgba(224, 178, 92, 0.4);
+}
+
+/* ── 5. Focus rings: gold, generous ── */
 :focus-visible {
-  outline: 2px solid rgba(103, 232, 249, 0.8);
+  outline: 2px solid rgba(212, 175, 106, 0.75);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* Table header rule goes ionized */
+/* ── 6. Ledger table: gold hairline rule under header ── */
 thead::after {
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.55), rgba(167, 139, 250, 0.55), transparent);
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 106, 0.5), rgba(212, 175, 106, 0.5), transparent);
 }
 
-/* Auth card: containment-field glow */
+/* Row hover — warm parchment sheen */
+.table tbody tr:hover td {
+  background: rgba(212, 175, 106, 0.045);
+}
+
+/* ── 7. Auth card: warm vault glow ── */
 .auth-card {
-  border-color: rgba(34, 211, 238, 0.35) !important;
+  border-color: rgba(212, 175, 106, 0.3) !important;
   box-shadow:
-    0 0 0 1px rgba(34, 211, 238, 0.12),
-    0 30px 90px -30px rgba(34, 211, 238, 0.4),
-    0 0 80px -30px rgba(167, 139, 250, 0.45),
+    0 0 0 1px rgba(212, 175, 106, 0.1),
+    0 30px 90px -30px rgba(0, 0, 0, 0.8),
+    0 0 60px -20px rgba(212, 175, 106, 0.25),
     var(--glass-shadow) !important;
 }
 
+/* ── 8. Primary buttons: sovereign gold gradient + sheen ── */
+.btn--primary,
+button[class*='primary'] {
+  background: linear-gradient(135deg, #e8c98a 0%, #d4a017 45%, #b8892e 100%) !important;
+  color: #17130c !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 214, 0.6),
+    0 6px 24px -8px rgba(212, 160, 23, 0.5) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn--primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.35) 48%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+  pointer-events: none;
+}
+
+.btn--primary:hover::after {
+  transform: translateX(120%);
+}
+
+.btn--primary:active {
+  transform: scale(0.97);
+  transition-duration: 100ms;
+}
+
+/* ── 9. Cards: specular top edge + deeper warm shadow ── */
+.card,
+.glass,
+.glass-panel {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 244, 214, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 16px 48px -20px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ── 10. Page entrance: editorial rise with stagger ── */
+.page > * {
+  animation: sig-rise 0.5s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.page > *:nth-child(2) { animation-delay: 0.04s; }
+.page > *:nth-child(3) { animation-delay: 0.08s; }
+.page > *:nth-child(4) { animation-delay: 0.12s; }
+.page > *:nth-child(5) { animation-delay: 0.16s; }
+.page > *:nth-child(6) { animation-delay: 0.2s; }
+.page > *:nth-child(7) { animation-delay: 0.24s; }
+.page > *:nth-child(8) { animation-delay: 0.28s; }
+
+@keyframes sig-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── 11. Scrollbar: warm metallic ── */
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 106, 0.22);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 106, 0.38);
+}
+
+/* ── 12. Selection + caret ── */
+::selection {
+  background: rgba(212, 175, 106, 0.3);
+  color: var(--text-title);
+}
+
+input, textarea {
+  caret-color: var(--text-gold, #d4af6a);
+}
+
+/* ── 13. Empty states: editorial, not apologetic ── */
+.empty-state__title,
+.empty-state-luxury__title {
+  font-family: var(--font-display, 'Thmanyah Serif Display', serif);
+  letter-spacing: -0.01em;
+}
+
+/* ── 14. Reduced motion: everything cross-fades ── */
 @media (prefers-reduced-motion: reduce) {
-  .app-shell::after {
-    display: none;
+  .page > *,
+  .btn--primary::after,
+  .ambient__orb,
+  .ambient::before {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .page > * {
+    animation: sig-fade 0.15s ease both !important;
+  }
+
+  @keyframes sig-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 }
