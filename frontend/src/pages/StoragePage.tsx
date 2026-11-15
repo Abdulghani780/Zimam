@@ -122,10 +122,10 @@ export function StoragePage() {
     }
   };
 
-  const totalGb = breakdown?.total_gb || 475.8;
-  const usedGb = breakdown?.used_gb || 338.1;
-  const freeGb = breakdown?.free_gb || 137.7;
-  const usedPct = breakdown?.percent || Math.round((usedGb / totalGb) * 100);
+  const totalGb = breakdown?.total_gb ?? 0;
+  const usedGb = breakdown?.used_gb ?? 0;
+  const freeGb = breakdown?.free_gb ?? 0;
+  const usedPct = breakdown?.percent ?? (totalGb > 0 ? Math.round((usedGb / totalGb) * 100) : 0);
 
   return (
     <div className="page">
@@ -463,13 +463,13 @@ export function StoragePage() {
                       </div>
                     </td>
                     <td style={{ fontFamily: 'var(--font)', color: 'var(--text-3)', fontSize: 12 }}>
-                      <span dir="ltr">{u.path || `C:\\Users\\${u.username}`}</span>
+                      <span dir="ltr">{u.path || '—'}</span>
                     </td>
                     <td style={{ fontFamily: 'var(--font)', fontWeight: 800, color: 'var(--text-1)' }}>
-                      <span dir="ltr">{u.total_mb ? `${(u.total_mb / 1024).toFixed(1)} GB` : `${u.size_gb || 24.2} GB`}</span>
+                      <span dir="ltr">{u.total_mb ? `${(u.total_mb / 1024).toFixed(1)} GB` : (u.size_gb ? `${u.size_gb} GB` : '—')}</span>
                     </td>
                     <td style={{ fontFamily: 'var(--font)', color: 'var(--accent)', fontWeight: 700 }}>
-                      {u.temp_mb ? `${u.temp_mb} MB` : '1,420 MB'}
+                      {u.temp_mb ? `${u.temp_mb} MB` : '—'}
                     </td>
                     <td style={{ textAlign: 'end' }}>
                       <Button

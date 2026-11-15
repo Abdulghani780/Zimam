@@ -266,7 +266,7 @@ export function ServersPage() {
                   )}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-                  نطاق العمل: <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>{localServer.domain || 'WORKGROUP'}</span> | نظام التشغيل: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{localServer.os_caption || 'Windows Server 2025'}</span> (بناء {localServer.build_number || '26100'})
+                  نطاق العمل: <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>{localServer.domain || 'WORKGROUP'}</span> | نظام التشغيل: <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{localServer.os_caption || '—'}</span>{localServer.build_number ? ` (بناء ${localServer.build_number})` : ''}
                 </div>
               </div>
             </div>
@@ -298,10 +298,10 @@ export function ServersPage() {
                 <span>المعالج والأنوية</span>
               </div>
               <div style={{ fontSize: 17, fontWeight: 800, marginTop: 4, color: 'var(--text)' }}>
-                {localServer.cpu_logical_cores || 8} أنوية منطقية
+                {localServer.cpu_logical_cores ?? '—'} أنوية منطقية
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                {localServer.cpu_physical_cores || 4} أنوية فيزيائية
+                {localServer.cpu_physical_cores ?? '—'} أنوية فيزيائية
               </div>
             </div>
 
@@ -311,10 +311,10 @@ export function ServersPage() {
                 <span>الذاكرة العشوائية</span>
               </div>
               <div style={{ fontSize: 17, fontWeight: 800, marginTop: 4, color: 'var(--text)' }}>
-                {localServer.ram_total_gb ? `${localServer.ram_total_gb} GB` : '64.0 GB'}
+                {localServer.ram_total_gb ? `${localServer.ram_total_gb} GB` : '—'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                المتاح: {localServer.ram_available_gb ? `${localServer.ram_available_gb} GB` : '42.1 GB'}
+                المتاح: {localServer.ram_available_gb ? `${localServer.ram_available_gb} GB` : '—'}
               </div>
             </div>
 
@@ -324,7 +324,7 @@ export function ServersPage() {
                 <span>أدوار الخادم والميزات</span>
               </div>
               <div style={{ fontSize: 17, fontWeight: 800, marginTop: 4, color: 'var(--text)' }}>
-                {localServer.installed_roles_count || 12} دور مفعّل
+                {localServer.installed_roles_count ?? '—'} دور مفعّل
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
                 Windows Server Manager Core
@@ -437,10 +437,10 @@ export function ServersPage() {
                       </div>
                     </td>
                     <td style={{ fontFamily: 'monospace', fontSize: 13, color: 'var(--text-2)' }}>
-                      {s.ip || '127.0.0.1'}
+                      {s.ip || '—'}
                     </td>
                     <td style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                      {s.os || 'Windows Server 2025'}
+                      {s.os || '—'}
                     </td>
                     <td>
                       <span className="badge badge--neutral" style={{ fontSize: 11 }}>

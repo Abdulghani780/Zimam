@@ -12,6 +12,14 @@ import {
   Users,
   ScrollText,
   Settings,
+  Code2,
+  Container,
+  Database,
+  Vault,
+  HardDrive,
+  Timer,
+  History,
+  Globe,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -22,9 +30,17 @@ const NAV_ITEMS = [
   { to: '/bastion', label: 'بوابة الوصول الآمن (PAM)', icon: ShieldCheck },
   { to: '/ports', label: 'عزل المنافذ', icon: Network },
   { to: '/infrastructure', label: 'إدارة العمليات والخدمات', icon: Settings2 },
+  { to: '/development', label: 'مساحات المطورين', icon: Code2 },
+  { to: '/containers', label: 'الحاويات', icon: Container },
+  { to: '/databases', label: 'قواعد البيانات', icon: Database },
+  { to: '/assets', label: 'الأصول والعناوين', icon: Globe },
+  { to: '/vault', label: 'الخزنة الآمنة', icon: Vault },
+  { to: '/storage', label: 'التحكم بالتخزين', icon: HardDrive },
   { to: '/security', label: 'مركز الحماية', icon: Shield },
   { to: '/network-storage', label: 'مراقبة الشبكة', icon: Wifi },
   { to: '/users', label: 'المستخدمون والصلاحيات', icon: Users },
+  { to: '/jit', label: 'الترقية المؤقتة (JIT)', icon: Timer },
+  { to: '/replay', label: 'إعادة تشغيل الجلسات', icon: History },
   { to: '/audit', label: 'السجلات والتدقيق', icon: ScrollText },
   { to: '/settings', label: 'إعدادات المنظومة', icon: Settings },
 ];

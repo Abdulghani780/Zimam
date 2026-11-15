@@ -240,7 +240,7 @@ export function InfrastructurePage() {
           }}
         >
           <Cog size={16} />
-          <span>خدمات Windows (Services - {services.length || 387})</span>
+          <span>خدمات Windows (Services - {services.length})</span>
         </button>
 
         <button

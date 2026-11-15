@@ -322,11 +322,11 @@ export function SecurityPage() {
                 {(!commandResult?.safe) ? '⚠️ أمر عالي الخطورة محظور تنفيذه!' : '✅ أمر آمن ومصرح به'}
               </span>
               <span style={{ fontSize: 12, fontFamily: 'var(--font)', color: 'var(--text-3)' }}>
-                درجة الخطورة: {commandResult.risk_score || 95}%
+                درجة الخطورة: {commandResult.risk_score != null ? `${commandResult.risk_score}%` : '—'}
               </span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0 }}>
-              {commandResult.reason || 'يحتوي الأمر على تعليمات تنزيل وتشغيل كود خارجي في الذاكرة (Memory Execution / IEX).'}
+              {commandResult.reason || 'لا يوجد تقييم متاح لهذا الأمر.'}
             </p>
           </div>
         )}

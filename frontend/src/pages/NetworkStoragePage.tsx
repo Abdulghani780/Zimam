@@ -659,7 +659,7 @@ export function NetworkStoragePage() {
                   </div>
                 </div>
                 <span className={`badge ${a.status === 'Up' ? 'badge--success' : 'badge--neutral'}`}>
-                  {a.status || 'Up'}
+                  {a.status || '—'}
                 </span>
               </div>
 
@@ -667,13 +667,13 @@ export function NetworkStoragePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-3)' }}>عنوان IPv4:</span>
                   <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-1)' }}>
-                    {a.ipv4 || a.IPAddress || '157.90.133.20'}
+                    {a.ipv4 || a.IPAddress || '—'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-3)' }}>عنوان MAC الفيزيائي:</span>
                   <span style={{ fontFamily: 'monospace', color: 'var(--text-2)' }}>
-                    {a.mac_address || a.MacAddress || '00:1E:67:XX:XX'}
+                    {a.mac_address || a.MacAddress || '—'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>

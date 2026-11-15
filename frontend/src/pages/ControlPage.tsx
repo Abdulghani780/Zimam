@@ -343,7 +343,7 @@ export function ControlPage() {
             {refreshing ? 'جارٍ التحديث…' : 'تحديث الآن'}
           </button>
           <span className="rdp-count">
-            <span className="conn-dot" style={{ color: '#4bd477' }} />
+            <span className="conn-dot" style={{ color: 'var(--status-safe)' }} />
             جلسات نشطة: <strong>{activeCount}</strong> من {sessions.length}
           </span>
         </div>
@@ -495,10 +495,10 @@ export function ControlPage() {
                             —
                           </span>
                         </td>
-                        <td className="cell-mono" style={{ color: '#c8d0d4' }}>
+                        <td className="cell-mono" style={{ color: 'var(--text-muted)' }}>
                           {formatLoginTimestamp(session.login_time || session.login)}
                         </td>
-                        <td className="cell-mono" style={{ color: '#c8d0d4' }}>
+                        <td className="cell-mono" style={{ color: 'var(--text-muted)' }}>
                           {formatSessionDuration(session.login_time || session.login, now)}
                         </td>
                         <td>

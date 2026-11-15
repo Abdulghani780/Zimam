@@ -764,7 +764,7 @@ export function GovernorPage() {
                   fontFamily: 'var(--font)',
                 }}
               >
-                <span dir="ltr">{governor?.reclaimed_mb ? Number(governor.reclaimed_mb).toLocaleString(undefined, { maximumFractionDigits: 1 }) : '23,868'} MB</span>
+                <span dir="ltr">{governor?.reclaimed_mb != null ? `${Number(governor.reclaimed_mb).toLocaleString(undefined, { maximumFractionDigits: 1 })} MB` : '—'}</span>
               </span>
             </div>
           </Glass>

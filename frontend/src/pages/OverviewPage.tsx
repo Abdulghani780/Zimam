@@ -442,19 +442,19 @@ export function OverviewPage() {
                         </td>
                         <td>
                           <div style={{ display: 'grid', gap: 3, minWidth: 66 }}>
-                            <span style={{ fontSize: 10.5, color: '#c8d0d4' }}>{Math.round(serverCpu)}%</span>
+                            <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{Math.round(serverCpu)}%</span>
                             <div className="meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, serverCpu))}%` }} /></div>
                           </div>
                         </td>
                         <td>
                           <div style={{ display: 'grid', gap: 3, minWidth: 66 }}>
-                            <span style={{ fontSize: 10.5, color: '#c8d0d4' }}>{Math.round(serverRam)}%</span>
+                            <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{Math.round(serverRam)}%</span>
                             <div className="meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, serverRam))}%` }} /></div>
                           </div>
                         </td>
                         <td>
                           <div style={{ display: 'grid', gap: 3, minWidth: 66 }}>
-                            <span style={{ fontSize: 10.5, color: '#c8d0d4' }}>{Math.round(serverDisk)}%</span>
+                            <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{Math.round(serverDisk)}%</span>
                             <div className="meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, serverDisk))}%` }} /></div>
                           </div>
                         </td>
@@ -493,7 +493,7 @@ export function OverviewPage() {
                     <span className="activity-row__icon"><Icon /></span>
                     <span className="activity-row__main">
                       <span className="activity-row__title">{meta.title}</span>
-                      <span className="activity-row__meta">{entry.user} · {entry.ip || '127.0.0.1'}</span>
+                      <span className="activity-row__meta">{entry.user} · {entry.ip || '—'}</span>
                     </span>
                   </div>
                 );
