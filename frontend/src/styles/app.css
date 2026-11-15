@@ -6037,23 +6037,47 @@ thead::after {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── 1. Editorial page heroes: serif display + warm gold wash ── */
-.page-hero {
+.page-hero,
+.page-head {
   position: relative;
   border-color: var(--border-hairline) !important;
 }
 
-.page-hero::before {
+.page-hero::before,
+.page-head::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
   background:
-    radial-gradient(55% 130% at 88% -10%, rgba(212, 175, 106, 0.14), transparent 60%),
-    radial-gradient(40% 120% at 4% 110%, rgba(139, 58, 58, 0.1), transparent 60%);
+    radial-gradient(55% 130% at 88% -10%, rgba(212, 175, 106, 0.12), transparent 60%),
+    radial-gradient(40% 120% at 4% 110%, rgba(139, 58, 58, 0.08), transparent 60%);
 }
 
-.page-hero h1 {
+.page-hero > *,
+.page-head > * {
+  position: relative;
+  z-index: 1;
+}
+
+.page-hero h1,
+.page-head h1 {
   background: linear-gradient(115deg, var(--text-title) 30%, var(--text-gold, #d4af6a) 85%);
   -webkit-background-clip: text;
   background-clip: text;
   font-family: var(--font-display, 'Thmanyah Serif Display', serif);
   letter-spacing: -0.015em;
+}
+
+.page-head__title {
+  align-items: flex-start;
+}
+
+.page-head__bar {
+  background: linear-gradient(180deg, var(--text-gold, #d4af6a), rgba(212, 175, 106, 0.2));
+  box-shadow: 0 0 12px rgba(212, 175, 106, 0.4);
 }
 
 /* Swash flourish on the last word of hero titles (brand signature) */
@@ -6078,6 +6102,10 @@ thead::after {
 }
 
 /* ── 3. Sidebar: sovereign gold rail ── */
+.sidebar-link {
+  position: relative;
+}
+
 .sidebar-link.active {
   background: linear-gradient(115deg, rgba(212, 175, 106, 0.16), rgba(212, 175, 106, 0.07)) !important;
   box-shadow:
@@ -6085,9 +6113,21 @@ thead::after {
     0 4px 20px -8px rgba(212, 175, 106, 0.4) !important;
 }
 
+/* Gold filament on the reading-start edge of the active link */
 .sidebar-link.active::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  border-radius: 999px;
   background: linear-gradient(180deg, var(--text-gold, #d4af6a), #b8935a);
   box-shadow: 0 0 12px rgba(212, 175, 106, 0.6);
+}
+
+.sidebar-link.active .icon-wrap {
+  color: var(--text-gold, #d4af6a);
 }
 
 /* ── 4. Status pills: warm glows, never neon ── */

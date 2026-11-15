@@ -53,6 +53,7 @@
   --glass-tint: rgba(255, 253, 249, 0.38);
   --glass-tint-strong: rgba(255, 253, 249, 0.66);
   --glass-rim: rgba(255, 255, 255, 0.95);
+  --glass-rim-high: rgba(255, 255, 255, 0.75);
   --glass-rim-low: rgba(255, 255, 255, 0.3);
   --glass-sheen: rgba(255, 255, 255, 0.55);
   --glass-shadow: 0 1px 2px rgba(34, 31, 31, 0.05), 0 18px 44px -18px rgba(74, 54, 22, 0.32);
@@ -96,6 +97,7 @@
   --glass-tint: rgba(212, 175, 106, 0.045);
   --glass-tint-strong: rgba(212, 175, 106, 0.08);
   --glass-rim: rgba(232, 201, 138, 0.3);
+  --glass-rim-high: rgba(232, 201, 138, 0.55);
   --glass-rim-low: rgba(212, 175, 106, 0.1);
   --glass-sheen: rgba(232, 201, 138, 0.12);
   --glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 24px 60px -24px rgba(0, 0, 0, 0.85);
