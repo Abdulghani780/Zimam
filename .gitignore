@@ -18,6 +18,7 @@ ENV/
 # Temporary, Scratch & Audit Workspace
 .audit_workspace/
 scratch/
+scratch_*.py
 tmp/
 *.tmp
 
@@ -26,6 +27,9 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+# Frontend build output (vite outDir -> ../dist)
+dist/
 
 # Runtime Data, Logs & Local Database Files
 data/*.db
@@ -53,3 +57,6 @@ Thumbs.db
 
 # Cloned external skills
 unslop/
+
+# Claude Code local settings (machine-specific gateway config)
+.claude/
