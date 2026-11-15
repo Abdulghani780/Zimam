@@ -129,7 +129,7 @@ Controlled purposes: `rule protection`, `critical path`, `regression protection`
 | Priority | TEST-ID or asset | Gap | Next action | State |
 |---|---|---|---|---|
 | **P1** | `TEST-WTS-007` | Automated mock for interactive Win32 desktop popups (`WTSSendMessageW`) | Add Win32 ctypes mock fixture for CI non-Windows environments | in progress |
-| **P2** | `TEST-E2E-008` | Automated Playwright headless UI smoke run in CI pipeline | Add `npm run test:e2e` Playwright script | in progress |
+| ~~**P2**~~ | `TEST-E2E-008` | Automated Playwright headless UI smoke run in CI pipeline | `frontend/e2e/smoke.spec.ts` + `e2e-smoke` job in `.github/workflows/ci.yml` (login, theme toggle, mobile overflow, governor console health) | done |
 
 ---
 
