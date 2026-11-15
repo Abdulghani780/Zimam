@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Moon, ShieldCheck, Sun } from 'lucide-react';
-import { Button, Field, FormError, Glass, PasswordInput, TextInput, useTheme } from '../asaas-ui';
+import { Button, Field, FormError, Glass, PasswordInput, Stretch, TextInput, useTheme } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1, ApiV1Error } from '../lib/apiV1';
 
@@ -75,6 +75,11 @@ export function ZeroTrustLoginPage() {
       <section className="auth-page__content" aria-labelledby="login-title">
         <div className="auth-intro">
           <span className="auth-intro__eyebrow"><ShieldCheck size={16} /> مساحة إدارة محمية</span>
+          <p className="auth-intro__greeting" aria-hidden="true">
+            {new Date().getHours() < 12
+              ? <><Stretch before="صب" after="اح" length={3} /> الخير</>
+              : <><Stretch before="مس" after="اء" length={3} /> الخير</>}
+          </p>
           <h1 id="login-title" className="display">دخول واضح وآمن إلى خوادمك</h1>
           <p className="prose">
             سجّل الدخول بحساب الإدارة المحلي. لا تُعرض كلمات المرور للمتصفح، وتُسجل كل عملية إدارية في سجل التدقيق.
