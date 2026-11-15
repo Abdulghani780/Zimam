@@ -117,11 +117,21 @@ export interface V1Session {
 }
 
 export interface V1AuditEvent {
-  id?: number | string;
-  event_type?: string;
-  actor?: string;
-  details?: Record<string, unknown>;
+  sequence?: number;
+  actor_id?: string;
+  action?: string;
+  target_id?: string | null;
+  payload?: Record<string, unknown>;
+  previous_hash?: string;
+  event_hash?: string;
   created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface V1AuditVerify {
+  chain_intact?: boolean;
+  failed_index?: number | null;
+  root_signature?: string;
   [key: string]: unknown;
 }
 

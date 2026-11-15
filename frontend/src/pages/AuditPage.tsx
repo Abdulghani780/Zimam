@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { api, type AuditLog } from '../lib/api';
+import { apiV1, type V1AuditEvent, type V1AuditVerify } from '../lib/apiV1';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -20,16 +21,25 @@ import {
 export function AuditPage() {
   const toast = useToast();
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [v1Events, setV1Events] = useState<V1AuditEvent[]>([]);
+  const [v1Verify, setV1Verify] = useState<V1AuditVerify | null>(null);
   const [filterText, setFilterText] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const activeChainHash = '7f83b165249f0298a83b482110c9be74d6c70311d4d06a92ec510e1458e9d10e';
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const res = await api.getAuditLogs(150);
+      const [res, v1Res] = await Promise.all([
+        api.getAuditLogs(150),
+        apiV1.auditEvents({ limit: 150 }).catch(() => null),
+      ]);
       setLogs(Array.isArray(res) ? res : (res as any)?.logs || []);
+      const v1List = Array.isArray(v1Res) ? v1Res : (v1Res as any)?.events || [];
+      setV1Events(v1List);
+      if (v1List.length > 0) {
+        setV1Verify((prev) => prev);
+      }
     } catch (err: any) {
       toast(err.message || 'فشل جلب سجلات التدقيق', 'error');
     } finally {
@@ -50,11 +60,21 @@ export function AuditPage() {
   const handleVerifyChain = async () => {
     setVerifying(true);
     try {
-      const res = await api.verifyAuditChain();
-      if (res && res.ok) {
-        toast(res.message || `تم التحقق بنجاح: تم تدقيق ${res.records_checked} سجل أمني والبصمة متطابقة 100%.`, 'success');
+      const [legacyRes, v1Res] = await Promise.all([
+        api.verifyAuditChain().catch(() => null),
+        apiV1.verifyAudit().catch(() => null),
+      ]);
+      if (v1Res && typeof v1Res === 'object') {
+        setV1Verify(v1Res as V1AuditVerify);
+      }
+      const v1Ok = (v1Res as V1AuditVerify | null)?.chain_intact === true;
+      const legacyMsg = (legacyRes as any)?.message || '';
+      if (v1Ok) {
+        toast('تم التحقق من سلسلة تدقيق طبقة التحكم (/api/v1): السلسلة سليمة تشفيرياً.', 'success');
+      } else if (v1Res) {
+        toast(`فشل التحقق من سلسلة v1${(v1Res as V1AuditVerify).failed_index != null ? ` عند السجل ${(v1Res as V1AuditVerify).failed_index}` : ''}. راجع أحداث التدقيق.`, 'error');
       } else {
-        toast((res as any)?.error || 'فشل التحقق من السلسلة التشفيرية.', 'error');
+        toast(legacyMsg || 'تعذّر الوصول إلى خدمة التحقق في الطبقة التحكمية.', 'error');
       }
     } catch (err: any) {
       toast(err.message || 'خطأ أثناء الاتصال بخدمة التحقق', 'error');
@@ -65,8 +85,18 @@ export function AuditPage() {
 
   const copyHash = (hash: string) => {
     navigator.clipboard?.writeText(hash);
-    toast('تم نسخ بصمة SHA-256 إلى الحافظة.', 'success');
+    toast('تم نسخ البصمة إلى الحافظة.', 'success');
   };
+
+  // Real chain fingerprint: root signature from /api/v1/audit/verify, or the
+  // newest event hash as a fallback. Never a hardcoded value.
+  const chainFingerprint =
+    (v1Verify?.root_signature as string | undefined) ||
+    v1Events[v1Events.length - 1]?.event_hash ||
+    '';
+  const highRiskCount = logs.filter((l) =>
+    ['KILL_PROCESS', 'TERMINATE', 'DELETE_USER', 'ELEVATE', 'PRIVILEGE_VIOLATION', 'UNAUTHORIZED_ACTION_ATTEMPT'].includes(l.action),
+  ).length;
 
   const filteredLogs = logs.filter(
     (l) =>
@@ -131,7 +161,7 @@ export function AuditPage() {
               وفق ضوابط الهيئة الوطنية للأمن السيبراني.
             </p>
 
-            {/* Active Hash Chip */}
+            {/* Active Hash Chip — real fingerprint from the v1 audit chain */}
             <div
               style={{
                 display: 'inline-flex',
@@ -146,18 +176,20 @@ export function AuditPage() {
               }}
             >
               <ShieldCheck size={14} color="var(--accent)" />
-              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>بصمة السلسلة الحالية:</span>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>بصمة سلسلة طبقة التحكم:</span>
               <span dir="ltr" style={{ fontSize: 12, fontFamily: 'Consolas, monospace', color: 'var(--accent)', fontWeight: 700 }}>
-                {activeChainHash}
+                {chainFingerprint ? `${chainFingerprint.slice(0, 16)}…${chainFingerprint.slice(-8)}` : '—'}
               </span>
-              <button
-                type="button"
-                onClick={() => copyHash(activeChainHash)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0 }}
-                title="نسخ البصمة"
-              >
-                <Copy size={13} />
-              </button>
+              {chainFingerprint && (
+                <button
+                  type="button"
+                  onClick={() => copyHash(chainFingerprint)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0 }}
+                  title="نسخ البصمة"
+                >
+                  <Copy size={13} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -203,10 +235,12 @@ export function AuditPage() {
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               ضمان عدم التلاعب (Tamper Resistance)
             </h4>
-            <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}><bdi dir="ltr">100%</bdi> سليم</span>
+            <span style={{ fontSize: 11, color: v1Verify ? (v1Verify.chain_intact ? 'var(--paid)' : 'var(--unpaid)') : 'var(--text-3)', fontWeight: 700 }}>
+              {v1Verify ? (v1Verify.chain_intact ? 'سلسلة v1 سليمة' : 'سلسلة v1 مكسورة') : 'لم يُتحقق بعد'}
+            </span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            يتم ترقيم وتشفير كل سجل ببصمة الكتلة السابقة (SHA-256 Merkle Chain). أي تعديل يدوي في قاعدة البيانات يكشف الخرق فوراً.
+            كل سجل في سلسلة طبقة التحكم (/api/v1) مربوط ببصمة SHA-256 للكتلة السابقة؛ زر «مطابقة البصمة الآن» يعيد حساب السلسلة كاملة ويكشف أي تعديل.
           </p>
         </Glass>
 
@@ -216,12 +250,12 @@ export function AuditPage() {
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               توزيع العمليات حسب تصنيف NCA
             </h4>
-            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>3 فئات معتمدة</span>
+            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{logs.length} سجل تشغيلي</span>
           </div>
           <div style={{ display: 'flex', gap: 10, fontSize: 11, marginTop: 4 }}>
-            <span style={{ color: 'var(--unpaid)' }}>● عمليات عالية الخطورة <bdi dir="ltr">(12%)</bdi></span>
-            <span style={{ color: 'var(--accent)' }}>● تعديل سياسات <bdi dir="ltr">(38%)</bdi></span>
-            <span style={{ color: 'var(--paid)' }}>● استعلام اعتيادي <bdi dir="ltr">(50%)</bdi></span>
+            <span style={{ color: 'var(--unpaid)' }}>● عمليات عالية الخطورة <bdi dir="ltr">({highRiskCount})</bdi></span>
+            <span style={{ color: 'var(--paid)' }}>● إجمالي السجلات المعروضة <bdi dir="ltr">({logs.length})</bdi></span>
+            <span style={{ color: 'var(--accent)' }}>● أحداث طبقة التحكم <bdi dir="ltr">({v1Events.length})</bdi></span>
           </div>
         </Glass>
 
@@ -312,21 +346,74 @@ export function AuditPage() {
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[11px] font-telemetry text-muted bg-surface-container px-1.5 py-0.5 rounded">
-                            {(log as any).hash ? `${(log as any).hash.slice(0, 10)}...` : '7f83b165...'}
+                            {(log as any).hash ? `${(log as any).hash.slice(0, 10)}...` : '—'}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => copyHash((log as any).hash || activeChainHash)}
-                            className="text-muted hover:text-title p-1 transition-colors"
-                            title="نسخ بصمة السطر"
-                          >
-                            <Copy size={12} />
-                          </button>
+                          {(log as any).hash && (
+                            <button
+                              type="button"
+                              onClick={() => copyHash((log as any).hash)}
+                              className="text-muted hover:text-title p-1 transition-colors"
+                              title="نسخ بصمة السطر"
+                            >
+                              <Copy size={12} />
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
                   );
                 })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
+      {/* 4. Control-plane hash-chained audit (/api/v1) */}
+      <Card
+        title="سلسلة تدقيق طبقة التحكم (/api/v1 — hash-chained)"
+        icon="vault"
+        actions={
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            {v1Events.length} حدثاً · التحقق التشفيري عبر «مطابقة البصمة الآن»
+          </span>
+        }
+      >
+        <TableContainer className="max-h-[420px]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>التسلسل</TableHead>
+                <TableHead>الوقت</TableHead>
+                <TableHead>الفاعل</TableHead>
+                <TableHead>الإجراء</TableHead>
+                <TableHead>الهدف</TableHead>
+                <TableHead>بصمة الحدث</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {v1Events.length === 0 ? (
+                <TableEmpty
+                  colSpan={6}
+                  message={loading ? 'جارٍ تحميل أحداث الطبقة التحكمية...' : 'لا توجد أحداث مسجلة في طبقة التحكم بعد.'}
+                />
+              ) : (
+                [...v1Events].reverse().map((ev) => (
+                  <TableRow key={ev.sequence ?? ev.event_hash}>
+                    <TableCell className="font-telemetry text-muted text-xs">#{ev.sequence ?? '—'}</TableCell>
+                    <TableCell className="font-telemetry text-muted text-xs whitespace-nowrap">
+                      {ev.created_at ? new Date(ev.created_at).toLocaleString('ar-SA') : '—'}
+                    </TableCell>
+                    <TableCell className="font-bold text-title">{ev.actor_id || 'system'}</TableCell>
+                    <TableCell className="text-xs font-bold text-title">{ev.action || '—'}</TableCell>
+                    <TableCell className="text-xs text-muted font-telemetry">{ev.target_id || '—'}</TableCell>
+                    <TableCell>
+                      <span className="text-[11px] font-telemetry text-muted bg-surface-container px-1.5 py-0.5 rounded" dir="ltr">
+                        {ev.event_hash ? `${ev.event_hash.slice(0, 10)}…` : '—'}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
