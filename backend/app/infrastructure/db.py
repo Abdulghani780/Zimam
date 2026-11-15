@@ -676,6 +676,60 @@ def db_validate_session(token: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def db_sync_proxied_user(username: str, role: str, full_name: str = '') -> Optional[Dict[str, Any]]:
+    """Upsert the local app_users projection for a control-plane identity.
+
+    The control plane is the identity authority; app_users becomes a local
+    profile projection so legacy features (JIT grants, notifications,
+    last_login) keep working. Missing rows are created with an unusable
+    random password — credentials only ever live in the control plane.
+    """
+    username = (username or '').strip()
+    if not username:
+        return None
+    role = role if role in ('admin', 'operator', 'viewer') else 'viewer'
+    now_str = datetime.now(timezone.utc).isoformat()
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, username, role, full_name, is_active, created_at, last_login FROM app_users WHERE username = ? COLLATE NOCASE",
+                (username,),
+            )
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    "UPDATE app_users SET role = ?, is_active = 1 WHERE id = ?",
+                    (role, row['id']),
+                )
+                conn.commit()
+                data = dict(row)
+                data['role'] = role
+                data['is_active'] = 1
+                return data
+            pw_hash, salt = hash_password(secrets.token_urlsafe(32))
+            cur.execute(
+                """
+                INSERT INTO app_users (username, password_hash, salt, role, full_name, is_active, created_at)
+                VALUES (?, ?, ?, ?, ?, 1, ?)
+                """,
+                (username, pw_hash, salt, role, full_name or username, now_str),
+            )
+            conn.commit()
+            return {
+                'id': cur.lastrowid,
+                'username': username,
+                'role': role,
+                'full_name': full_name or username,
+                'is_active': 1,
+                'created_at': now_str,
+                'last_login': None,
+            }
+    except Exception as exc:
+        logger.error("Proxied user sync failed for '%s': %s", username, exc)
+        return None
+
+
 def db_revoke_session(token: str) -> bool:
     try:
         with get_db_connection() as conn:

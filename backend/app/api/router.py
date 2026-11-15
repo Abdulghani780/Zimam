@@ -36,6 +36,7 @@ from ..infrastructure.db import (
     db_authenticate_user,
     db_create_session,
     db_validate_session,
+    db_sync_proxied_user,
     db_revoke_session,
     db_list_app_users,
     db_get_app_user,
@@ -239,14 +240,16 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
                 return True, sess
 
         # Control-plane bridge: the :8876 proxy validates an /api/v1 session
-        # and forwards the username as X-ASAAS-Proxy-User. Trusted only from
-        # loopback — browsers cannot set the header (absent from the CORS
+        # and forwards username + role as X-ASAAS-Proxy-*. Trusted only from
+        # loopback — browsers cannot set the headers (absent from the CORS
         # allow-headers list) and this listener is not exposed remotely.
+        # The local app_users row is a projection kept in sync by role.
         if self.client_address[0] in ('127.0.0.1', '::1'):
             proxy_user = (self.headers.get('X-ASAAS-Proxy-User') or '').strip()
             if proxy_user:
-                profile = db_get_app_user(proxy_user)
-                if profile and profile.get('is_active'):
+                proxy_role = (self.headers.get('X-ASAAS-Proxy-Role') or '').strip()
+                profile = db_sync_proxied_user(proxy_user, proxy_role)
+                if profile:
                     return True, {
                         'user_id': profile.get('id'),
                         'username': profile.get('username'),

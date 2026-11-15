@@ -11,7 +11,7 @@ implemented **and** the consuming page has been switched over.
 | Legacy area (examples) | v1 equivalent | Status |
 |---|---|---|
 | `/api/auth/login`, `/logout`, `/me` | `/api/v1/auth/login`, `/logout`, `/me` (+TOTP MFA) | ✅ **login page prefers v1**; bridge below carries the session to legacy endpoints |
-| `/api/auth/users*` (create/delete/role/password) | `/api/v1/users` (read-only today) | 🟡 user admin writes pending |
+| `/api/auth/users*` (create/delete/role/password) | `/api/v1/users` + `/users/{u}/role|password|status` | ✅ **unified in v1** — see identity section |
 | `/api/metrics`, `/metrics/history`, `/snapshot`, `/governor/*` | agent `heartbeat` inventory | 🟡 telemetry pipeline not wired to UI |
 | `/api/sessions`, `/sessions/disconnect|logoff|shadow` | `/api/v1/sessions`, `POST /sessions/{id}/terminate` | 🟡 terminate returns 501 until gateway lands |
 | `/api/users`, `/api/domain/*`, `/api/users/*` (Windows accounts) | `/api/v1/users`, `/api/v1/groups`, `/api/v1/directory/sync` | 🟡 AD/LDAP sync is an open release gate |
@@ -41,6 +41,26 @@ legacy `app_users`), so a single cookie cannot serve both. The bridge:
 - Login page tries `/api/v1/auth/login` first, verifies `/api/auth/me` through
   the bridge, and falls back to legacy login on any v1 failure (including when
   the control plane is absent on the legacy origin).
+
+## Identity unification (decision: v1 is the authority)
+
+- `users` gained `role` (admin/operator/viewer), `full_name`, and
+  `legacy_password` columns (idempotent `ALTER TABLE` in `init_db`).
+- At startup `sync_legacy_identities()` imports `app_users` rows from
+  `data/asaas_v2.db` (override path via `ASAAS_LEGACY_DB`), keeping their
+  PBKDF2 credential in `legacy_password`.
+- `/auth/login` verifies Argon2 first, then the legacy PBKDF2 credential;
+  a successful legacy login re-hashes to Argon2 and clears `legacy_password`.
+- The proxy forwards `X-ASAAS-Proxy-Role`; the legacy `_authenticate()`
+  upserts `app_users` as a **projection** (`db_sync_proxied_user`) with an
+  unusable random password — credentials never leave the control plane.
+- v1 user-admin endpoints: `POST /users`, `/users/{u}/role`,
+  `/users/{u}/password` (self or admin), `/users/{u}/status` (deactivation
+  revokes sessions; self-deactivate and last-admin are refused).
+- `UsersPage` app-user section reads/writes `/api/v1` exclusively; the
+  Windows SAM section stays on legacy endpoints by design.
+- Legacy `/api/auth/users*` endpoints remain for compatibility but write to
+  the projection only — new code must use `/api/v1/users`.
 
 ## Rules
 

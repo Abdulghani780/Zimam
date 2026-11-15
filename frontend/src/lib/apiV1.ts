@@ -64,9 +64,12 @@ export interface V1Health {
 export interface V1User {
   id: string;
   username: string;
-  role?: string;
+  role?: 'admin' | 'operator' | 'viewer' | string;
+  full_name?: string;
   is_active?: boolean;
+  is_admin?: boolean;
   mfa_enabled?: boolean;
+  created_at?: string;
   [key: string]: unknown;
 }
 
@@ -158,6 +161,14 @@ export const apiV1 = {
 
   // Directory & users
   users: () => request<V1User[] | { users?: V1User[] }>('/users'),
+  createUser: (user: { username: string; password: string; role?: string; full_name?: string }) =>
+    post<V1User>('/users', user),
+  updateUserRole: (username: string, role: string) =>
+    post<V1User>(`/users/${encodeURIComponent(username)}/role`, { role }),
+  updateUserPassword: (username: string, newPassword: string) =>
+    post<unknown>(`/users/${encodeURIComponent(username)}/password`, { new_password: newPassword }),
+  updateUserStatus: (username: string, isActive: boolean) =>
+    post<unknown>(`/users/${encodeURIComponent(username)}/status`, { is_active: isActive }),
   groups: () => request<unknown>('/groups'),
   directorySync: () => post<unknown>('/directory/sync'),
   directoryUsers: () =>

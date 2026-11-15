@@ -14,6 +14,7 @@ from sqlalchemy import select
 from .audit import AuditChain
 from .config import settings
 from .connection_tokens import ConnectionTokenStore
+from .identity import verify_legacy_password
 from .models import AccessPolicyRow, Account, Agent, AppSession, Asset, User
 from .permissions import AccessContext, AccessPolicy, PermissionEngine
 from .security import hash_password, new_token, token_hash, verify_password
@@ -21,6 +22,13 @@ from .storage import append_audit, db_session
 from .vault import EnvelopeVault
 
 router = APIRouter(prefix="/api/v1")
+
+_VALID_ROLES = {"admin", "operator", "viewer"}
+
+
+def _require_admin(user: User) -> None:
+    if not (user.is_admin or user.role == "admin"):
+        raise HTTPException(status_code=403, detail="Administrator role required")
 _connection_store = ConnectionTokenStore(hashlib.sha256((settings.gateway_token or "disabled").encode()).digest())
 
 # In-memory sliding-window login throttling: 8 failures per IP+username per 5 minutes.
@@ -87,6 +95,21 @@ class MfaVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=8)
 
 
+class UserCreateRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=128)
+    password: str = Field(min_length=12, max_length=256)
+    role: str = Field(default="viewer", pattern="^(admin|operator|viewer)$")
+    full_name: str = Field(default="", max_length=255)
+
+
+class UserRoleRequest(BaseModel):
+    role: str = Field(pattern="^(admin|operator|viewer)$")
+
+
+class UserPasswordRequest(BaseModel):
+    new_password: str = Field(min_length=12, max_length=256)
+
+
 def _set_session(response: Response, user_id: str) -> str:
     raw = new_token()
     expires = datetime.now(UTC) + timedelta(seconds=settings.session_ttl_seconds)
@@ -132,7 +155,7 @@ def bootstrap(payload: BootstrapRequest, x_bootstrap_token: str | None = Header(
     with db_session() as db:
         if db.scalar(select(User.id).limit(1)):
             raise HTTPException(status_code=409, detail="An administrator already exists")
-        user = User(id=uuid.uuid4().hex, username=payload.username, password_hash=hash_password(payload.password), is_admin=True, created_at=datetime.now(UTC))
+        user = User(id=uuid.uuid4().hex, username=payload.username, password_hash=hash_password(payload.password), is_admin=True, role="admin", full_name=payload.username, created_at=datetime.now(UTC))
         db.add(user)
         append_audit(db, actor_id=user.id, action="auth.bootstrap")
         return {"id": user.id, "username": user.username}
@@ -153,8 +176,19 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
 
     with db_session() as db:
         user = db.scalar(select(User).where(User.username == payload.username))
-        if not user or not user.is_active or not verify_password(user.password_hash, payload.password):
+        if not user or not user.is_active:
             _fail("Invalid credentials")
+        password_ok = verify_password(user.password_hash, payload.password)
+        upgraded = False
+        if not password_ok and user.legacy_password:
+            # Transitional: imported app_users still carry PBKDF2 credentials.
+            password_ok = verify_legacy_password(user.legacy_password, payload.password)
+            upgraded = password_ok
+        if not password_ok:
+            _fail("Invalid credentials")
+        if upgraded:
+            user.password_hash = hash_password(payload.password)
+            user.legacy_password = None
         if user.mfa_secret:
             if not payload.otp:
                 _fail("MFA required")
@@ -304,7 +338,81 @@ def sync_directory(_: User = Depends(_current_user)) -> dict:
 @router.get("/users")
 def list_users(_: User = Depends(_current_user)) -> list[dict]:
     with db_session() as db:
-        return [{"id": x.id, "username": x.username, "is_admin": x.is_admin, "is_active": x.is_active, "mfa_enabled": bool(x.mfa_secret)} for x in db.scalars(select(User).order_by(User.username))]
+        return [{"id": x.id, "username": x.username, "role": x.role or ("admin" if x.is_admin else "viewer"), "full_name": x.full_name or "", "is_admin": x.is_admin, "is_active": x.is_active, "mfa_enabled": bool(x.mfa_secret), "created_at": x.created_at} for x in db.scalars(select(User).order_by(User.username))]
+
+
+@router.post("/users", status_code=201)
+def create_user(payload: UserCreateRequest, user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    username = payload.username.strip()
+    with db_session() as db:
+        if db.scalar(select(User.id).where(User.username == username)):
+            raise HTTPException(status_code=409, detail="Username already exists")
+        item = User(id=uuid.uuid4().hex, username=username, password_hash=hash_password(payload.password), is_admin=payload.role == "admin", role=payload.role, full_name=payload.full_name, created_at=datetime.now(UTC))
+        db.add(item)
+        append_audit(db, actor_id=user.id, action="user.create", target_id=item.id, payload={"username": username, "role": payload.role})
+        return {"id": item.id, "username": item.username, "role": item.role}
+
+
+@router.post("/users/{username}/role")
+def update_user_role(username: str, payload: UserRoleRequest, user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    with db_session() as db:
+        row = db.scalar(select(User).where(User.username == username))
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        row.role = payload.role
+        row.is_admin = payload.role == "admin"
+        append_audit(db, actor_id=user.id, action="user.role_update", target_id=row.id, payload={"username": username, "role": payload.role})
+        return {"username": row.username, "role": row.role}
+
+
+@router.post("/users/{username}/password")
+def update_user_password(username: str, payload: UserPasswordRequest, user: User = Depends(_current_user)) -> dict:
+    target = db_scalar_user(username)
+    is_self = target and target.id == user.id
+    if not is_self:
+        _require_admin(user)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    with db_session() as db:
+        row = db.get(User, target.id)
+        row.password_hash = hash_password(payload.new_password)
+        row.legacy_password = None
+        append_audit(db, actor_id=user.id, action="user.password_reset", target_id=row.id, payload={"username": username, "self": is_self})
+        return {"username": row.username, "updated": True}
+
+
+@router.post("/users/{username}/status")
+def update_user_status(username: str, payload: dict, user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    is_active = bool(payload.get("is_active"))
+    with db_session() as db:
+        row = db.scalar(select(User).where(User.username == username))
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        if row.id == user.id and not is_active:
+            raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+        if not is_active and row.role == "admin" and row.is_active:
+            active_admins = [u for u in db.scalars(select(User).where(User.is_active.is_(True))) if u.role == "admin" or u.is_admin]
+            if len(active_admins) <= 1:
+                raise HTTPException(status_code=400, detail="Cannot deactivate the last active administrator")
+        row.is_active = is_active
+        # Revoke all sessions for a deactivated user.
+        if not is_active:
+            for sess in db.scalars(select(AppSession).where(AppSession.user_id == row.id, AppSession.revoked.is_(False))):
+                sess.revoked = True
+        append_audit(db, actor_id=user.id, action="user.status_update", target_id=row.id, payload={"username": username, "is_active": is_active})
+        return {"username": row.username, "is_active": row.is_active}
+
+
+def db_scalar_user(username: str) -> User | None:
+    with db_session() as db:
+        row = db.scalar(select(User).where(User.username == username))
+        if row:
+            db.expunge(row)
+            return row
+    return None
 
 
 @router.get("/groups")

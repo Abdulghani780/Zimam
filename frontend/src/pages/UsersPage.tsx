@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Modal, Field, TextInput, PasswordInput, PasswordStrength, Glass, Select, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { api, type LocalUser, type DomainProfile, type AppUser } from '../lib/api';
+import { apiV1, type V1User } from '../lib/apiV1';
 import {
   Users,
   UserPlus,
@@ -29,8 +30,8 @@ export function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [actionUser, setActionUser] = useState<string | null>(null);
 
-  // ASAAS application-user management (separate from Windows SAM accounts).
-  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  // ASAAS application-user management — now served by /api/v1 (identity authority).
+  const [appUsers, setAppUsers] = useState<V1User[]>([]);
   const [appUsersLoading, setAppUsersLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [appModalOpen, setAppModalOpen] = useState(false);
@@ -66,11 +67,12 @@ export function UsersPage() {
   const fetchAppUsers = async () => {
     setAppUsersLoading(true);
     try {
-      const res = await api.getAppUsers();
-      if (res?.ok) setAppUsers(Array.isArray(res.users) ? res.users : []);
+      const res = await apiV1.users();
+      const list = Array.isArray(res) ? res : (res as { users?: V1User[] })?.users || [];
+      setAppUsers(list);
     } catch {
-      // The endpoint is admin-only; non-admin operators simply see the
-      // read-only notice instead of a noisy toast.
+      // The endpoint requires an authenticated session; non-admin operators
+      // simply see the read-only notice instead of a noisy toast.
     } finally {
       setAppUsersLoading(false);
     }
@@ -97,25 +99,21 @@ export function UsersPage() {
     e.preventDefault();
     setAppSubmitting(true);
     try {
-      const res = await api.createAppUser({
+      await apiV1.createUser({
         username: appUsername.trim(),
         password: appPassword,
         role: appRole,
         full_name: appFullName.trim(),
       });
-      if (res.ok) {
-        toast(`تم إنشاء حساب مشغل النظام [${appUsername}] بدور ${appRole}.`, 'success');
-        setAppModalOpen(false);
-        setAppUsername('');
-        setAppPassword('');
-        setAppFullName('');
-        setAppRole('viewer');
-        fetchAppUsers();
-      } else {
-        toast(res.error || 'فشل إنشاء حساب المشغل', 'error');
-      }
+      toast(`تم إنشاء حساب مشغل النظام [${appUsername}] بدور ${appRole}.`, 'success');
+      setAppModalOpen(false);
+      setAppUsername('');
+      setAppPassword('');
+      setAppFullName('');
+      setAppRole('viewer');
+      fetchAppUsers();
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء إنشاء حساب المشغل', 'error');
+      toast(err.message || 'فشل إنشاء حساب المشغل', 'error');
     } finally {
       setAppSubmitting(false);
     }
@@ -129,41 +127,33 @@ export function UsersPage() {
     }
     setAppActionUser(user.username);
     try {
-      const res = await api.updateAppUserRole(user.username, role);
-      if (res.ok) {
-        toast(`تم تحديث دور الحساب [${user.username}] إلى (${role}).`, 'success');
-        fetchAppUsers();
-      } else {
-        toast(res.error || 'فشل تحديث الدور', 'error');
-      }
+      await apiV1.updateUserRole(user.username, role);
+      toast(`تم تحديث دور الحساب [${user.username}] إلى (${role}).`, 'success');
+      fetchAppUsers();
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تحديث الدور', 'error');
+      toast(err.message || 'فشل تحديث الدور', 'error');
     } finally {
       setAppActionUser(null);
     }
   };
 
-  const handleDeleteAppUser = async (user: AppUser) => {
+  const handleDeleteAppUser = async (user: V1User) => {
     if (user.username.toLowerCase() === 'admin') {
-      toast('لا يمكن حذف الحساب الجذري admin.', 'error');
+      toast('لا يمكن تعطيل الحساب الجذري admin.', 'error');
       return;
     }
     if (currentUser?.username?.toLowerCase() === user.username.toLowerCase()) {
-      toast('لا يمكنك حذف الحساب الذي تستخدمه حالياً.', 'error');
+      toast('لا يمكنك تعطيل الحساب الذي تستخدمه حالياً.', 'error');
       return;
     }
-    if (!confirm(`حذف حساب مشغل النظام [${user.username}] نهائياً؟`)) return;
+    if (!confirm(`تعطيل حساب مشغل النظام [${user.username}]؟ سيتم إنهاء جلساته فوراً.`)) return;
     setAppActionUser(user.username);
     try {
-      const res = await api.deleteAppUser(user.username);
-      if (res.ok) {
-        toast(`تم حذف حساب المشغل [${user.username}].`, 'success');
-        fetchAppUsers();
-      } else {
-        toast(res.error || 'فشل حذف الحساب', 'error');
-      }
+      await apiV1.updateUserStatus(user.username, false);
+      toast(`تم تعطيل حساب المشغل [${user.username}] وإنهاء جلساته.`, 'success');
+      fetchAppUsers();
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء حذف الحساب', 'error');
+      toast(err.message || 'فشل تعطيل الحساب', 'error');
     } finally {
       setAppActionUser(null);
     }
@@ -547,7 +537,7 @@ export function UsersPage() {
                 <TableHead style={{ width: '20%', textAlign: 'start' }}>الاسم الكامل</TableHead>
                 <TableHead style={{ width: '19%', textAlign: 'start' }}>الدور والصلاحية</TableHead>
                 <TableHead style={{ width: '12%', textAlign: 'start' }}>حالة الحساب</TableHead>
-                <TableHead style={{ width: '19%', textAlign: 'start' }}>آخر دخول</TableHead>
+                <TableHead style={{ width: '19%', textAlign: 'start' }}>المصادقة الثنائية</TableHead>
                 <TableHead style={{ width: '12%', textAlign: 'end' }}>إجراءات</TableHead>
               </TableRow>
             </TableHeader>
@@ -621,22 +611,45 @@ export function UsersPage() {
                       </TableCell>
                       <TableCell style={{ width: '19%' }} className="text-xs text-muted">
                         <span style={{ whiteSpace: 'nowrap' }}>
-                          {u.last_login ? new Date(u.last_login).toLocaleString('ar-SA') : 'لم يسجل بعد'}
+                          {u.mfa_enabled ? 'MFA مفعّل' : '—'}
                         </span>
                       </TableCell>
                       <TableCell style={{ width: '12%', textAlign: 'end' }}>
                         {canManageAppUsers ? (
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            disabled={isRoot || isSelf || appActionUser === u.username}
-                            onClick={() => handleDeleteAppUser(u)}
-                            style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
-                            title={isRoot ? 'الحساب الجذري محمي من الحذف' : 'حذف حساب المشغل'}
-                          >
-                            <Trash2 size={12} style={{ marginInlineEnd: 4 }} />
-                            حذف
-                          </Button>
+                          u.is_active ? (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={isRoot || isSelf || appActionUser === u.username}
+                              onClick={() => handleDeleteAppUser(u)}
+                              style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
+                              title={isRoot ? 'الحساب الجذري محمي من التعطيل' : 'تعطيل حساب المشغل وإنهاء جلساته'}
+                            >
+                              <Trash2 size={12} style={{ marginInlineEnd: 4 }} />
+                              تعطيل
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="glass"
+                              disabled={appActionUser === u.username}
+                              onClick={async () => {
+                                setAppActionUser(u.username);
+                                try {
+                                  await apiV1.updateUserStatus(u.username, true);
+                                  toast(`تم تفعيل حساب المشغل [${u.username}].`, 'success');
+                                  fetchAppUsers();
+                                } catch (err: any) {
+                                  toast(err.message || 'فشل تفعيل الحساب', 'error');
+                                } finally {
+                                  setAppActionUser(null);
+                                }
+                              }}
+                              style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
+                            >
+                              تفعيل
+                            </Button>
+                          )
                         ) : (
                           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                             <ShieldCheck size={12} style={{ marginInlineEnd: 4 }} />

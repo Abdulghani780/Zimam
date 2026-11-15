@@ -29,11 +29,12 @@ LEGACY_BASE_URL = os.getenv("ASAAS_LEGACY_API_URL", "http://127.0.0.1:8765").rst
 # own, so browsers can never forge it (it is also absent from the legacy
 # CORS allow-headers list).
 PROXY_USER_HEADER = "x-asaas-proxy-user"
+PROXY_ROLE_HEADER = "x-asaas-proxy-role"
 V1_SESSION_COOKIE = "asaas_v1_session"
 
 
-def _v1_session_username(raw: str | None) -> str | None:
-    """Resolve a control-plane session cookie to a username, or None."""
+def _v1_session_identity(raw: str | None) -> tuple[str, str] | None:
+    """Resolve a control-plane session cookie to (username, role), or None."""
     if not raw:
         return None
     try:
@@ -52,7 +53,7 @@ def _v1_session_username(raw: str | None) -> str | None:
             user = db.get(User, row.user_id)
             if not user or not user.is_active:
                 return None
-            return user.username
+            return user.username, (user.role or ("admin" if user.is_admin else "viewer"))
     except Exception:
         return None
 
@@ -96,9 +97,9 @@ async def proxy_legacy(path: str, request: Request):
         k: v for k, v in request.headers.items()
         if k.lower() not in _HOP_BY_HOP and not k.lower().startswith("x-asaas-proxy-")
     }
-    v1_user = await asyncio.to_thread(_v1_session_username, request.cookies.get(V1_SESSION_COOKIE))
-    if v1_user:
-        headers[PROXY_USER_HEADER] = v1_user
+    identity = await asyncio.to_thread(_v1_session_identity, request.cookies.get(V1_SESSION_COOKIE))
+    if identity:
+        headers[PROXY_USER_HEADER], headers[PROXY_ROLE_HEADER] = identity
     body = await request.body()
 
     client = _get_client()
