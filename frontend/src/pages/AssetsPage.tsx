@@ -389,54 +389,30 @@ export function AssetsPage() {
               </button>
             </div>
 
-            {/* Telemetry Grid */}
+            {/* Telemetry Grid — no agent-linked metrics exist yet, show honest state */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
-              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>المعالج والأنوية</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>8 أنوية حقيقية</div>
-                <span style={{ fontSize: 11, color: 'var(--paid)' }}>الحمل الإجمالي: 32.1%</span>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>الذاكرة المادية RAM</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>31.5 / 63.8 GB</div>
-                <span style={{ fontSize: 11, color: 'var(--chart-out)' }}>49.5% مستخدم</span>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>التخزين NVMe C:\</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>338 / 475 GB</div>
-                <span style={{ fontSize: 11, color: 'var(--accent)' }}>71.1% مستخدم</span>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>حركة الشبكة والكمون</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>0.8 ms</div>
-                <span style={{ fontSize: 11, color: 'var(--paid)' }}>10 Gbps Sovereign Mesh</span>
-              </div>
+              {[
+                { label: 'المعالج والأنوية', value: '—' },
+                { label: 'الذاكرة المادية RAM', value: '—' },
+                { label: 'التخزين', value: '—' },
+                { label: 'حركة الشبكة والكمون', value: selectedServer.latency_ms > 0 ? `${selectedServer.latency_ms} ms` : '—' },
+              ].map((m) => (
+                <div key={m.label} style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{m.label}</span>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>{m.value}</div>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>لا تتوفر قياسات — تتطلب وكيلاً مرتبطاً بالأصل</span>
+                </div>
+              ))}
             </div>
 
-            {/* Core Services Section */}
+            {/* Core Services Section — not collected yet */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                الخدمات الحيوية النشطة (Core Services) — 4 قيد التشغيل
+                الخدمات النشطة — غير متاحة
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
-                {['TermService (RDP)', 'MSSQLSERVER (Database)', 'W3SVC (IIS Web)', 'WinDefend (Security)'].map((s, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: 8,
-                      background: 'var(--shadow-soft)',
-                      border: '1px solid var(--paid-bg)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--paid)' }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>{s}</span>
-                  </div>
-                ))}
-              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                لا تُجمع بيانات الخدمات بعد. عندما يرتبط وكيلاً ASAAS بهذا الأصل عبر /api/v1/agents وتُنفَّذ مهمة service.list موقعة ستظهر النتائج الحقيقية هنا.
+              </p>
             </div>
 
             {/* Actions Toolbar */}

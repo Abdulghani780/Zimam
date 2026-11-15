@@ -81,11 +81,11 @@ export function JitElevationPage() {
       if (res && res.ok && Array.isArray(res.grants)) {
         setGrants(res.grants.map((g: any) => ({
           id: g.id || `jit-${Math.random()}`,
-          user: g.user || 'Unknown',
-          target: g.target || 'SRV-PROD-ASAAS-01',
-          role: g.role || g.target_role || 'Operator',
+          user: g.user || '—',
+          target: g.target || '—',
+          role: g.role || g.target_role || '—',
           ticket: g.reason || g.ticket || '—',
-          duration_mins: g.duration_mins || 30,
+          duration_mins: g.duration_mins ?? 0,
           remaining_sec: g.status === 'PENDING' ? 0 : (g.remaining_sec ?? 0),
           status: (g.status || 'ACTIVE') as JitStatus,
           approver: g.approver || '',

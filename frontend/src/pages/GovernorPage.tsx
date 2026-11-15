@@ -467,15 +467,15 @@ export function GovernorPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>كفاءة تشغيل الذاكرة الحية</span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>88.4%</span>
-                  <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>استقرار عالي</span>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>—</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 700 }}>لا تتوفر بيانات</span>
                 </div>
                 <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0, lineHeight: 1.4 }}>
-                  تم تحجيم تسريبات المقابض (Handle Leaks) بنسبة ممتازة خلال الـ 24 ساعة الماضية.
+                  لا يُحتسب مؤشر كفاءة الذاكرة بعد — سيظهر عند توفر قياسات حقيقية من الوكلاء.
                 </p>
               </div>
 
-              {/* Gauge SVG */}
+              {/* Gauge SVG — no real metric, render empty ring */}
               <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
                 <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
                   <path
@@ -483,14 +483,6 @@ export function GovernorPage() {
                     fill="none"
                     stroke="var(--glass-rim-low)"
                     strokeWidth="3.5"
-                  />
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="var(--accent)"
-                    strokeWidth="3.5"
-                    strokeDasharray="88, 100"
-                    strokeLinecap="round"
                   />
                 </svg>
                 <div
@@ -503,9 +495,9 @@ export function GovernorPage() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Activity size={14} color="var(--accent)" />
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-1)', fontFamily: 'var(--font)' }}>
-                    88%
+                  <Activity size={14} color="var(--text-3)" />
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-3)', fontFamily: 'var(--font)' }}>
+                    —
                   </span>
                 </div>
               </div>
