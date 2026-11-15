@@ -161,8 +161,8 @@ class UserService:
         clean_user = username.strip()
         if not clean_user or not re.match(r'^[a-zA-Z0-9_\-\.]{2,30}$', clean_user):
             return {'ok': False, 'error': 'اسم المستخدم غير صالح. استخدم أحرف إنجليزية وأرقام فقط.'}
-        if not password or len(password) < 4:
-            return {'ok': False, 'error': 'كلمة المرور قصيرة جداً.'}
+        if not password or len(password) < 8:
+            return {'ok': False, 'error': 'كلمة المرور قصيرة جداً (الحد الأدنى 8 رموز).'}
 
         try:
             # 1. Create user

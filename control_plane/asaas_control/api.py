@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -21,6 +22,16 @@ from .vault import EnvelopeVault
 
 router = APIRouter(prefix="/api/v1")
 _connection_store = ConnectionTokenStore(hashlib.sha256((settings.gateway_token or "disabled").encode()).digest())
+
+# In-memory sliding-window login throttling: 8 failures per IP+username per 5 minutes.
+_login_attempts: dict[str, list[float]] = {}
+_LOGIN_WINDOW_SEC = 300
+_LOGIN_MAX_ATTEMPTS = 8
+
+
+def _login_throttle_key(request: Request, username: str) -> str:
+    host = request.client.host if request.client else "local"
+    return f"{host}:{username}"
 
 
 class BootstrapRequest(BaseModel):
@@ -128,18 +139,30 @@ def bootstrap(payload: BootstrapRequest, x_bootstrap_token: str | None = Header(
 
 
 @router.post("/auth/login")
-def login(payload: LoginRequest, response: Response) -> dict:
+def login(payload: LoginRequest, request: Request, response: Response) -> dict:
+    key = _login_throttle_key(request, payload.username)
+    now = time.time()
+    attempts = [t for t in _login_attempts.get(key, []) if now - t < _LOGIN_WINDOW_SEC]
+    if len(attempts) >= _LOGIN_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many login attempts; try again later")
+
+    def _fail(detail: str) -> None:
+        attempts.append(time.time())
+        _login_attempts[key] = attempts
+        raise HTTPException(status_code=401, detail=detail)
+
     with db_session() as db:
         user = db.scalar(select(User).where(User.username == payload.username))
         if not user or not user.is_active or not verify_password(user.password_hash, payload.password):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            _fail("Invalid credentials")
         if user.mfa_secret:
             if not payload.otp:
-                raise HTTPException(status_code=401, detail="MFA required")
+                _fail("MFA required")
             import pyotp
             if not pyotp.TOTP(user.mfa_secret).verify(payload.otp):
-                raise HTTPException(status_code=401, detail="Invalid MFA code")
+                _fail("Invalid MFA code")
         user_id = user.id
+    _login_attempts.pop(key, None)
     _set_session(response, user_id)
     return {"authenticated": True, "user_id": user_id}
 
