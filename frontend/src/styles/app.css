@@ -6260,6 +6260,35 @@ input, textarea {
   letter-spacing: -0.01em;
 }
 
+/* ── 14. KPI tiles: editorial serif numerals + gold crown rule ── */
+.kpi {
+  border-radius: var(--radius-lg);
+}
+
+.kpi::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 106, 0.5), transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.kpi__value {
+  font-family: var(--font-display, 'Thmanyah Serif Display', serif);
+  letter-spacing: -0.02em;
+}
+
+.kpi__icon {
+  color: var(--text-gold, #d4af6a);
+}
+
+.kpi--danger .kpi__icon {
+  color: var(--status-danger);
+}
+
 /* ── 15. Login greeting: the one expressive calligraphic moment ── */
 .auth-intro__greeting {
   margin: 0;
