@@ -186,6 +186,17 @@
 
   /* Directional Reading Axis: -1 in RTL (Arabic), 1 in LTR */
   --dir-x: -1;
+
+  /* Compatibility aliases → official ASAAS kit tokens */
+  --text-1:                 var(--text);
+  --accent-soft:            rgba(216, 173, 92, 0.14);
+  --danger:                 var(--unpaid);
+  --mono:                   var(--primitive-font-mono);
+  --panel:                  var(--surface-container-low);
+  --panel-raised:           var(--surface-container);
+  --panel-soft:             var(--surface-ground);
+  --panel-inset:            var(--surface-container-lowest);
+  --shadow-soft:            rgba(0, 0, 0, 0.5);
 }
 
 /* ==========================================================================
@@ -232,6 +243,17 @@
   --action-secondary-hover:    #d9d0c0;
   --action-secondary-fg:       #221f1f;
   --action-accent:             #8f6626;
+
+  /* Compatibility aliases → official ASAAS kit tokens (light) */
+  --text-1:                 var(--text);
+  --accent-soft:            rgba(186, 149, 85, 0.18);
+  --danger:                 var(--unpaid);
+  --mono:                   var(--primitive-font-mono);
+  --panel:                  var(--surface-container-low);
+  --panel-raised:           var(--surface-container);
+  --panel-soft:             var(--surface-ground);
+  --panel-inset:            var(--surface-container-lowest);
+  --shadow-soft:            rgba(34, 31, 31, 0.14);
 }
 
 :root[dir='ltr'] {

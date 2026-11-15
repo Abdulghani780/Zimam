@@ -13,8 +13,7 @@ function savedTheme(): Theme | null {
 }
 
 export function useTheme(): [Theme, () => void] {
-  // Default to 'dark' for sovereign mission control & server governance
-  const [theme, setTheme] = useState<Theme>(() => savedTheme() ?? 'dark');
+  const [theme, setTheme] = useState<Theme>(() => savedTheme() ?? 'light');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

@@ -3,15 +3,15 @@
  * assistant widget. Import the styles once (main.tsx): `import './asaas-ui/styles/index.css'`.
  */
 export { Ambient } from './ui/Ambient';
-export { Button, type ButtonProps } from './ui/Button';
+export { Button } from './ui/Button';
 export { ConfirmDialog } from './ui/ConfirmDialog';
 export { EmptyState, ErrorState, Skeleton } from './ui/Feedback';
-export { Field, FormError, MoneyInput, Select, TextArea, TextInput, type FieldProps, type TextInputProps } from './ui/Field';
+export { Field, FormError, MoneyInput, Select, TextArea, TextInput } from './ui/Field';
 export { Card, Glass } from './ui/Glass';
 export { Icon, type IconName } from './ui/Icon';
-export { Modal, type ModalProps } from './ui/Modal';
+export { Modal } from './ui/Modal';
 export { MonthSwitcher } from './ui/MonthSwitcher';
-export { PasswordInput, PasswordStrength, type PasswordInputProps } from './ui/PasswordInput';
+export { PasswordInput, PasswordStrength } from './ui/PasswordInput';
 export { Segmented } from './ui/Segmented';
 export { SiteHeader, type SiteHeaderProps, TabBar } from './ui/SiteHeader';
 export { ProgressBar, ProgressRing, Stat } from './ui/Stat';
@@ -27,6 +27,7 @@ export {
   TableHead,
   TableHeader,
   TableRow,
+  type TableEmptyProps,
   type TableRowProps,
 } from './ui/Table';
 export { ToastProvider, useToast } from './ui/Toast';

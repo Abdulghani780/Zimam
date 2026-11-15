@@ -73,16 +73,16 @@ export function HistoricalMetricsChart({ points, value, usedGb, totalGb }: Histo
                 <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`استهلاك الذاكرة ${value}%`}>
                   <defs>
                     <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#e8c47b" stopOpacity="0.38" />
-                      <stop offset="55%" stopColor="#d8ad5c" stopOpacity="0.16" />
-                      <stop offset="100%" stopColor="#d8ad5c" stopOpacity="0.02" />
+                      <stop offset="0%" style={{ stopColor: 'var(--chart-in)' }} stopOpacity="0.38" />
+                      <stop offset="55%" style={{ stopColor: 'var(--chart-in)' }} stopOpacity="0.16" />
+                      <stop offset="100%" style={{ stopColor: 'var(--chart-in)' }} stopOpacity="0.02" />
                     </linearGradient>
                   </defs>
                   <path d={buildArea(points)} fill={`url(#${gradientId})`} stroke="none" />
                   <path
                     d={buildLine(points)}
                     fill="none"
-                    stroke="#e8c47b"
+                    style={{ stroke: 'var(--chart-in)' }}
                     strokeWidth="1.7"
                     strokeLinecap="round"
                     strokeLinejoin="round"

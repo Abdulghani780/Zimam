@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Glass } from './Glass';
 import { Icon } from './Icon';
 
-type Tone = 'success' | 'error' | 'info' | 'warn';
+type Tone = 'success' | 'error';
 interface ToastItem {
   id: number;
   tone: Tone;

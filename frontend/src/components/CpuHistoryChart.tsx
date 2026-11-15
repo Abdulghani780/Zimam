@@ -74,15 +74,15 @@ export function CpuHistoryChart({ points, value }: CpuHistoryChartProps) {
                 <svg className="chart__svg" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label={`متوسط استهلاك المعالج ${value}%`}>
                   <defs>
                     <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#e8c47b" stopOpacity="0.16" />
-                      <stop offset="100%" stopColor="#e8c47b" stopOpacity="0" />
+                      <stop offset="0%" style={{ stopColor: 'var(--chart-in)' }} stopOpacity="0.16" />
+                      <stop offset="100%" style={{ stopColor: 'var(--chart-in)' }} stopOpacity="0" />
                     </linearGradient>
                   </defs>
                   <path d={buildPath(points, true)} fill={`url(#${gradientId})`} stroke="none" />
                   <path
                     d={linePath}
                     fill="none"
-                    stroke="#e8c47b"
+                    style={{ stroke: 'var(--chart-in)' }}
                     strokeWidth="1.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
