@@ -228,7 +228,11 @@ export const apiV1 = {
   // Asset nodes & agents
   assetNodes: () => request<unknown>('/asset-nodes'),
   enrollAgent: (body: { agent_key?: string; [key: string]: unknown }) =>
-    post<{ agent_id?: string; agent_key?: string }>('/agents/enroll', body),
+    post<{ agent_id?: string; agent_key?: string; signing_public_key?: string }>('/agents/enroll', body),
+  createJob: (body: { agent_id: string; job_type: string; payload?: Record<string, unknown> }) =>
+    post<{ id?: string; status?: string }>('/jobs', body),
+  listJobs: (agentId?: string) =>
+    request<unknown>(`/jobs${agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''}`),
   agentHeartbeat: (agentId: string, agentKey: string, inventory: Record<string, unknown>) =>
     request<unknown>(`/agents/${agentId}/heartbeat`, {
       method: 'POST',

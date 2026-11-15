@@ -15,9 +15,10 @@ from .audit import AuditChain
 from .config import settings
 from .connection_tokens import ConnectionTokenStore
 from .identity import verify_legacy_password
-from .models import AccessPolicyRow, Account, Agent, AppSession, Asset, User
+from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, User
 from .permissions import AccessContext, AccessPolicy, PermissionEngine
 from .security import hash_password, new_token, token_hash, verify_password
+from .signing import get_job_signer
 from .storage import append_audit, db_session
 from .vault import EnvelopeVault
 
@@ -100,6 +101,24 @@ class AgentHeartbeat(BaseModel):
 
 class MfaVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=8)
+
+
+# Read-only job types the agent is allowed to execute. Write/destructive
+# actions stay behind the legacy ActionEngine until a reviewed allowlist
+# and confirmation flow exist.
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect"}
+
+
+class JobCreateRequest(BaseModel):
+    agent_id: str
+    job_type: str = Field(min_length=3, max_length=64)
+    payload: dict = {}
+
+
+class AgentJobResult(BaseModel):
+    status: str = Field(default="succeeded", pattern="^(succeeded|failed)$")
+    result: dict = {}
+    error: str | None = None
 
 
 class UserCreateRequest(BaseModel):
@@ -475,6 +494,21 @@ def system_backup(_: User = Depends(_current_user)) -> dict:
     raise HTTPException(status_code=501, detail="Backup worker is not configured; use database and MinIO backup policy")
 
 
+def _require_agent(agent_id: str, agent_key: str | None) -> Agent:
+    if not agent_key:
+        raise HTTPException(status_code=401, detail="Agent key required")
+    with db_session() as db:
+        agent = db.get(Agent, agent_id)
+        if not agent or not secrets.compare_digest(agent.enrollment_hash, token_hash(agent_key)):
+            raise HTTPException(status_code=401, detail="Invalid agent key")
+        db.expunge(agent)
+        return agent
+
+
+def _job_signature_payload(job_id: str, agent_id: str, job_type: str, payload_json: str) -> bytes:
+    return f"asaas-job|{job_id}|{agent_id}|{job_type}|{payload_json}".encode()
+
+
 @router.post("/agents/enroll", status_code=201)
 def enroll_agent(name: str, x_agent_enrollment_token: str | None = Header(default=None)) -> dict:
     if not settings.agent_enrollment_token or not x_agent_enrollment_token or not secrets.compare_digest(x_agent_enrollment_token, settings.agent_enrollment_token):
@@ -483,21 +517,89 @@ def enroll_agent(name: str, x_agent_enrollment_token: str | None = Header(defaul
     with db_session() as db:
         agent = Agent(id=uuid.uuid4().hex, name=name, enrollment_hash=token_hash(raw), status="enrolled", inventory_json="{}")
         db.add(agent)
-        return {"agent_id": agent.id, "agent_key": raw, "warning": "Store this key once; it is not shown again."}
+        return {"agent_id": agent.id, "agent_key": raw, "signing_public_key": get_job_signer().public_key_hex(), "warning": "Store this key once; it is not shown again."}
 
 
 @router.post("/agents/{agent_id}/heartbeat")
 def heartbeat(agent_id: str, payload: AgentHeartbeat, x_agent_key: str | None = Header(default=None)) -> dict:
-    if not x_agent_key:
-        raise HTTPException(status_code=401, detail="Agent key required")
+    _require_agent(agent_id, x_agent_key)
     with db_session() as db:
         agent = db.get(Agent, agent_id)
-        if not agent or not secrets.compare_digest(agent.enrollment_hash, token_hash(x_agent_key)):
-            raise HTTPException(status_code=401, detail="Invalid agent key")
         agent.last_seen_at = datetime.now(UTC)
         agent.status = "online"
         agent.inventory_json = json.dumps(payload.inventory)
         return {"accepted": True, "server_time": datetime.now(UTC)}
+
+
+# --- Signed agent jobs -----------------------------------------------------
+
+@router.post("/jobs", status_code=201)
+def create_job(payload: JobCreateRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    if payload.job_type not in ALLOWED_JOB_TYPES:
+        raise HTTPException(status_code=400, detail=f"Job type not allowed; supported: {sorted(ALLOWED_JOB_TYPES)}")
+    job_id = uuid.uuid4().hex
+    payload_json = json.dumps(payload.payload or {}, sort_keys=True, separators=(",", ":"))
+    signature = get_job_signer().sign(_job_signature_payload(job_id, payload.agent_id, payload.job_type, payload_json)).hex()
+    with db_session() as db:
+        if not db.get(Agent, payload.agent_id):
+            raise HTTPException(status_code=404, detail="Agent not found")
+        job = AgentJob(id=job_id, agent_id=payload.agent_id, job_type=payload.job_type, payload_json=payload_json, signature=signature, created_by=user.username, created_at=datetime.now(UTC))
+        db.add(job)
+        append_audit(db, actor_id=user.id, action="agent.job_create", target_id=job_id, payload={"agent_id": payload.agent_id, "job_type": payload.job_type})
+        return {"id": job.id, "agent_id": job.agent_id, "job_type": job.job_type, "status": "pending"}
+
+
+@router.get("/jobs")
+def list_jobs(agent_id: str | None = None, _: User = Depends(_current_user)) -> list[dict]:
+    stmt = select(AgentJob).order_by(AgentJob.created_at.desc())
+    if agent_id:
+        stmt = stmt.where(AgentJob.agent_id == agent_id)
+    with db_session() as db:
+        return [{"id": j.id, "agent_id": j.agent_id, "job_type": j.job_type, "status": j.status, "result": json.loads(j.result_json) if j.result_json else None, "created_by": j.created_by, "created_at": j.created_at, "completed_at": j.completed_at} for j in db.scalars(stmt.limit(200))]
+
+
+@router.post("/agents/{agent_id}/jobs/poll")
+def poll_jobs(agent_id: str, x_agent_key: str | None = Header(default=None)) -> dict:
+    _require_agent(agent_id, x_agent_key)
+    with db_session() as db:
+        job = db.scalar(
+            select(AgentJob)
+            .where(AgentJob.agent_id == agent_id, AgentJob.status == "pending")
+            .order_by(AgentJob.created_at.asc())
+            .limit(1)
+        )
+        if not job:
+            return {"job": None}
+        job.status = "delivered"
+        job.delivered_at = datetime.now(UTC)
+        return {
+            "job": {
+                "id": job.id,
+                "type": job.job_type,
+                "payload": json.loads(job.payload_json),
+                # Exact canonical string the signature covers — the agent must
+                # verify over these bytes, not a re-serialized JSON object.
+                "payload_canonical": job.payload_json,
+                "signature": job.signature,
+                "signing_public_key": get_job_signer().public_key_hex(),
+            }
+        }
+
+
+@router.post("/agents/{agent_id}/jobs/{job_id}/result")
+def submit_job_result(agent_id: str, job_id: str, payload: AgentJobResult, x_agent_key: str | None = Header(default=None)) -> dict:
+    _require_agent(agent_id, x_agent_key)
+    with db_session() as db:
+        job = db.get(AgentJob, job_id)
+        if not job or job.agent_id != agent_id:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if job.status not in {"delivered", "pending"}:
+            raise HTTPException(status_code=409, detail=f"Job already {job.status}")
+        job.status = payload.status
+        job.result_json = json.dumps({"result": payload.result, "error": payload.error}, ensure_ascii=False)
+        job.completed_at = datetime.now(UTC)
+        return {"accepted": True, "job_id": job.id, "status": job.status}
 
 
 @router.get("/audit/events")

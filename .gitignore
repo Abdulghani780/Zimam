@@ -61,3 +61,7 @@ unslop/
 # Claude Code local settings (machine-specific gateway config)
 .claude/
 stitch_asaas_server_control_v2.5.zip
+
+# .NET agent build output
+agent/bin/
+agent/obj/

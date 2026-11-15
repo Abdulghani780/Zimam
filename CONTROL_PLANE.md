@@ -18,13 +18,14 @@ Session gateway ----------------------> one-time connection token
 - AES-256-GCM account-secret envelopes; secrets are never returned by list endpoints;
 - HMAC-signed, one-time, short-lived connection tokens plus gateway-only consumption;
 - agent enrollment/heartbeat with one-time agent key and mTLS-ready HTTP client;
+- signed agent job channel: control plane issues Ed25519-signed read-only jobs, agent verifies the signature over the canonical payload before executing and posts results back;
 - append-only audit rows with `previous_hash`, `event_hash` and verification endpoint;
 - Compose baseline for PostgreSQL, Redis, MinIO and guacd;
 - legacy v2 compatibility routes no longer generate RDP files, reveal vault secrets, or claim fake JIT/replay success.
 
 ## Explicit release gates still open
 
-The code intentionally returns a clear `501`/`503` for pieces that are not wired yet: Guacamole/SSH/SFTP proxy data paths, Redis-backed token consumption across workers, live session termination, screen/terminal recording persistence and replay, AD/LDAP synchronization, backup/restore worker, signed agent jobs, and production mTLS certificate issuance. Those must be completed and load/security tested before selling the product as a JumpServer replacement.
+The code intentionally returns a clear `501`/`503` for pieces that are not wired yet: Guacamole/SSH/SFTP proxy data paths, Redis-backed token consumption across workers, live session termination, screen/terminal recording persistence and replay, AD/LDAP synchronization, backup/restore worker, production mTLS certificate issuance. Signed agent jobs (Ed25519, read-only allowlist: system.info/process.list/service.list/disk.list/inventory.collect) are implemented end-to-end and verified against the Windows agent. Those must be completed and load/security tested before selling the product as a JumpServer replacement.
 
 Run the v1 API locally with the instructions in `control_plane/README.md`; production deployment requires a populated `control_plane/.env`, TLS reverse proxy, PostgreSQL, MinIO retention/legal-hold policy, and an independent security review.
 
