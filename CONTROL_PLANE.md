@@ -19,6 +19,7 @@ Session gateway ----------------------> one-time connection token
 - HMAC-signed, one-time, short-lived connection tokens plus gateway-only consumption;
 - agent enrollment/heartbeat with one-time agent key and mTLS-ready HTTP client;
 - signed agent job channel: control plane issues Ed25519-signed read-only jobs, agent verifies the signature over the canonical payload before executing and posts results back;
+- `GET /api/v1/agents` + `/api/v1/jobs` power the console `/agents` page (enrolled agents, job history, dispatch modal);
 - append-only audit rows with `previous_hash`, `event_hash` and verification endpoint;
 - Compose baseline for PostgreSQL, Redis, MinIO and guacd;
 - legacy v2 compatibility routes no longer generate RDP files, reveal vault secrets, or claim fake JIT/replay success.
