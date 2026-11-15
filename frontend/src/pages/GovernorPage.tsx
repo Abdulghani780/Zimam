@@ -1,6 +1,6 @@
 ﻿/**
  * ASAAS Server Control v2.5 - Screen _1
- * Ù…Ø±ÙƒØ² Ø§Ù„ØªØ­ÙƒÙ… ÙˆØ­Ø§ÙƒÙ… Ø§Ù„Ù…ÙˆØ§Ø±Ø¯ Ø§Ù„Ø°ÙƒÙŠ (Resource Governor)
+ * مركز التحكم وحاكم الموارد الذكي (Resource Governor)
  * Strict implementation of Stitch Prototype _1
  */
 
@@ -31,6 +31,7 @@ export function GovernorPage() {
   const [autoDiscChecked, setAutoDiscChecked] = useState<boolean>(true);
   const [dailyLogoffChecked, setDailyLogoffChecked] = useState<boolean>(false);
   const [trimmingTarget, setTrimmingTarget] = useState<string | null>(null);
+  const [showAllServices, setShowAllServices] = useState(false);
 
   const fetchControlData = async (silent = false) => {
     try {
@@ -47,7 +48,7 @@ export function GovernorPage() {
       setServices(Array.isArray(s) ? s : (s as any)?.services || []);
       setProcesses(snap?.processes || []);
     } catch (err: any) {
-      if (!silent) toast(err.message || 'ÙØ´Ù„ Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø­Ø§ÙƒÙ…', 'error');
+      if (!silent) toast(err.message || 'فشل جلب بيانات الحاكم', 'error');
     }
   };
 
@@ -64,9 +65,9 @@ export function GovernorPage() {
     try {
       const updated = await api.updateGovernor({ auto_trim: val });
       setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
-      toast(val ? 'ØªÙ… ØªÙØ¹ÙŠÙ„ Ø§Ù„ØªÙØ±ÙŠØº Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ Ù„Ù„Ø°Ø§ÙƒØ±Ø© Ø§Ù„Ø®Ø§Ù…Ù„Ø©.' : 'ØªÙ… ØªØ­ÙˆÙŠÙ„ Ø§Ù„Ø­Ø§ÙƒÙ… Ø¥Ù„Ù‰ Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„ÙŠØ¯ÙˆÙŠ.', 'success');
+      toast(val ? 'تم تفعيل التفريغ التلقائي للذاكرة الخاملة.' : 'تم تحويل الحاكم إلى الوضع اليدوي.', 'success');
     } catch (err: any) {
-      toast(err.message || 'Ø®Ø·Ø£ ÙÙŠ Ø­ÙØ¸ Ø§Ù„Ø³ÙŠØ§Ø³Ø©', 'error');
+      toast(err.message || 'خطأ في حفظ السياسة', 'error');
       setAutoTrimChecked(!val);
     }
   };
@@ -76,9 +77,9 @@ export function GovernorPage() {
     try {
       const updated = await api.updateGovernor({ auto_disconnect_enabled: val });
       setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
-      toast(val ? 'ØªÙ… ØªÙØ¹ÙŠÙ„ Ø§Ù„ÙØµÙ„ Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ Ù„Ù„Ø¬Ù„Ø³Ø§Øª Ø§Ù„Ù…Ù†Ø³ÙŠØ©.' : 'ØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø§Ù„ÙØµÙ„ Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ Ù„Ù„Ø¬Ù„Ø³Ø§Øª.', 'success');
+      toast(val ? 'تم تفعيل الفصل التلقائي للجلسات المنسية.' : 'تم تعطيل الفصل التلقائي للجلسات.', 'success');
     } catch (err: any) {
-      toast(err.message || 'Ø®Ø·Ø£ ÙÙŠ Ø­ÙØ¸ Ø³ÙŠØ§Ø³Ø© ÙØµÙ„ Ø§Ù„Ø¬Ù„Ø³Ø§Øª', 'error');
+      toast(err.message || 'خطأ في حفظ سياسة فصل الجلسات', 'error');
       setAutoDiscChecked(!val);
     }
   };
@@ -88,9 +89,9 @@ export function GovernorPage() {
     try {
       const updated = await api.updateGovernor({ auto_logoff_enabled: val });
       setGovernor((prev) => (prev ? { ...prev, ...updated } : (updated as any)));
-      toast(val ? 'ØªÙ… ØªÙØ¹ÙŠÙ„ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬ Ø§Ù„Ø¥Ø¬Ø¨Ø§Ø±ÙŠ Ø¨Ù†Ù‡Ø§ÙŠØ© Ø§Ù„Ø¹Ù…Ù„.' : 'ØªÙ… ØªØ¹Ø·ÙŠÙ„ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬ Ø§Ù„Ø¥Ø¬Ø¨Ø§Ø±ÙŠ.', 'success');
+      toast(val ? 'تم تفعيل تسجيل الخروج الإجباري بنهاية العمل.' : 'تم تعطيل تسجيل الخروج الإجباري.', 'success');
     } catch (err: any) {
-      toast(err.message || 'Ø®Ø·Ø£ ÙÙŠ Ø­ÙØ¸ Ø³ÙŠØ§Ø³Ø© ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬', 'error');
+      toast(err.message || 'خطأ في حفظ سياسة تسجيل الخروج', 'error');
       setDailyLogoffChecked(!val);
     }
   };
@@ -112,16 +113,16 @@ export function GovernorPage() {
       if (res && res.ok) {
         const rec = res.reclaimed_mb ?? (res as any)?.result?.reclaimed_mb ?? 0;
         if (rec > 0) {
-          toast(`ØªÙ… ØªÙØ±ÙŠØº Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ø¹Ù…Ù„ Ù„Ù€ [${targetLabel}] Ø¨Ù†Ø¬Ø§Ø­ â€” ØªÙ… Ø§Ø³ØªØ±Ø¯Ø§Ø¯ ${rec} MB.`, 'success');
+          toast(`تم تفريغ مساحة العمل لـ [${targetLabel}] بنجاح â€” تم استرداد ${rec} MB.`, 'success');
         } else {
-          toast(res.message || `Ø°Ø§ÙƒØ±Ø© [${targetLabel}] Ù…Ø­Ø³Ù†Ø© Ù…Ø³Ø¨Ù‚Ø§Ù‹ ÙˆÙ„Ø§ ØªÙˆØ¬Ø¯ ØµÙØ­Ø§Øª Ø®Ø§Ù…Ù„Ø© Ù„ØªØ­Ø±ÙŠØ±Ù‡Ø§.`, 'success');
+          toast(res.message || `ذاكرة [${targetLabel}] محسنة مسبقاً ولا توجد صفحات خاملة لتحريرها.`, 'success');
         }
         fetchControlData();
       } else {
-        toast((res as any)?.error || 'ÙØ´Ù„ ØªÙØ±ÙŠØº Ø§Ù„Ø°Ø§ÙƒØ±Ø© Ù„Ù„Ù‡Ø¯Ù Ø§Ù„Ù…Ø­Ø¯Ø¯.', 'error');
+        toast((res as any)?.error || 'فشل تفريغ الذاكرة للهدف المحدد.', 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'ØªØ¹Ø°Ø± Ø§Ø³ØªØ¯Ø¹Ø§Ø¡ ØªÙØ±ÙŠØº Ø§Ù„Ø°Ø§ÙƒØ±Ø©', 'error');
+      toast(err.message || 'تعذر استدعاء تفريغ الذاكرة', 'error');
     } finally {
       setTrimmingTarget(null);
     }
@@ -132,31 +133,31 @@ export function GovernorPage() {
     try {
       const res = await api.controlService(name, action);
       if (res.ok) {
-        toast(`ØªÙ… ØªÙ†ÙÙŠØ° Ø£Ù…Ø± (${action}) Ù„Ù„Ø®Ø¯Ù…Ø© [${name}] Ø¨Ù†Ø¬Ø§Ø­.`, 'success');
+        toast(`تم تنفيذ أمر (${action}) للخدمة [${name}] بنجاح.`, 'success');
         const fresh = await api.getServices();
         setServices(fresh);
       } else {
-        toast(res.error || 'ÙØ´Ù„ ØªÙ†ÙÙŠØ° Ø§Ù„Ø£Ù…Ø±', 'error');
+        toast(res.error || 'فشل تنفيذ الأمر', 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'Ø®Ø·Ø£ ÙÙŠ Ù…Ø¹Ø§Ù„Ø¬Ø© Ø§Ù„Ø®Ø¯Ù…Ø©', 'error');
+      toast(err.message || 'خطأ في معالجة الخدمة', 'error');
     } finally {
       setServiceAction(null);
     }
   };
 
   const handleTerminateProcess = async (pid: number, name: string) => {
-    if (!window.confirm(`Ù‡Ù„ Ø£Ù†Øª Ù…ØªØ£ÙƒØ¯ Ù…Ù† Ø±ØºØ¨ØªÙƒ ÙÙŠ Ø¥Ù†Ù‡Ø§Ø¡ Ø§Ù„Ø¹Ù…Ù„ÙŠØ© ${name} (PID: ${pid})ØŸ`)) return;
+    if (!window.confirm(`هل أنت متأكد من رغبتك في إنهاء العملية ${name} (PID: ${pid})؟`)) return;
     try {
       const res = await api.terminateProcess(pid);
       if (res.ok) {
-        toast(`ØªÙ… Ø¥Ù†Ù‡Ø§Ø¡ Ø§Ù„Ø¹Ù…Ù„ÙŠØ© [${name}] Ø¨Ù†Ø¬Ø§Ø­.`, 'success');
+        toast(`تم إنهاء العملية [${name}] بنجاح.`, 'success');
         setProcesses((prev) => prev.filter((p) => p.pid !== pid));
       } else {
-        toast(res.error || 'ØªØ¹Ø°Ø± Ø¥Ù†Ù‡Ø§Ø¡ Ø§Ù„Ø¹Ù…Ù„ÙŠØ©', 'error');
+        toast(res.error || 'تعذر إنهاء العملية', 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'Ø®Ø·Ø£', 'error');
+      toast(err.message || 'خطأ', 'error');
     }
   };
 
@@ -230,7 +231,7 @@ export function GovernorPage() {
                   boxShadow: '0 0 8px var(--paid)',
                 }}
               />
-              Ù†Ø¸Ø§Ù… Ø§Ù„Ø­Ø§ÙƒÙ… Ø§Ù„Ø°ÙƒÙŠ ÙÙŠ ÙˆØ¶Ø¹ Ø§Ù„Ø­Ù…Ø§ÙŠØ© Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠØ© Active Autonomous Governor
+              نظام الحاكم الذكي في وضع الحماية التلقائية Active Autonomous Governor
             </span>
             <span
               style={{
@@ -255,12 +256,12 @@ export function GovernorPage() {
               margin: 0,
             }}
           >
-            Ù…Ø±ÙƒØ² Ø§Ù„ØªØ­ÙƒÙ… ÙˆØ­Ø§ÙƒÙ… Ø§Ù„Ù…ÙˆØ§Ø±Ø¯ Ø§Ù„Ø°ÙƒÙŠ (Resource Governor)
+            مركز التحكم وحاكم الموارد الذكي (Resource Governor)
           </h1>
 
           <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 900, lineHeight: 1.6 }}>
-            Ø¥Ø¯Ø§Ø±Ø© Ø­ÙŠÙˆÙŠØ© Ù„Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„Ù…Ø§Ø¯ÙŠØ© (Working Set Trim)ØŒ Ø¬Ø¯ÙˆÙ„Ø© Ø§Ù„Ø£ÙˆÙ„ÙˆÙŠØ§ØªØŒ ÙˆØªÙØ±ÙŠØº Ø®Ù…ÙˆÙ„ Ø§Ù„Ø¬Ù„Ø³Ø§Øª ÙˆØ§Ù„ØªØ·Ø¨ÙŠÙ‚Ø§Øª Ø§Ù„Ø«Ù‚ÙŠÙ„Ø©
-            Ù„Ù„Ø­ÙØ§Ø¸ Ø¹Ù„Ù‰ Ø§Ø³ØªÙ‚Ø±Ø§Ø± Ø£Ø¯Ø§Ø¡ ÙˆÙŠÙ†Ø¯ÙˆØ² Ø³ÙŠØ±ÙØ± Ø¨Ø¯ÙˆÙ† Ø§Ù„ØªØ£Ø«ÙŠØ± Ø¹Ù„Ù‰ Ø³Ù„Ø§Ø³Ø© Ø¬Ù„Ø³Ø§Øª Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†.
+            إدارة حيوية لمساحة العمل المادية (Working Set Trim)، جدولة الأولويات، وتفريغ خمول الجلسات والتطبيقات الثقيلة
+            للحفاظ على استقرار أداء ويندوز سيرفر بدون التأثير على سلاسة جلسات المستخدمين.
           </p>
         </div>
       </div>
@@ -273,7 +274,7 @@ export function GovernorPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                  Ø³ÙŠØ§Ø³Ø§Øª Ø§Ù„Ø­Ø§ÙƒÙ… Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ
+                  سياسات الحاكم التلقائي
                 </h2>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Working Set Governor Policies</span>
               </div>
@@ -306,10 +307,10 @@ export function GovernorPage() {
             >
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                  ØªÙØ¹ÙŠÙ„ Ø§Ù„ØªÙØ±ÙŠØº Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ Ù„Ù„Ø°Ø§ÙƒØ±Ø©
+                  تفعيل التفريغ التلقائي للذاكرة
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  Auto Trim Working Set Ù„Ù„Ø£Ø¹Ø¨Ø§Ø¡ ØºÙŠØ± Ø§Ù„Ù†Ø´Ø·Ø©
+                  Auto Trim Working Set للأعباء غير النشطة
                 </span>
               </div>
               <label className="toggle-switch">
@@ -337,7 +338,7 @@ export function GovernorPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                    Ø­Ø¯ Ø§Ù„Ø®Ù…ÙˆÙ„ Ù„Ù„ØªÙØ±ÙŠØº Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ
+                    حد الخمول للتفريغ التلقائي
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                     Idle Tolerance Before Set Paging
@@ -357,7 +358,7 @@ export function GovernorPage() {
                   }}
                 >
                   <span>{idleSlider}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>Ø¯Ù‚ÙŠÙ‚Ø©</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>دقيقة</span>
                 </div>
               </div>
 
@@ -383,9 +384,9 @@ export function GovernorPage() {
                   color: 'var(--text-3)',
                 }}
               >
-                <span>5 Ø¯ (Ø¹Ø¯ÙˆØ§Ù†ÙŠ)</span>
-                <span>30 Ø¯Ù‚ÙŠÙ‚Ø©</span>
-                <span>60 Ø¯ (Ù…ØªØ³Ø§Ù‡Ù„)</span>
+                <span>5 د (عدواني)</span>
+                <span>30 دقيقة</span>
+                <span>60 د (متساهل)</span>
               </div>
             </div>
 
@@ -403,7 +404,7 @@ export function GovernorPage() {
             >
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                  ÙØµÙ„ Ø§Ù„Ø¬Ù„Ø³Ø§Øª Ø§Ù„Ù…Ù†Ø³ÙŠØ© ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹
+                  فصل الجلسات المنسية تلقائياً
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                   Auto Disconnect after Inactivity
@@ -433,7 +434,7 @@ export function GovernorPage() {
             >
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                  ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬ Ø§Ù„Ø¥Ø¬Ø¨Ø§Ø±ÙŠ Ø¨Ù†Ù‡Ø§ÙŠØ© Ø§Ù„Ø¹Ù…Ù„
+                  تسجيل الخروج الإجباري بنهاية العمل
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
                   Purge session handles at 18:00 AST
@@ -464,13 +465,13 @@ export function GovernorPage() {
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>ÙƒÙØ§Ø¡Ø© ØªØ´ØºÙŠÙ„ Ø§Ù„Ø°Ø§ÙƒØ±Ø© Ø§Ù„Ø­ÙŠØ©</span>
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>كفاءة تشغيل الذاكرة الحية</span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>88.4%</span>
-                  <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>Ø§Ø³ØªÙ‚Ø±Ø§Ø± Ø¹Ø§Ù„ÙŠ</span>
+                  <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>استقرار عالي</span>
                 </div>
                 <p style={{ fontSize: 11, color: 'var(--text-3)', margin: 0, lineHeight: 1.4 }}>
-                  ØªÙ… ØªØ­Ø¬ÙŠÙ… ØªØ³Ø±ÙŠØ¨Ø§Øª Ø§Ù„Ù…Ù‚Ø§Ø¨Ø¶ (Handle Leaks) Ø¨Ù†Ø³Ø¨Ø© Ù…Ù…ØªØ§Ø²Ø© Ø®Ù„Ø§Ù„ Ø§Ù„Ù€ 24 Ø³Ø§Ø¹Ø© Ø§Ù„Ù…Ø§Ø¶ÙŠØ©.
+                  تم تحجيم تسريبات المقابض (Handle Leaks) بنسبة ممتازة خلال الـ 24 ساعة الماضية.
                 </p>
               </div>
 
@@ -534,10 +535,10 @@ export function GovernorPage() {
                 </div>
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                    Ù…ØµÙÙˆÙØ© Ø§Ù„Ù…Ø³ØªÙ‡Ù„ÙƒÙŠÙ† Ø§Ù„Ø£Ø«Ù‚Ù„ (Heavy Consumer Watchlist)
+                    مصفوفة المستهلكين الأثقل (Heavy Consumer Watchlist)
                   </h2>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                    Ø§Ù„ØªØ·Ø¨ÙŠÙ‚Ø§Øª Ø§Ù„Ø£ÙƒØ«Ø± Ø§Ø³ØªÙ†Ø²Ø§ÙØ§Ù‹ Ù„Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„Ù…Ø§Ø¯ÙŠØ© Ù…Ø¹ Ø®ÙŠØ§Ø± Ø§Ù„ØªÙØ±ÙŠØº Ø§Ù„ÙÙˆØ±ÙŠ
+                    التطبيقات الأكثر استنزافاً لمساحة العمل المادية مع خيار التفريغ الفوري
                   </span>
                 </div>
               </div>
@@ -545,11 +546,11 @@ export function GovernorPage() {
                 size="sm"
                 variant="glass"
                 loading={trimmingTarget === 'GLOBAL'}
-                onClick={() => handleSpecificTrim('ØªÙØ±ÙŠØº Ø´Ø§Ù…Ù„ Ù„Ø¬Ù…ÙŠØ¹ Ø§Ù„Ø¹Ù…Ù„ÙŠØ§Øª')}
+                onClick={() => handleSpecificTrim('تفريغ شامل لجميع العمليات')}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Zap size={13} color="var(--accent)" />
-                <span>ØªÙØ±ÙŠØº Ø´Ø§Ù…Ù„ ÙÙˆØ±ÙŠ</span>
+                <span>تفريغ شامل فوري</span>
               </Button>
             </div>
 
@@ -595,7 +596,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('SQL Server Engine')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    ØªÙØ±ÙŠØº ÙÙˆØ±ÙŠ
+                    تفريغ فوري
                   </Button>
                 </div>
               </div>
@@ -640,7 +641,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('IIS Worker Process')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    ØªÙØ±ÙŠØº ÙÙˆØ±ÙŠ
+                    تفريغ فوري
                   </Button>
                 </div>
               </div>
@@ -685,7 +686,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('Microsoft Defender')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    ØªÙØ±ÙŠØº ÙÙˆØ±ÙŠ
+                    تفريغ فوري
                   </Button>
                 </div>
               </div>
@@ -730,7 +731,7 @@ export function GovernorPage() {
                     onClick={() => handleSpecificTrim('Windows Search Indexer')}
                     style={{ padding: '3px 8px', fontSize: 11 }}
                   >
-                    ØªÙØ±ÙŠØº ÙÙˆØ±ÙŠ
+                    تفريغ فوري
                   </Button>
                 </div>
               </div>
@@ -752,7 +753,7 @@ export function GovernorPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <CheckCircle2 size={16} color="var(--accent)" />
                 <span style={{ fontSize: 12, color: 'var(--text-1)' }}>
-                  Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø°Ø§ÙƒØ±Ø© Ø§Ù„Ù…Ø³ØªØ¹Ø§Ø¯Ø© ÙˆØ§Ù„Ù…ØªØ§Ø­Ø© Ù„Ù„Ù†Ø¸Ø§Ù… Ø­Ø§Ù„ÙŠØ§Ù‹:
+                  إجمالي الذاكرة المستعادة والمتاحة للنظام حالياً:
                 </span>
               </div>
               <span
@@ -772,11 +773,11 @@ export function GovernorPage() {
 
       {/* 3. Windows Core Services Management Table Section (Stitch _1 L283) */}
       <Card
-        title="Ø¬Ø¯ÙˆÙ„ Ø®Ø¯Ù…Ø§Øª ÙˆÙŠÙ†Ø¯ÙˆØ² Ø§Ù„Ø­ÙŠÙˆÙŠØ© (Windows Core Services Management)"
+        title="جدول خدمات ويندوز الحيوية (Windows Core Services Management)"
         icon="dashboard"
         actions={
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø®Ø¯Ù…Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©: {services.length} Ø®Ø¯Ù…Ø©
+            إجمالي الخدمات الأساسية: {services.length} خدمة
           </span>
         }
       >
@@ -784,16 +785,16 @@ export function GovernorPage() {
           <table className="app-table">
             <thead>
               <tr>
-                <th>Ø§Ø³Ù… Ø§Ù„Ø®Ø¯Ù…Ø© (Service Name)</th>
-                <th>Ø§Ù„ÙˆØµÙ ÙˆØ§Ù„ÙˆØ¸ÙŠÙØ© Ø¨Ø§Ù„Ù†Ø¸Ø§Ù…</th>
-                <th>Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„Ø­Ø§Ù„ÙŠØ©</th>
-                <th>Ù†ÙˆØ¹ Ø¨Ø¯Ø¡ Ø§Ù„ØªØ´ØºÙŠÙ„</th>
-                <th>Ø§Ù„ØªØµÙ†ÙŠÙ</th>
-                <th style={{ textAlign: 'end' }}>Ø§Ù„ØªØ­ÙƒÙ… Ø¨Ø§Ù„Ø®Ø¯Ù…Ø©</th>
+                <th>اسم الخدمة (Service Name)</th>
+                <th>الوصف والوظيفة بالنظام</th>
+                <th>الحالة الحالية</th>
+                <th>نوع بدء التشغيل</th>
+                <th>التصنيف</th>
+                <th style={{ textAlign: 'end' }}>التحكم بالخدمة</th>
               </tr>
             </thead>
             <tbody>
-              {services.map((svc) => (
+              {(showAllServices ? services : services.slice(0, 50)).map((svc) => (
                 <tr key={svc.name}>
                   <td style={{ fontWeight: 700, fontFamily: 'var(--font)', color: 'var(--text-1)' }}>
                     {svc.name}
@@ -826,7 +827,7 @@ export function GovernorPage() {
                           background: svc.status === 'Running' ? 'var(--paid)' : 'var(--unpaid)',
                         }}
                       />
-                      {svc.status === 'Running' ? 'ØªØ¹Ù…Ù„ (Running)' : 'Ù…ØªÙˆÙ‚ÙØ© (Stopped)'}
+                      {svc.status === 'Running' ? 'تعمل (Running)' : 'متوقفة (Stopped)'}
                     </span>
                   </td>
                   <td>
@@ -866,7 +867,7 @@ export function GovernorPage() {
                           style={{ padding: '4px 10px', fontSize: 11 }}
                         >
                           <Play size={12} color="var(--paid)" />
-                          <span>ØªØ´ØºÙŠÙ„</span>
+                          <span>تشغيل</span>
                         </Button>
                       ) : (
                         <Button
@@ -877,7 +878,7 @@ export function GovernorPage() {
                           style={{ padding: '4px 10px', fontSize: 11, color: 'var(--unpaid)' }}
                         >
                           <Square size={12} />
-                          <span>Ø¥ÙŠÙ‚Ø§Ù</span>
+                          <span>إيقاف</span>
                         </Button>
                       )}
                       <Button
@@ -888,7 +889,7 @@ export function GovernorPage() {
                         style={{ padding: '4px 10px', fontSize: 11 }}
                       >
                         <RotateCw size={12} />
-                        <span>Ø¥Ø¹Ø§Ø¯Ø© ØªØ´ØºÙŠÙ„</span>
+                        <span>إعادة تشغيل</span>
                       </Button>
                     </div>
                   </td>
@@ -897,18 +898,25 @@ export function GovernorPage() {
             </tbody>
           </table>
         </div>
+        {services.length > 50 && (
+          <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+            <Button variant="ghost" onClick={() => setShowAllServices((v) => !v)}>
+              {showAllServices ? 'عرض أول 50 خدمة فقط' : `عرض كل الخدمات (${services.length})`}
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* 4. Process Telemetry & Explorer (Stitch _1 L156) */}
       <Card
-        title="Ù‚Ø§Ø¦Ù…Ø© Ù…Ø±Ø§Ù‚Ø¨Ø© Ø§Ø³ØªÙ‡Ù„Ø§Ùƒ Ø§Ù„Ø¹Ù…Ù„ÙŠØ§Øª ÙˆØ§Ù„Ø®Ø¯Ù…Ø§Øª (Top Processes Telemetry)"
+        title="قائمة مراقبة استهلاك العمليات والخدمات (Top Processes Telemetry)"
         icon="list"
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative' }}>
             <Search size={15} color="var(--text-3)" style={{ position: 'absolute', insetInlineEnd: 10 }} />
             <input
               type="text"
-              placeholder="Ø§Ø¨Ø­Ø« Ø¨Ø§Ø³Ù… Ø§Ù„Ø¹Ù…Ù„ÙŠØ©ØŒ PIDØŒ Ø£Ùˆ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…..."
+              placeholder="ابحث باسم العملية، PID، أو المستخدم..."
               value={procSearch}
               onChange={(e) => setProcSearch(e.target.value)}
               className="text-input"
@@ -922,11 +930,11 @@ export function GovernorPage() {
             <thead>
               <tr>
                 <th>PID</th>
-                <th>Ø§Ø³Ù… Ø§Ù„Ø¹Ù…Ù„ÙŠØ©</th>
-                <th>Ø§Ù„Ù…Ø§Ù„Ùƒ / Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…</th>
-                <th>Ø§Ù„Ø¬Ù„Ø³Ø©</th>
-                <th>Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ø¹Ù…Ù„ (RAM MB)</th>
-                <th style={{ textAlign: 'end' }}>Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª Ø§Ù„Ø­Ø§ÙƒÙ…</th>
+                <th>اسم العملية</th>
+                <th>المالك / المستخدم</th>
+                <th>الجلسة</th>
+                <th>مساحة العمل (RAM MB)</th>
+                <th style={{ textAlign: 'end' }}>إجراءات الحاكم</th>
               </tr>
             </thead>
             <tbody>
@@ -946,19 +954,19 @@ export function GovernorPage() {
                         variant="ghost"
                         onClick={() => handleSpecificTrim(p.name, p.pid)}
                         style={{ padding: '4px 8px', fontSize: 11 }}
-                        title="ØªÙØ±ÙŠØº Working Set"
+                        title="تفريغ Working Set"
                       >
-                        <span>ØªÙØ±ÙŠØº Trim</span>
+                        <span>تفريغ Trim</span>
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => handleTerminateProcess(p.pid, p.name)}
                         style={{ padding: '4px 8px', fontSize: 11, color: 'var(--unpaid)' }}
-                        title="Ø¥Ù†Ù‡Ø§Ø¡ Ø§Ù„Ø¹Ù…Ù„ÙŠØ©"
+                        title="إنهاء العملية"
                       >
                         <Trash2 size={12} />
-                        <span>Ø¥Ù†Ù‡Ø§Ø¡</span>
+                        <span>إنهاء</span>
                       </Button>
                     </div>
                   </td>

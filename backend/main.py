@@ -66,6 +66,26 @@ def generate_self_signed_cert(cert_path: Path, key_path: Path) -> bool:
         return False
 
 
+def _exit_port_in_use(port: int, exc: OSError) -> None:
+    """Reports the conflicting listener (with PID when detectable) and exits."""
+    owner = ''
+    try:
+        import psutil
+        for conn in psutil.net_connections(kind='inet'):
+            if conn.laddr and conn.laddr.port == port and conn.status == 'LISTEN':
+                try:
+                    owner = f" (PID {conn.pid}: {psutil.Process(conn.pid).name()})"
+                except Exception:
+                    owner = f" (PID {conn.pid})"
+                break
+    except Exception:
+        pass
+    print(f"[X] Cannot bind port {port}: address already in use{owner}.")
+    print("    Another ASAAS instance is already running. Stop it first, or relaunch")
+    print("    via start-server.bat / the desktop shortcut (it terminates the old PID).")
+    sys.exit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="ASAAS Server Control v2.5 Backend")
     parser.add_argument('--replace-pid', type=int, default=None, help="Terminate old PID when elevating")
@@ -116,13 +136,22 @@ def main() -> None:
             server_cls = ThreadingHTTPServer
             bind_addr = ('0.0.0.0', args.port)
 
-    server_cls.allow_reuse_address = True
+    # allow_reuse_address must stay False: on Windows SO_REUSEADDR permits a
+    # second process to bind the same port, which previously let a stale
+    # instance and a new one serve requests interchangeably (split-brain).
+    server_cls.allow_reuse_address = False
     try:
         server = server_cls(bind_addr, AsaasApiHandler)
-    except Exception as exc:
+    except OSError as exc:
         # Fallback to standard IPv4 if dual-stack fails on older environments
-        print(f"[!] Dual-stack bind notice ({exc}), falling back to IPv4...")
-        server = ThreadingHTTPServer(('0.0.0.0', args.port), AsaasApiHandler)
+        if server_cls is DualStackServer:
+            print(f"[!] Dual-stack bind notice ({exc}), falling back to IPv4...")
+            try:
+                server = ThreadingHTTPServer(('0.0.0.0', args.port), AsaasApiHandler)
+            except OSError as exc2:
+                _exit_port_in_use(args.port, exc2)
+        else:
+            _exit_port_in_use(args.port, exc)
 
     if use_ssl:
         ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
