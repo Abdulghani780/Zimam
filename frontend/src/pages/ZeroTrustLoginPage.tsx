@@ -5,14 +5,13 @@ import { Button, Field, FormError, Glass, PasswordInput, TextInput, useTheme } f
 import { api } from '../lib/api';
 
 type LoginLocationState = { from?: string };
-const DEFAULT_SYS_PASS = ['admin', '@', 'asaas', '2026'].join('');
 
 export function ZeroTrustLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [theme, toggleTheme] = useTheme();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState(DEFAULT_SYS_PASS);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -74,44 +73,6 @@ export function ZeroTrustLoginPage() {
               <h2>تسجيل الدخول</h2>
               <p>استخدم حساب الإدارة الذي أنشأته عند تهيئة النظام.</p>
             </div>
-          </div>
-
-          <div
-            style={{
-              padding: '10px 14px',
-              borderRadius: 8,
-              background: 'var(--glass-tint-strong)',
-              border: '1px solid var(--accent-soft)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: 12,
-              color: 'var(--text-1)',
-              marginBottom: 12,
-            }}
-          >
-            <div>
-              <strong style={{ color: 'var(--accent)' }}>الحساب الافتراضي:</strong> admin / {DEFAULT_SYS_PASS}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setUsername('admin');
-                setPassword(DEFAULT_SYS_PASS);
-              }}
-              style={{
-                background: 'var(--accent)',
-                color: 'var(--on-accent)',
-                border: 'none',
-                borderRadius: 4,
-                padding: '4px 8px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontSize: 11,
-              }}
-            >
-              تعبئة تلقائية
-            </button>
           </div>
 
           <form className="form auth-form" onSubmit={submit}>

@@ -23,7 +23,7 @@ implemented **and** the consuming page has been switched over.
 | `/api/ports*`, `/api/workspaces/*`, `/api/conflicts`, `/api/quotas`, `/api/action-jobs` | local developer-workspace tooling | ⚪ stays local — not a PAM concern |
 | `/api/database/*` explorer | — | ⚪ stays local |
 | `/api/ai/diagnose`, `/api/alerts/*`, `/api/notifications` | — | ⚪ stays local |
-| `/stitch/*` | removed (design sources dropped) | ⚪ route should be retired with the page |
+| `/stitch/*`, `/api/stitch/screens`, `StitchGalleryPage` | removed — design sources and gallery retired | ✅ removed |
 
 ## Rules
 

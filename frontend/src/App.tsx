@@ -20,7 +20,6 @@ import { JitElevationPage } from './pages/JitElevationPage';
 import { SessionReplayPage } from './pages/SessionReplayPage';
 import { DatabasesPage } from './pages/DatabasesPage';
 import { BastionPage } from './pages/BastionPage';
-import { StitchGalleryPage } from './pages/StitchGalleryPage';
 import { ZeroTrustLoginPage } from './pages/ZeroTrustLoginPage';
 import { PerimeterLockoutPage } from './pages/PerimeterLockoutPage';
 import { RequireAuth } from './components/RequireAuth';
@@ -55,7 +54,6 @@ export default function App() {
           <Route path="jit" element={<JitElevationPage />} />
           <Route path="replay" element={<SessionReplayPage />} />
           <Route path="bastion" element={<BastionPage />} />
-          <Route path="stitch" element={<StitchGalleryPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Route>

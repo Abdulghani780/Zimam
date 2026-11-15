@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
-from ..core.config import FRONTEND_DIST_DIR, LEGACY_DIST_DIR, STITCH_DIR
+from ..core.config import FRONTEND_DIST_DIR, LEGACY_DIST_DIR
 from ..domain.models import ManagedAsset
 from ..infrastructure.db import (
     init_db,
@@ -93,7 +93,6 @@ from ..services.bastion_service import BastionService
 from ..services.domain_service import DomainService
 from ..services.governor_service import GovernorService
 from ..services.port_isolation_service import PortIsolationService
-from ..services.stitch_service import StitchService
 from ..services.storage_service import StorageService
 from ..services.telemetry_service import TelemetryService
 from ..services.user_service import UserService
@@ -477,15 +476,6 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
 
         if path == '/api/ports/guard/status':
             return self.respond_json(200, PortIsolationService.get_guard_status())
-
-        # --- Google Stitch Design Catalog ---
-        if path == '/api/stitch/screens':
-            screens = StitchService.list_screens()
-            return self.respond_json(200, {
-                'ok': True,
-                'screens': screens,
-                'count': len(screens),
-            })
 
         # --- Windows Services API ---
         if path == '/api/services':
@@ -1569,33 +1559,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
         self.send_error(405, "Method Not Allowed")
 
     def serve_static(self, path: str) -> None:
-        """Serves frontend static build assets with SPA client-side fallback, plus Stitch screens."""
-        # Serve Stitch design screens directly
-        if path.startswith('/stitch/'):
-            rel_stitch = path[len('/stitch/'):]
-            target_stitch = (STITCH_DIR / rel_stitch).resolve()
-            if target_stitch.is_file() and target_stitch.is_relative_to(STITCH_DIR):
-                ctype, _ = mimetypes.guess_type(str(target_stitch))
-                if not ctype:
-                    ctype = 'application/octet-stream'
-                try:
-                    with open(target_stitch, 'rb') as f:
-                        content = f.read()
-                    self.send_response(200)
-                    self.send_header('Content-Type', ctype)
-                    self.send_header('Content-Length', str(len(content)))
-                    self.send_header('Cache-Control', 'no-cache')
-                    self.send_header('X-Content-Type-Options', 'nosniff')
-                    self.end_headers()
-                    self.wfile.write(content)
-                    return
-                except Exception as exc:
-                    self.send_error(500, f"Error reading stitch file: {exc}")
-                    return
-            else:
-                self.send_error(404, "Stitch file not found")
-                return
-
+        """Serves frontend static build assets with SPA client-side fallback."""
         # Determine static directory
         static_dir = LEGACY_DIST_DIR if LEGACY_DIST_DIR.is_dir() else FRONTEND_DIST_DIR
 

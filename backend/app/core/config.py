@@ -16,7 +16,6 @@ APP_DIR = BACKEND_DIR / 'app'
 DATA_DIR = PROJECT_ROOT / 'data'
 FRONTEND_DIST_DIR = PROJECT_ROOT / 'frontend' / 'dist'
 LEGACY_DIST_DIR = PROJECT_ROOT / 'dist'
-STITCH_DIR = PROJECT_ROOT / 'stitch_asaas_server_control_v2.5'
 
 # Ensure required directories exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
