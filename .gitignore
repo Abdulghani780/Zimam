@@ -65,3 +65,6 @@ stitch_asaas_server_control_v2.5.zip
 # .NET agent build output
 agent/bin/
 agent/obj/
+
+data/mtls/
+data/agent-signing.key

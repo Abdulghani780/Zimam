@@ -107,9 +107,10 @@ class MfaVerifyRequest(BaseModel):
 
 
 # Read-only job types the agent is allowed to execute. Write/destructive
-# actions stay behind the legacy ActionEngine until a reviewed allowlist
-# and confirmation flow exist.
-ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list"}
+# Read-only collectors plus one reviewed write job (session.logoff, which
+# requires an explicit session_id payload). Everything else stays behind the
+# legacy ActionEngine until a reviewed allowlist and confirmation flow exist.
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff"}
 
 
 class JobCreateRequest(BaseModel):

@@ -19,5 +19,4 @@ every poll) before executing, then posts the result to
 `/api/v1/agents/{id}/jobs/{job_id}/result`.
 
 The signing seed persists at `ASAAS_JOB_SIGNING_KEY_FILE` (default
-`data/agent-signing.key`) or `ASAAS_JOB_SIGNING_KEY` (hex). Write/destructive
-actions are intentionally not in the allowlist.
+`data/agent-signing.key`) or `ASAAS_JOB_SIGNING_KEY` (hex). All other write/destructive actions are intentionally not in the allowlist. `session.logoff` is the single reviewed write job: it requires `{"session_id": <positive int>}` in the signed payload and refuses invalid ids.

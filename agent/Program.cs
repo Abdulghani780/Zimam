@@ -39,7 +39,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     // the control plane and must never be added here without a reviewed design.
     private static readonly HashSet<string> AllowedJobs = new(StringComparer.Ordinal)
     {
-        "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list"
+        "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -122,7 +122,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         string? error = null;
         try
         {
-            result = ExecuteJob(job.Type);
+            result = ExecuteJob(job.Type, job.Payload);
         }
         catch (Exception ex)
         {
@@ -148,7 +148,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         }
     }
 
-    private static object ExecuteJob(string type) => type switch
+    private static object ExecuteJob(string type, JsonElement payload) => type switch
     {
         "system.info" => new
         {
@@ -169,6 +169,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
             .Select(d => new { name = d.Name, total_gb = Math.Round(d.TotalSize / 1073741824.0, 1), free_gb = Math.Round(d.AvailableFreeSpace / 1073741824.0, 1) })
             .ToArray(),
         "session.list" => SessionProbe.ListSessions(),
+        "session.logoff" => SessionProbe.Logoff(payload),
         "inventory.collect" => new
         {
             hostname = Environment.MachineName,
@@ -239,6 +240,34 @@ internal static class SessionProbe
             });
         }
         return sessions.ToArray();
+    }
+
+    // Signed write job: logs off one interactive session by numeric id.
+    // Refuses missing/invalid ids and the services session (0).
+    public static object Logoff(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("session_id", out var idEl) || !idEl.TryGetInt32(out var sessionId) || sessionId <= 0)
+            throw new InvalidOperationException("session.logoff requires a positive integer payload.session_id");
+
+        var psi = new ProcessStartInfo("logoff.exe", sessionId.ToString())
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = Process.Start(psi)!;
+        var stdout = proc.StandardOutput.ReadToEnd();
+        var stderr = proc.StandardError.ReadToEnd();
+        proc.WaitForExit(15000);
+        return new
+        {
+            session_id = sessionId,
+            exit_code = proc.ExitCode,
+            stdout = stdout.Trim(),
+            stderr = stderr.Trim(),
+            observed_at = DateTimeOffset.UtcNow
+        };
     }
 }
 
