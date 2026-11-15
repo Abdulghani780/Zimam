@@ -59,6 +59,25 @@ jobs:
           assert users_cnt >= 3, 'Default RBAC users missing'
           "
 
+      - name: Prepare Ephemeral Test Admin & Start Backend
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'backend')
+          from app.infrastructure.db import init_db, get_db_connection, hash_password
+          from datetime import datetime, timezone
+          init_db()
+          h, s = hash_password('admin@asaas2026')
+          conn = get_db_connection(); cur = conn.cursor()
+          cur.execute('SELECT id FROM app_users WHERE username = ?', ('admin',))
+          if not cur.fetchone():
+              cur.execute('''INSERT INTO app_users (username, password_hash, salt, role, full_name, is_active, created_at)
+                             VALUES (?, ?, ?, 'admin', 'CI Admin', 1, ?)''', ('admin', h, s, datetime.now(timezone.utc).isoformat()))
+              conn.commit()
+          print('test admin ready')
+          "
+          Start-Process -FilePath python -ArgumentList 'backend/main.py' -WindowStyle Hidden
+          Start-Sleep -Seconds 5
+
       - name: Run Backend Unit & Contract Tests
         run: python -m unittest discover -s tests -v
 
@@ -69,3 +88,55 @@ jobs:
         env:
           PYTHONPATH: control_plane
         run: python -m unittest discover -s control_plane/tests -v
+
+  e2e-smoke:
+    name: Playwright Smoke (login + core journeys)
+    runs-on: windows-latest
+    needs: validate-and-build
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+          npx playwright install chromium
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Backend Dependency
+        run: pip install psutil>=7.0.0
+
+      - name: Bootstrap E2E Administrator
+        working-directory: backend
+        run: |
+          python -c "import sys; sys.path.insert(0,'.'); from app.infrastructure.db import init_db, db_bootstrap_admin; init_db(); print(db_bootstrap_admin('e2e-admin', 'E2e!Smoke#Passw0rd2026!', 'E2E Admin'))"
+
+      - name: Start ASAAS Backend
+        run: |
+          Start-Process -FilePath python -ArgumentList 'backend/main.py' -WindowStyle Hidden
+          Start-Sleep -Seconds 5
+
+      - name: Run Playwright Smoke Tests
+        working-directory: frontend
+        env:
+          E2E_USER: e2e-admin
+          E2E_PASS: E2E!Smoke#Passw0rd2026!
+        run: npx playwright test e2e/smoke.spec.ts --project="Desktop Chromium"
