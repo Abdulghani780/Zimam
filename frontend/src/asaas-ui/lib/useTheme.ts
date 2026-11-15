@@ -13,7 +13,10 @@ function savedTheme(): Theme | null {
 }
 
 export function useTheme(): [Theme, () => void] {
-  const [theme, setTheme] = useState<Theme>(() => savedTheme() ?? 'light');
+  // Honour theme-init.js (dark-by-default for this console) when nothing is saved.
+  const [theme, setTheme] = useState<Theme>(
+    () => savedTheme() ?? (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'),
+  );
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

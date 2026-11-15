@@ -1,31 +1,43 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { OverviewPage } from './pages/OverviewPage';
-import { ControlPage } from './pages/ControlPage';
-import { GovernorPage } from './pages/GovernorPage';
-import { AssetsPage } from './pages/AssetsPage';
-import { ServersPage } from './pages/ServersPage';
-import { InfrastructurePage } from './pages/InfrastructurePage';
-import { DevelopmentPage } from './pages/DevelopmentPage';
-import { ContainersPage } from './pages/ContainersPage';
-import { NetworkStoragePage } from './pages/NetworkStoragePage';
-import { VaultPage } from './pages/VaultPage';
-import { PortsPage } from './pages/PortsPage';
-import { SecurityPage } from './pages/SecurityPage';
-import { StoragePage } from './pages/StoragePage';
-import { UsersPage } from './pages/UsersPage';
-import { AuditPage } from './pages/AuditPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { JitElevationPage } from './pages/JitElevationPage';
-import { SessionReplayPage } from './pages/SessionReplayPage';
-import { DatabasesPage } from './pages/DatabasesPage';
-import { BastionPage } from './pages/BastionPage';
-import { ZeroTrustLoginPage } from './pages/ZeroTrustLoginPage';
-import { PerimeterLockoutPage } from './pages/PerimeterLockoutPage';
 import { RequireAuth } from './components/RequireAuth';
+
+const lazyPage = <T extends Record<string, React.ComponentType>>(loader: () => Promise<T>, name: keyof T) =>
+  lazy(() => loader().then((m) => ({ default: m[name] as React.ComponentType })));
+
+const OverviewPage = lazyPage(() => import('./pages/OverviewPage'), 'OverviewPage');
+const ControlPage = lazyPage(() => import('./pages/ControlPage'), 'ControlPage');
+const GovernorPage = lazyPage(() => import('./pages/GovernorPage'), 'GovernorPage');
+const AssetsPage = lazyPage(() => import('./pages/AssetsPage'), 'AssetsPage');
+const ServersPage = lazyPage(() => import('./pages/ServersPage'), 'ServersPage');
+const InfrastructurePage = lazyPage(() => import('./pages/InfrastructurePage'), 'InfrastructurePage');
+const DevelopmentPage = lazyPage(() => import('./pages/DevelopmentPage'), 'DevelopmentPage');
+const ContainersPage = lazyPage(() => import('./pages/ContainersPage'), 'ContainersPage');
+const NetworkStoragePage = lazyPage(() => import('./pages/NetworkStoragePage'), 'NetworkStoragePage');
+const VaultPage = lazyPage(() => import('./pages/VaultPage'), 'VaultPage');
+const PortsPage = lazyPage(() => import('./pages/PortsPage'), 'PortsPage');
+const SecurityPage = lazyPage(() => import('./pages/SecurityPage'), 'SecurityPage');
+const StoragePage = lazyPage(() => import('./pages/StoragePage'), 'StoragePage');
+const UsersPage = lazyPage(() => import('./pages/UsersPage'), 'UsersPage');
+const AuditPage = lazyPage(() => import('./pages/AuditPage'), 'AuditPage');
+const SettingsPage = lazyPage(() => import('./pages/SettingsPage'), 'SettingsPage');
+const JitElevationPage = lazyPage(() => import('./pages/JitElevationPage'), 'JitElevationPage');
+const SessionReplayPage = lazyPage(() => import('./pages/SessionReplayPage'), 'SessionReplayPage');
+const DatabasesPage = lazyPage(() => import('./pages/DatabasesPage'), 'DatabasesPage');
+const BastionPage = lazyPage(() => import('./pages/BastionPage'), 'BastionPage');
+const ZeroTrustLoginPage = lazyPage(() => import('./pages/ZeroTrustLoginPage'), 'ZeroTrustLoginPage');
+const PerimeterLockoutPage = lazyPage(() => import('./pages/PerimeterLockoutPage'), 'PerimeterLockoutPage');
+
+const PageFallback = () => (
+  <div style={{ display: 'grid', placeItems: 'center', minHeight: '40vh', color: 'var(--text-3)' }}>
+    جارٍ تحميل الصفحة…
+  </div>
+);
 
 export default function App() {
   return (
+    <Suspense fallback={<PageFallback />}>
     <Routes>
       {/* Standalone ASAAS access screens */}
       <Route path="login" element={<ZeroTrustLoginPage />} />
@@ -58,5 +70,6 @@ export default function App() {
         </Route>
       </Route>
     </Routes>
+    </Suspense>
   );
 }
