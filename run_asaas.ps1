@@ -37,10 +37,33 @@ if (-not (Test-ListeningPort $port)) {
     -RedirectStandardError (Join-Path $data 'server-error.log')
 }
 
-Start-Sleep -Milliseconds 1200
-Start-Process "http://${browserHost}:${port}"
+# Control plane (:8876) — serves /console SPA, /api/v1 natively, and proxies
+# legacy /api/* to the backend above so the console works on one origin.
+$cpPort = 8876
+$cpUrl = ''
+if (-not (Test-ListeningPort $cpPort)) {
+  $env:PYTHONPATH = Join-Path $root 'control_plane'
+  $env:ASAAS_LEGACY_API_URL = "http://127.0.0.1:$port"
+  Start-Process -FilePath $python -WorkingDirectory $root -WindowStyle Hidden `
+    -ArgumentList @('-m', 'uvicorn', 'asaas_control.app:app', '--host', '127.0.0.1', '--port', "$cpPort") `
+    -RedirectStandardOutput (Join-Path $data 'control-plane.log') `
+    -RedirectStandardError (Join-Path $data 'control-plane-error.log')
+}
+
+Start-Sleep -Milliseconds 1800
+try {
+  $health = Invoke-RestMethod -Uri "http://127.0.0.1:$cpPort/api/v1/health" -TimeoutSec 5
+  if ($health.status -eq 'ok') { $cpUrl = "http://127.0.0.1:$cpPort/" }
+} catch { }
+
+$openUrl = if ($cpUrl) { $cpUrl } else { "http://${browserHost}:${port}" }
+Start-Process $openUrl
 Write-Host '=================================================='
 Write-Host ' ASAAS Enterprise v3.0 Master Console Active'
-Write-Host " URL: http://${browserHost}:${port}"
+if ($cpUrl) {
+  Write-Host " URL: $cpUrl  (control plane + legacy proxy)"
+} else {
+  Write-Host " URL: http://${browserHost}:${port}  (legacy console; control plane unavailable)"
+}
 Write-Host ' Sign in with the administrator account configured for this appliance.'
 Write-Host '=================================================='

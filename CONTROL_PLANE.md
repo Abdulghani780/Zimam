@@ -27,3 +27,7 @@ Session gateway ----------------------> one-time connection token
 The code intentionally returns a clear `501`/`503` for pieces that are not wired yet: Guacamole/SSH/SFTP proxy data paths, Redis-backed token consumption across workers, live session termination, screen/terminal recording persistence and replay, AD/LDAP synchronization, backup/restore worker, signed agent jobs, and production mTLS certificate issuance. Those must be completed and load/security tested before selling the product as a JumpServer replacement.
 
 Run the v1 API locally with the instructions in `control_plane/README.md`; production deployment requires a populated `control_plane/.env`, TLS reverse proxy, PostgreSQL, MinIO retention/legal-hold policy, and an independent security review.
+
+## Legacy API bridge
+
+`asaas_control/legacy_proxy.py` transparently forwards `/api/*` (everything except `/api/v1`) to the legacy backend (`ASAAS_LEGACY_API_URL`, default `http://127.0.0.1:8765`), including SSE streams and `Set-Cookie` headers. The SPA is served at the control-plane origin root (`/`) with an `index.html` fallback for client-side routes, so the console works fully on one origin while pages migrate to `/api/v1` one group at a time. `run_asaas.ps1` now starts both services and opens `http://127.0.0.1:8876/` when the control plane is healthy.
