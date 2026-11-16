@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Modal, TextInput, Select, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   Server,
   Plus,
@@ -20,8 +21,29 @@ import {
   FolderTree,
   Activity,
   Trash2,
+  Bot,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { t } from '../lib/i18n';
+
+interface FleetAgent {
+  id: string;
+  name: string;
+  status: string;
+  last_seen_at: string | null;
+  hostname?: string | null;
+  os?: string | null;
+  process_count?: number | null;
+  linked_asset: { id: string; name: string; hostname: string } | null;
+  collector_count: number;
+  collectors: string[];
+  last_collection_at: string | null;
+}
+
+interface FleetSummary {
+  agents: FleetAgent[];
+  totals: { agents: number; online: number; with_results: number };
+}
 
 export function ServersPage() {
   const toast = useToast();
@@ -35,6 +57,7 @@ export function ServersPage() {
   // Managed Servers & Groups state
   const [servers, setServers] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  const [fleet, setFleet] = useState<FleetSummary | null>(null);
 
   // Modals state
   const [addServerOpen, setAddServerOpen] = useState(false);
@@ -61,10 +84,11 @@ export function ServersPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [localRes, srvRes, grpRes] = await Promise.all([
+      const [localRes, srvRes, grpRes, fleetRes] = await Promise.all([
         api.getLocalServerInfo().catch(() => null),
         api.getServers().catch(() => ({ ok: false, servers: [] })),
         api.getServerGroups().catch(() => ({ ok: false, groups: [] })),
+        apiV1.fleetSummary().catch(() => null),
       ]);
 
       if (localRes?.local_server) {
@@ -72,6 +96,7 @@ export function ServersPage() {
       }
       setServers(srvRes?.servers || []);
       setGroups(grpRes?.groups || []);
+      setFleet(fleetRes);
     } catch (err: any) {
       toast(err.message || t('فشل تحميل بيانات الخوادم'), 'error');
     } finally {
@@ -344,6 +369,55 @@ export function ServersPage() {
                 {t('وضع السيادة: نشط')}
               </div>
             </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ZIMAM agent-backed servers — real fleet telemetry via /api/v1 */}
+      {fleet && fleet.agents.length > 0 && (
+        <Card style={{ padding: 20, border: '1px solid var(--glass-rim)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Bot size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('خوادم وكلاء زِمام')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)' }}>
+                {fleet.totals.online}/{fleet.totals.agents} {t('متصل')} · {fleet.totals.with_results} {t('بقياسات')}
+              </span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+            {fleet.agents.map((ag) => (
+              <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                  <span className={`badge ${ag.status === 'online' ? 'badge--success' : 'badge--danger'}`} style={{ fontSize: 10 }}>
+                    {ag.status === 'online' ? t('متصل ونشط') : t('غير متصل')}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>
+                  {ag.hostname || '—'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                  {ag.os ? String(ag.os).slice(0, 52) : '—'}
+                  {ag.process_count ? ` · ${ag.process_count} ${t('عملية')}` : ''}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                    {ag.collector_count > 0
+                      ? `${ag.collector_count} ${t('قياس')} · ${ag.last_collection_at ? new Date(ag.last_collection_at).toLocaleString('ar-SA') : ''}`
+                      : t('لا قياسات بعد')}
+                  </span>
+                  {ag.linked_asset && (
+                    <NavLink to="/assets" style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+                      {t('الأصل')} ←
+                    </NavLink>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       )}

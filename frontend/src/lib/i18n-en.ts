@@ -1685,4 +1685,6 @@ export const EN: Record<string, string> = {
   'قياس': 'readings',
   'لا قياسات بعد': 'no readings yet',
   'لا يوجد وكلاء مسجلون بعد — ثبّت Zimam.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.': 'No agents enrolled yet — install Zimam.Agent on your servers to start seeing real telemetry here.',
+  'خوادم وكلاء زِمام': 'ZIMAM agent servers',
+  'عملية': 'processes',
 };
