@@ -54,11 +54,11 @@ def _load_dotenv(path: Path) -> None:
 
 _load_dotenv(PROJECT_ROOT / '.env')
 
-# Server network settings. Packaged appliances bind localhost by default —
-# the control plane on :8876 is the only public surface; set ZIMAM_HOST
-# explicitly (e.g. via .env) to expose the legacy port.
-_default_host = '127.0.0.1' if getattr(sys, 'frozen', False) else '0.0.0.0'
-SERVER_HOST: str = os.getenv('ZIMAM_HOST', _default_host)
+# Server network settings. The legacy backend binds localhost only — the
+# control plane on :8876 proxies every call, so no other machine on the
+# network can see or reach this port. Set ZIMAM_HOST explicitly (e.g. via
+# .env) only if you deliberately need LAN exposure.
+SERVER_HOST: str = os.getenv('ZIMAM_HOST', '127.0.0.1')
 SERVER_PORT: int = int(os.getenv('ZIMAM_PORT', '8765'))
 
 # Security settings

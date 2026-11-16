@@ -39,8 +39,19 @@ namespace ZimamLauncher
                 string pyw = ResolvePythonW(projectDir);
                 var started = new List<Process>();
 
-                // Legacy backend (real Windows admin APIs on :8765).
-                started.Add(StartHidden(pyw, Path.Combine(projectDir, "backend", "main.py"), projectDir)!);
+                // Legacy backend (real Windows admin APIs on :8765) — loopback
+                // only; the control plane proxies every call so the port is
+                // invisible to other machines on the network.
+                var bePsi = new ProcessStartInfo
+                {
+                    FileName = pyw,
+                    Arguments = "\"backend\\main.py\" --host 127.0.0.1",
+                    WorkingDirectory = projectDir,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+                bePsi.EnvironmentVariables["ZIMAM_HOST"] = "127.0.0.1";
+                started.Add(Process.Start(bePsi)!);
 
                 // Control plane + built SPA on :8876 (proxies legacy /api).
                 var cpPsi = new ProcessStartInfo
