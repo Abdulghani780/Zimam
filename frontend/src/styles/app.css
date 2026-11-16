@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -7,7 +7,7 @@ h1 { font-size: 26px; }
 h2 { font-size: 19px; }
 h3 { font-size: 16px; }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Global Viewport & Responsive Containment â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────── Global Viewport & Responsive Containment ───────── */
 html, body {
   max-width: 100vw;
   overflow-x: hidden;
@@ -38,7 +38,7 @@ button, input, select, textarea, .btn, .badge {
   font-variant-numeric: tabular-nums;
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Shared ZIMAM authentication surfaces â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────── Shared ZIMAM authentication surfaces ───────── */
 .auth-page {
   position: relative;
   z-index: 1;
@@ -293,7 +293,7 @@ button, input, select, textarea, .btn, .badge {
   .access-state-card__actions .btn { width: 100%; }
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ ZIMAM Application Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────── ZIMAM Application Styles ───────── */
 
 .app-layout {
   display: flex;
@@ -340,7 +340,7 @@ button, input, select, textarea, .btn, .badge {
 }
 
 .app-sidebar::-webkit-scrollbar-thumb:hover {
-  background: var(--glass-rim-high);
+  background: var(--glass-rim);
 }
 
 @media (max-width: 900px) {
@@ -835,7 +835,7 @@ button, input, select, textarea, .btn, .badge {
   background: var(--text-3);
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Mobile Navigation Bar & Drawer (Desktop Isolation) â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────── Mobile Navigation Bar & Drawer (Desktop Isolation) ───────── */
 .mobile-tabbar {
   display: none !important;
 }
@@ -1012,7 +1012,7 @@ button, input, select, textarea, .btn, .badge {
 
 
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Impeccable Craft Polish Layer â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────── Impeccable Craft Polish Layer ───────── */
 
 /* 1. Browser Surfaces Theming (Selection, Caret, Scrollbars) */
 ::selection {
@@ -1065,7 +1065,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
               border-color 0.2s ease;
 }
 .stat-card:hover {
-  border-color: var(--glass-rim-high);
+  border-color: var(--glass-rim);
   box-shadow: var(--glass-shadow), 0 0 20px -8px var(--accent-glow);
   transform: translateY(-2px);
 }
@@ -1077,7 +1077,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .hero-banner:hover {
-  border-color: var(--glass-rim-high) !important;
+  border-color: var(--glass-rim) !important;
   box-shadow: var(--glass-shadow), 0 0 24px -10px var(--accent-glow);
 }
 
@@ -1138,7 +1138,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   }
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ 9. LUXURY UI / UX PRO MAX ENHANCEMENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ───────── 9. LUXURY UI / UX PRO MAX ENHANCEMENTS ───────── */
 
 /* Luxury Card Elevation with Specular Edge */
 .card-luxury {
@@ -1148,14 +1148,14 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   background: linear-gradient(155deg, var(--glass-tint-strong) 0%, var(--glass-tint) 100%);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
   backdrop-filter: blur(28px) saturate(160%);
-  box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-rim-high);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 0 var(--glass-rim);
   transition: transform 0.28s var(--ease-spring), box-shadow 0.25s var(--ease-out), border-color 0.2s ease;
 }
 
 .card-luxury:hover {
   transform: translateY(-2px);
   box-shadow: var(--glass-shadow), 0 14px 36px -10px var(--accent-glow);
-  border-color: var(--glass-rim-high);
+  border-color: var(--glass-rim);
 }
 
 /* Shimmer Skeleton Loading Effect */
@@ -1286,7 +1286,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
 }
 
 /* =====================================================================
-   ZIMAM v3.0 â€” Slate & Gold Dashboard Design System
+   ZIMAM v3.0 — Slate & Gold Dashboard Design System
    Shared shell, navigation, panels, KPI cards, charts, tables and the
    RDP / PAM / Port-Isolation workspaces.
    ===================================================================== */
@@ -2267,7 +2267,7 @@ textarea.ui-input {
 
 /* ---------- Panels & cards ---------- */
 /* Liquid glass is restored: the kit's .glass material (blur + rim + sheen)
-   is the Signature Luxury surface — no flattening overrides. */
+   is the Signature Luxury surface � no flattening overrides. */
 
 .card {
   padding: 16px !important;
@@ -5767,680 +5767,3 @@ textarea.ui-input {
   }
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   SIGNATURE LUXURY LAYER â€” cinematic depth, living ambient, gold light
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-
-/* â”€â”€ 1. Living ambient: slow aurora drift behind the glass â”€â”€ */
-.ambient {
-  background:
-    radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--accent-fill) 10%, transparent), transparent 60%),
-    var(--bg);
-}
-
-.ambient__orb {
-  will-change: transform;
-  filter: blur(2px);
-}
-
-.ambient__orb--1 {
-  animation: lux-aurora-1 26s ease-in-out infinite alternate;
-}
-
-.ambient__orb--2 {
-  animation: lux-aurora-2 32s ease-in-out infinite alternate;
-}
-
-.ambient__orb--3 {
-  animation: lux-aurora-3 38s ease-in-out infinite alternate;
-}
-
-@keyframes lux-aurora-1 {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(-4vw, 3vh, 0) scale(1.08); }
-}
-
-@keyframes lux-aurora-2 {
-  from { transform: translate3d(0, 0, 0) scale(1.05); }
-  to   { transform: translate3d(5vw, -4vh, 0) scale(0.96); }
-}
-
-@keyframes lux-aurora-3 {
-  from { transform: translate3d(0, 0, 0); }
-  to   { transform: translate3d(-3vw, -5vh, 0); }
-}
-
-/* Extra cinematic glows + vignette that deepen the scene edges */
-.ambient::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(38vw 30vw at 82% 8%, color-mix(in srgb, var(--accent-fill) 16%, transparent), transparent 70%),
-    radial-gradient(30vw 26vw at 8% 92%, color-mix(in srgb, var(--accent-fill) 10%, transparent), transparent 70%);
-  animation: lux-breathe 18s ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-.ambient::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(120% 100% at 50% 45%, transparent 55%, color-mix(in srgb, var(--bg) 55%, #000) 100%);
-  pointer-events: none;
-}
-
-@keyframes lux-breathe {
-  from { opacity: 0.65; }
-  to   { opacity: 1; }
-}
-
-/* â”€â”€ 2. Page entrance choreography â”€â”€ */
-.page > * {
-  animation: lux-rise 0.65s var(--ease-out) both;
-}
-
-.page > *:nth-child(2) { animation-delay: 0.05s; }
-.page > *:nth-child(3) { animation-delay: 0.1s; }
-.page > *:nth-child(4) { animation-delay: 0.15s; }
-.page > *:nth-child(5) { animation-delay: 0.2s; }
-.page > *:nth-child(6) { animation-delay: 0.25s; }
-.page > *:nth-child(7) { animation-delay: 0.3s; }
-.page > *:nth-child(n+8) { animation-delay: 0.35s; }
-
-@keyframes lux-rise {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* â”€â”€ 3. Signature hero: lit gold hairline, inner glow, gradient title â”€â”€ */
-.page-hero {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--accent-fill) 28%, transparent) !important;
-  box-shadow:
-    0 24px 60px -30px color-mix(in srgb, var(--accent-fill) 35%, transparent),
-    var(--glass-shadow) !important;
-}
-
-.page-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(60% 120% at 85% 0%, color-mix(in srgb, var(--accent-fill) 14%, transparent), transparent 60%),
-    linear-gradient(120deg, transparent 30%, color-mix(in srgb, var(--accent-fill) 8%, transparent) 50%, transparent 70%);
-  pointer-events: none;
-}
-
-.page-hero::after {
-  content: '';
-  display: block;
-  position: absolute;
-  top: 0;
-  inset-inline: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-fill) 70%, transparent), transparent);
-  pointer-events: none;
-}
-
-.page-hero h1 {
-  background: linear-gradient(120deg, var(--text) 30%, var(--accent) 75%, var(--accent-fill) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
-}
-
-/* â”€â”€ 4. Sidebar: lit gold active pill â”€â”€ */
-.sidebar-link {
-  position: relative;
-}
-
-.sidebar-link.active {
-  background: linear-gradient(120deg, color-mix(in srgb, var(--accent-fill) 18%, transparent), color-mix(in srgb, var(--accent-fill) 8%, transparent)) !important;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent-fill) 35%, transparent),
-    0 6px 18px -8px var(--accent-glow) !important;
-  color: var(--text) !important;
-}
-
-.sidebar-link.active::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 3px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--accent-fill), var(--accent));
-  box-shadow: 0 0 12px var(--accent-glow);
-}
-
-.sidebar-brand {
-  position: relative;
-}
-
-.sidebar-brand::after {
-  content: '';
-  position: absolute;
-  inset-inline: 10px;
-  bottom: -2px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-fill) 60%, transparent), transparent);
-}
-
-/* â”€â”€ 5. Stat cards: hairline glow + hover lift â”€â”€ */
-.stat-card {
-  border: 1px solid color-mix(in srgb, var(--accent-fill) 14%, transparent);
-  transition: transform 0.4s var(--ease-spring), box-shadow 0.4s var(--ease-out), border-color 0.3s;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  inset-inline: 12%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-fill) 55%, transparent), transparent);
-  opacity: 0.7;
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--accent-fill) 32%, transparent);
-  box-shadow: 0 20px 44px -22px color-mix(in srgb, var(--accent-fill) 40%, transparent), var(--glass-shadow);
-}
-
-.stat-card__value {
-  background: linear-gradient(120deg, var(--text) 70%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
-}
-
-/* â”€â”€ 6. Primary button: liquid gold sheen sweep â”€â”€ */
-.btn--primary {
-  overflow: hidden;
-}
-
-.btn--primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
-  transform: translateX(-120%);
-  transition: transform 0.7s var(--ease-out);
-  pointer-events: none;
-}
-
-.btn--primary:hover:not(:disabled)::after {
-  transform: translateX(120%);
-}
-
-/* â”€â”€ 7. Tables: gold-lit header rule and row sheen â”€â”€ */
-thead {
-  position: relative;
-}
-
-thead::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  inset-inline: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-fill) 45%, transparent), transparent);
-  pointer-events: none;
-}
-
-.table tbody tr {
-  transition: background-color 0.2s var(--ease-out);
-}
-
-/* â”€â”€ 8. Auth card: premium rim glow on the first screen â”€â”€ */
-.auth-card {
-  border: 1px solid color-mix(in srgb, var(--accent-fill) 30%, transparent) !important;
-  box-shadow:
-    0 30px 80px -30px color-mix(in srgb, var(--accent-fill) 45%, transparent),
-    var(--glass-shadow) !important;
-}
-
-/* â”€â”€ 9. Chrome: gold selection, caret and scrollbar â”€â”€ */
-::selection {
-  background: color-mix(in srgb, var(--accent-fill) 35%, transparent);
-  color: var(--text);
-}
-
-:root {
-  caret-color: var(--accent-fill);
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-fill) 45%, transparent), color-mix(in srgb, var(--accent-fill) 20%, transparent));
-  border-radius: 999px;
-}
-
-/* â”€â”€ 10. Respect reduced motion â”€â”€ */
-@media (prefers-reduced-motion: reduce) {
-  .ambient__orb,
-  .ambient::before,
-  .page > *,
-  .btn--primary::after {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   SOVEREIGN SIGNATURE LAYER — warm obsidian, heritage gold, editorial depth
-   Supersedes cyberpunk layer: restores brand identity with material craft.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── 1. Editorial page heroes: serif display + warm gold wash ── */
-.page-hero,
-.page-head {
-  position: relative;
-  border-color: var(--border-hairline) !important;
-}
-
-.page-hero::before,
-.page-head::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background:
-    radial-gradient(55% 130% at 88% -10%, rgba(212, 175, 106, 0.12), transparent 60%),
-    radial-gradient(40% 120% at 4% 110%, rgba(139, 58, 58, 0.08), transparent 60%);
-}
-
-.page-hero > *,
-.page-head > * {
-  position: relative;
-  z-index: 1;
-}
-
-.page-hero h1,
-.page-head h1 {
-  /* Ink-led title: gold appears only as a warm tail, never a fill. */
-  background: linear-gradient(115deg, var(--text-title) 55%, #cbb894 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  font-family: var(--font-display, 'Thmanyah Serif Display', serif);
-  letter-spacing: -0.015em;
-}
-
-.page-head__title {
-  align-items: flex-start;
-}
-
-.page-head__bar {
-  background: linear-gradient(180deg, var(--text-gold, #d4af6a), rgba(212, 175, 106, 0.15));
-  box-shadow: 0 0 8px rgba(212, 175, 106, 0.25);
-}
-
-/* Swash flourish on the last word of hero titles (brand signature) */
-.page-hero h1 .swash,
-.page-hero h1 [data-swash] {
-  font-feature-settings: 'swsh' 1;
-}
-
-/* ── 2. Numbers: tabular Sans (NOT mono — keeps editorial voice) ── */
-.num,
-.stat-card__value,
-.table td,
-.table th {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
-}
-
-.stat-card__value {
-  background: linear-gradient(115deg, var(--text-title) 40%, var(--text-gold, #d4af6a) 95%);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-/* ── 3. Sidebar: sovereign gold rail ── */
-.sidebar-link {
-  position: relative;
-}
-
-.sidebar-link.active {
-  background: linear-gradient(115deg, rgba(212, 175, 106, 0.11), rgba(212, 175, 106, 0.05)) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(212, 175, 106, 0.22),
-    0 4px 16px -10px rgba(212, 175, 106, 0.3) !important;
-}
-
-/* Gold filament on the reading-start edge of the active link */
-.sidebar-link.active::before {
-  content: '';
-  position: absolute;
-  inset-inline-start: 0;
-  top: 20%;
-  bottom: 20%;
-  width: 3px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--text-gold, #d4af6a), #b8935a);
-  box-shadow: 0 0 12px rgba(212, 175, 106, 0.6);
-}
-
-.sidebar-link.active .icon-wrap {
-  color: var(--text-gold, #d4af6a);
-}
-
-/* ── 4. Status pills: warm glows, never neon ── */
-[class*='status-safe'],
-.bg-status-safe-surface {
-  box-shadow: 0 0 12px -6px rgba(123, 201, 143, 0.45);
-}
-
-[class*='status-danger'],
-.bg-status-danger-surface {
-  box-shadow: 0 0 12px -6px rgba(224, 122, 106, 0.45);
-}
-
-[class*='status-warning'],
-.bg-status-warning-surface,
-.bg-status-partial-surface {
-  box-shadow: 0 0 12px -6px rgba(224, 178, 92, 0.4);
-}
-
-/* ── 5. Focus rings: gold, generous ── */
-:focus-visible {
-  outline: 2px solid rgba(212, 175, 106, 0.75);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* ── 6. Ledger table: gold hairline rule under header ── */
-thead::after {
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 106, 0.5), rgba(212, 175, 106, 0.5), transparent);
-}
-
-/* Row hover — warm parchment sheen */
-.table tbody tr:hover td {
-  background: rgba(212, 175, 106, 0.045);
-}
-
-/* ── 7. Auth card: warm vault glow ── */
-.auth-card {
-  border-color: rgba(212, 175, 106, 0.3) !important;
-  box-shadow:
-    0 0 0 1px rgba(212, 175, 106, 0.1),
-    0 30px 90px -30px rgba(0, 0, 0, 0.8),
-    0 0 60px -20px rgba(212, 175, 106, 0.25),
-    var(--glass-shadow) !important;
-}
-
-/* ── 8. Primary buttons: sovereign gold gradient + sheen ── */
-.btn--primary,
-button[class*='primary'] {
-  background: linear-gradient(135deg, #e8c98a 0%, #d4a017 45%, #b8892e 100%) !important;
-  color: #17130c !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 244, 214, 0.6),
-    0 6px 24px -8px rgba(212, 160, 23, 0.5) !important;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn--primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.35) 48%, transparent 60%);
-  transform: translateX(-120%);
-  transition: transform 0.7s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
-  pointer-events: none;
-}
-
-.btn--primary:hover::after {
-  transform: translateX(120%);
-}
-
-.btn--primary:active {
-  transform: scale(0.97);
-  transition-duration: 100ms;
-}
-
-/* ── 9. Cards: specular top edge + deeper warm shadow ── */
-.card,
-.glass,
-.glass-panel {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 244, 214, 0.08),
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 16px 48px -20px rgba(0, 0, 0, 0.7) !important;
-}
-
-/* ── 10. Page entrance: editorial rise with stagger ── */
-.page > * {
-  animation: sig-rise 0.5s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
-}
-
-.page > *:nth-child(2) { animation-delay: 0.04s; }
-.page > *:nth-child(3) { animation-delay: 0.08s; }
-.page > *:nth-child(4) { animation-delay: 0.12s; }
-.page > *:nth-child(5) { animation-delay: 0.16s; }
-.page > *:nth-child(6) { animation-delay: 0.2s; }
-.page > *:nth-child(7) { animation-delay: 0.24s; }
-.page > *:nth-child(8) { animation-delay: 0.28s; }
-
-@keyframes sig-rise {
-  from { opacity: 0; transform: translateY(10px) scale(0.99); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ── 11. Scrollbar: warm metallic ── */
-::-webkit-scrollbar-thumb {
-  background: rgba(212, 175, 106, 0.22);
-  border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(212, 175, 106, 0.38);
-}
-
-/* ── 12. Selection + caret ── */
-::selection {
-  background: rgba(212, 175, 106, 0.3);
-  color: var(--text-title);
-}
-
-input, textarea {
-  caret-color: var(--text-gold, #d4af6a);
-}
-
-/* ── 13. Empty states: editorial, not apologetic ── */
-.empty-state__title,
-.empty-state-luxury__title {
-  font-family: var(--font-display, 'Thmanyah Serif Display', serif);
-  letter-spacing: -0.01em;
-}
-
-/* ── 14. KPI tiles: editorial serif numerals + gold crown rule ── */
-.kpi {
-  border-radius: var(--radius-lg);
-}
-
-.kpi::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  inset-inline: 14%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 106, 0.3), transparent);
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.kpi__value {
-  font-family: var(--font-display, 'Thmanyah Serif Display', serif);
-  letter-spacing: -0.02em;
-}
-
-.kpi__icon {
-  color: var(--text-gold, #d4af6a);
-}
-
-.kpi--danger .kpi__icon {
-  color: var(--status-danger);
-}
-
-/* ── 15. Login greeting: the one expressive calligraphic moment ── */
-.auth-intro__greeting {
-  margin: 0;
-  font-family: var(--font-display, 'Thmanyah Serif Display', serif);
-  font-size: clamp(22px, 3vw, 30px);
-  font-weight: 700;
-  line-height: 1.4;
-  background: linear-gradient(115deg, var(--text-gold, #d4af6a) 20%, var(--text-title) 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.auth-intro__greeting .stretch {
-  font-feature-settings: 'ss05';
-}
-
-/* ── 14. Reduced motion: everything cross-fades ── */
-@media (prefers-reduced-motion: reduce) {
-  .page > *,
-  .btn--primary::after,
-  .ambient__orb,
-  .ambient::before {
-    animation: none !important;
-    transition: none !important;
-  }
-
-  .page > * {
-    animation: sig-fade 0.15s ease both !important;
-  }
-
-  @keyframes sig-fade {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-}
-
-/* ── 16. Interaction polish: material response (Phase 4) ── */
-
-/* KPI command tiles: lift + gold rim + deepened shadow on hover */
-.kpi {
-  transition: transform 0.28s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-              box-shadow 0.28s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-              border-color 0.2s ease;
-}
-.kpi:hover {
-  transform: translateY(-3px);
-  border-color: rgba(212, 175, 106, 0.38);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 244, 214, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.4),
-    0 22px 44px -18px rgba(0, 0, 0, 0.75),
-    0 0 28px -10px rgba(212, 175, 106, 0.28);
-}
-.kpi:active {
-  transform: translateY(-1px) scale(0.995);
-  transition-duration: 0.1s;
-}
-
-/* Sidebar links: press feedback + smoother color settle */
-.sidebar-link {
-  transition: transform 0.16s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-              background-color 0.18s ease,
-              color 0.18s ease,
-              box-shadow 0.2s ease;
-}
-.sidebar-link:active {
-  transform: translateX(calc(1px * var(--dir-x, 1))) scale(0.985);
-}
-
-/* Header icon buttons: tactile press */
-.header-icon-btn {
-  transition: transform 0.15s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-              background-color 0.18s ease,
-              color 0.18s ease,
-              box-shadow 0.2s ease;
-}
-.header-icon-btn:active {
-  transform: scale(0.92);
-  transition-duration: 0.08s;
-}
-
-/* Glass panels that are pure display surfaces (not table hosts): gentle lift.
-   Table cards stay still — rows are the interaction, not the frame. */
-.glass-panel:not(:has(table)):not(:has(.app-table)):not(:has(thead)),
-.card:not(:has(table)):not(:has(.app-table)):not(:has(thead)) {
-  transition: transform 0.25s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-              box-shadow 0.25s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
-              border-color 0.2s ease;
-}
-.glass-panel:not(:has(table)):not(:has(.app-table)):not(:has(thead)):hover,
-.card:not(:has(table)):not(:has(.app-table)):not(:has(thead)):hover {
-  transform: translateY(-2px);
-  border-color: rgba(212, 175, 106, 0.22);
-}
-
-/* Ghost/secondary buttons: warm inset tint on press */
-.btn--ghost:active:not(:disabled),
-.btn--glass:active:not(:disabled) {
-  transform: scale(0.97);
-  transition-duration: 0.09s;
-}
-.btn--ghost:hover:not(:disabled) {
-  background: rgba(212, 175, 106, 0.07);
-  color: var(--text-1);
-}
-
-/* Danger buttons: deepen on hover, keep crimson quiet */
-.btn--danger:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-/* Inputs: gold caret + slightly warmer hover surface */
-.input:hover:not(:focus):not(:disabled),
-.ui-input:hover:not(:focus):not(:disabled) {
-  box-shadow: inset 0 0 0 1px rgba(212, 175, 106, 0.22),
-              inset 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-/* Links inside prose: gold underline sweep */
-a:not(.btn):not(.sidebar-link):not(.nav-link):not(.header-brand) {
-  text-decoration-color: rgba(212, 175, 106, 0.4);
-  text-underline-offset: 3px;
-  transition: color 0.18s ease, text-decoration-color 0.18s ease;
-}
-a:not(.btn):not(.sidebar-link):not(.nav-link):not(.header-brand):hover {
-  color: var(--text-gold, #d4af6a);
-  text-decoration-color: rgba(212, 175, 106, 0.8);
-}
-
-/* Badges/chips: subtle gold edge on hover */
-.badge, .chip, .tag {
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-.badge:hover, .chip:hover, .tag:hover {
-  border-color: rgba(212, 175, 106, 0.35);
-}
-
-/* Number cells: keep tabular rhythm on hover states */
-td[style*='font-variant-numeric'],
-.kpi__value, .stat-value {
-  font-variant-numeric: tabular-nums;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .kpi, .sidebar-link, .header-icon-btn,
-  .glass-panel, .card, .btn--ghost, .btn--glass,
-  .input, .ui-input, a, .badge, .chip, .tag {
-    transition: none !important;
-  }
-  .kpi:hover, .glass-panel:hover, .card:hover {
-    transform: none !important;
-  }
-}

@@ -206,6 +206,13 @@
   --panel-soft:             var(--surface-ground);
   --panel-inset:            var(--surface-container-lowest);
   --shadow-soft:            rgba(0, 0, 0, 0.6);
+
+  /* Kit-alias utilities used across pages */
+  --font-mono:              var(--mono);
+  --font-telemetry:         var(--mono);
+  --warn:                   #e0b25c;
+  --brand-mark:             url('/logo-dark.png');
+  --nav-active-gradient:    linear-gradient(135deg, rgba(186, 149, 85, 0.16), rgba(186, 149, 85, 0.05));
 }
 
 /* ==========================================================================
@@ -271,6 +278,13 @@
   --panel-soft:             var(--surface-ground);
   --panel-inset:            var(--surface-container-lowest);
   --shadow-soft:            rgba(34, 31, 31, 0.14);
+
+  /* Kit-alias utilities used across pages */
+  --font-mono:              var(--mono);
+  --font-telemetry:         var(--mono);
+  --warn:                   #b8860b;
+  --brand-mark:             url('/logo.png');
+  --nav-active-gradient:    linear-gradient(135deg, rgba(186, 149, 85, 0.18), rgba(186, 149, 85, 0.06));
 }
 
 :root[dir='ltr'] {

@@ -1,5 +1,5 @@
-import './zimam-ui/styles/index.css';
 import './styles/app.css';
+import './zimam-ui/styles/index.css';
 import { StrictMode, Component, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
