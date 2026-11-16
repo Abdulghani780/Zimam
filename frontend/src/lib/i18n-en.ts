@@ -1669,4 +1669,8 @@ export const EN: Record<string, string> = {
   'آخر نتائج مجمّعة — ': 'Latest aggregated results — ',
   'لا توجد نتائج ناجحة بعد — أرسل مهمة قراءة من زر «مهمة».': 'No successful results yet — send a read job via the "Job" button.',
   'فشل جلب نتائج الوكيل': 'Failed to fetch agent results',
+  'قياسات الوكيل المجمّعة': 'Agent-collected telemetry',
+  'جارٍ تحميل قياسات الوكيل...': 'Loading agent telemetry…',
+  'لا يوجد وكيل ASAAS مطابق لاسم المضيف — ثبّت وكيلاً على هذا الخادم لتظهر القياسات الحقيقية هنا.': 'No ASAAS agent matches this hostname — install an agent on this server to see real telemetry here.',
+  'الوكيل مرتبط لكن لا توجد نتائج مهام بعد — أرسل مهام جمع من صفحة الوكلاء.': 'Agent linked but no job results yet — dispatch collection jobs from the Agents page.',
 };

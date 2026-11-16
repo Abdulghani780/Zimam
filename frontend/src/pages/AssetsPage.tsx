@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, Field, TextInput, Glass, useToast } from '../asaas-ui';
 import { api, type AssetItem } from '../lib/api';
-import { apiV1, type V1Asset, type V1Account } from '../lib/apiV1';
+import { apiV1, type V1Asset, type V1Account, type V1Agent } from '../lib/apiV1';
 import { RemoteSession } from '../components/RemoteSession';
 import {
   Server,
@@ -57,6 +57,11 @@ export function AssetsPage() {
   const [sessionAccounts, setSessionAccounts] = useState<V1Account[]>([]);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [sessionProtocol, setSessionProtocol] = useState<string>('rdp');
+
+  // Agent telemetry linked to the open drawer asset (matched by hostname)
+  const [drawerAgent, setDrawerAgent] = useState<V1Agent | null>(null);
+  const [drawerResults, setDrawerResults] = useState<Record<string, { completed_at: string | null; result: unknown; error: string | null }>>({});
+  const [drawerResultsLoading, setDrawerResultsLoading] = useState(false);
 
   const fetchAssets = async () => {
     try {
@@ -142,9 +147,31 @@ export function AssetsPage() {
     }
   };
 
-  const openServerDrawer = (a: AssetItem) => {
+  const openServerDrawer = async (a: AssetItem) => {
     setSelectedServer(a);
     setDrawerOpen(true);
+    setDrawerAgent(null);
+    setDrawerResults({});
+    setDrawerResultsLoading(true);
+    try {
+      const agentsRes = await apiV1.agents();
+      const all = Array.isArray(agentsRes) ? agentsRes : (agentsRes as { agents?: V1Agent[] })?.agents || [];
+      const host = a.host.toLowerCase();
+      const match = all.find((ag) => {
+        const inv = (ag.inventory || {}) as Record<string, unknown>;
+        const hn = String(inv.hostname || '').toLowerCase();
+        return hn && (hn === host || host.includes(hn) || hn.includes(host));
+      });
+      if (match) {
+        setDrawerAgent(match);
+        const res = await apiV1.agentLatestResults(match.id);
+        setDrawerResults(res.results || {});
+      }
+    } catch {
+      // telemetry is best-effort; the drawer still shows honest empty states
+    } finally {
+      setDrawerResultsLoading(false);
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -486,6 +513,49 @@ export function AssetsPage() {
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا تتوفر قياسات — تتطلب وكيلاً مرتبطاً بالأصل')}</span>
                 </div>
               ))}
+            </div>
+
+            {/* Agent-collected telemetry (real job results, hostname-matched) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+                {t('قياسات الوكيل المجمّعة')}
+                {drawerAgent && (
+                  <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600, marginInlineStart: 8 }} dir="ltr">
+                    {drawerAgent.name}
+                  </span>
+                )}
+              </h4>
+              {drawerResultsLoading ? (
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>{t('جارٍ تحميل قياسات الوكيل...')}</p>
+              ) : !drawerAgent ? (
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                  {t('لا يوجد وكيل ASAAS مطابق لاسم المضيف — ثبّت وكيلاً على هذا الخادم لتظهر القياسات الحقيقية هنا.')}
+                </p>
+              ) : Object.keys(drawerResults).length === 0 ? (
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                  {t('الوكيل مرتبط لكن لا توجد نتائج مهام بعد — أرسل مهام جمع من صفحة الوكلاء.')}
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                  {Object.entries(drawerResults).map(([jobType, entry]) => (
+                    <details key={jobType} style={{ border: '1px solid var(--accent-soft)', borderRadius: 10, padding: '10px 12px', background: 'var(--glass-rim-low)' }}>
+                      <summary style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-1)', cursor: 'pointer', fontFamily: 'var(--font-telemetry)' }} dir="ltr">
+                        {jobType}
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400, marginInlineStart: 8 }}>
+                          {entry.completed_at ? new Date(entry.completed_at).toLocaleString('ar-SA') : ''}
+                        </span>
+                      </summary>
+                      {entry.error ? (
+                        <span className="text-status-danger" style={{ fontSize: 11, display: 'block', marginTop: 6 }}>{entry.error}</span>
+                      ) : (
+                        <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 180, overflowY: 'auto' }}>
+                          {JSON.stringify(entry.result, null, 2)}
+                        </pre>
+                      )}
+                    </details>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Core Services Section — not collected yet */}
