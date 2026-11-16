@@ -1687,4 +1687,8 @@ export const EN: Record<string, string> = {
   'لا يوجد وكلاء مسجلون بعد — ثبّت Zimam.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.': 'No agents enrolled yet — install Zimam.Agent on your servers to start seeing real telemetry here.',
   'خوادم وكلاء زِمام': 'ZIMAM agent servers',
   'عملية': 'processes',
+  'درع زِمام عن بُعد (Remote Agent Shield)': 'ZIMAM remote shield (Remote Agent Shield)',
+  'حالة جدار الحماية وأحدث أحداث السجل من وكلاء Zimam.Agent — بيانات حقيقية مجمعة': 'Firewall state and latest log events from Zimam.Agent agents — real collected data',
+  'لا بيانات': 'no data',
+  'لم يُرسل هذا الجامع بعد — أرسله من صفحة الوكلاء.': 'This collector has not run yet — dispatch it from the Agents page.',
 };
