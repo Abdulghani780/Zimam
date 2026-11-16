@@ -405,7 +405,7 @@ export function UsersPage() {
         }
       >
         <TableContainer>
-          <Table style={{ width: "100%", tableLayout: "fixed" }}>
+          <Table style={{ width: "100%", tableLayout: "fixed", minWidth: 720 }}>
             <TableHeader>
               <TableRow>
                 <TableHead style={{ width: '17%', textAlign: 'start' }}>{t('اسم الحساب (Username)')}</TableHead>
@@ -620,15 +620,15 @@ export function UsersPage() {
         )}
 
         <TableContainer>
-          <Table style={{ width: '100%', tableLayout: 'fixed' }}>
+          <Table style={{ width: '100%', tableLayout: 'fixed', minWidth: 720 }}>
             <TableHeader>
               <TableRow>
                 <TableHead style={{ width: '18%', textAlign: 'start' }}>{t('اسم المستخدم')}</TableHead>
-                <TableHead style={{ width: '20%', textAlign: 'start' }}>{t('الاسم الكامل')}</TableHead>
-                <TableHead style={{ width: '19%', textAlign: 'start' }}>{t('الدور والصلاحية')}</TableHead>
-                <TableHead style={{ width: '12%', textAlign: 'start' }}>{t('حالة الحساب')}</TableHead>
-                <TableHead style={{ width: '19%', textAlign: 'start' }}>{t('المصادقة الثنائية')}</TableHead>
-                <TableHead style={{ width: '12%', textAlign: 'end' }}>{t('إجراءات')}</TableHead>
+                <TableHead style={{ width: '19%', textAlign: 'start' }}>{t('الاسم الكامل')}</TableHead>
+                <TableHead style={{ width: '18%', textAlign: 'start' }}>{t('الدور والصلاحية')}</TableHead>
+                <TableHead style={{ width: '11%', textAlign: 'start' }}>{t('حالة الحساب')}</TableHead>
+                <TableHead style={{ width: '18%', textAlign: 'start' }}>{t('المصادقة الثنائية')}</TableHead>
+                <TableHead style={{ width: '16%', textAlign: 'end' }}>{t('إجراءات')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -654,12 +654,12 @@ export function UsersPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell style={{ width: '20%' }} className="text-xs text-muted">
+                      <TableCell style={{ width: '19%' }} className="text-xs text-muted">
                         <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {u.full_name || '—'}
                         </span>
                       </TableCell>
-                      <TableCell style={{ width: '19%' }}>
+                      <TableCell style={{ width: '18%' }}>
                         {canManageAppUsers && !isRoot ? (
                           <select
                             value={u.role}
@@ -686,7 +686,7 @@ export function UsersPage() {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell style={{ width: '12%' }}>
+                      <TableCell style={{ width: '11%' }}>
                         <span
                           className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold ${
                             u.is_active
@@ -699,12 +699,12 @@ export function UsersPage() {
                           {u.is_active ? t('نشط Active') : t('معطّل Disabled')}
                         </span>
                       </TableCell>
-                      <TableCell style={{ width: '19%' }} className="text-xs text-muted">
+                      <TableCell style={{ width: '18%' }} className="text-xs text-muted">
                         <span style={{ whiteSpace: 'nowrap' }}>
                           {u.mfa_enabled ? t('MFA مفعّل') : '—'}
                         </span>
                       </TableCell>
-                      <TableCell style={{ width: '12%', textAlign: 'end' }}>
+                      <TableCell style={{ width: '16%', textAlign: 'end' }}>
                         {canManageAppUsers ? (
                           u.is_active ? (
                             <Button

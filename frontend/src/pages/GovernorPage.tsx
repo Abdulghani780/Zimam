@@ -169,6 +169,10 @@ export function GovernorPage() {
       String(p.pid).includes(procSearch)
   );
 
+  const topConsumers = [...processes]
+    .sort((a, b) => (b.ram_mb ?? b.ram ?? 0) - (a.ram_mb ?? a.ram ?? 0))
+    .slice(0, 4);
+
   return (
     <div className="page">
       {/* Product page header */}
@@ -547,187 +551,66 @@ export function GovernorPage() {
               </Button>
             </div>
 
-            {/* 4 Heavy Consumer Cards */}
+            {/* Top memory consumers — live process telemetry */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-              {/* Card 1: SQL Server */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 10,
-                  background: 'var(--glass-rim-low)',
-                  border: '1px solid var(--accent-soft)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>sqlservr.exe</span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'var(--font)',
-                      color: 'var(--accent)',
-                      background: 'var(--accent-soft)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <span dir="ltr">8,420 MB</span>
-                  </span>
+              {topConsumers.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--text-3)', padding: '8px 4px' }}>
+                  {t('لا تتوفر بيانات عمليات بعد — ستظهر هنا أعلى العمليات استهلاكاً للذاكرة فور وصولها.')}
                 </div>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  Microsoft SQL Server Database Engine
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--paid)' }}>â— Working Set Active</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    loading={trimmingTarget === 'SQL Server'}
-                    onClick={() => handleSpecificTrim('SQL Server Engine')}
-                    style={{ padding: '3px 8px', fontSize: 11 }}
-                  >
-                    {t('تفريغ فوري')}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Card 2: IIS Worker */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 10,
-                  background: 'var(--glass-rim-low)',
-                  border: '1px solid var(--accent-soft)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>w3wp.exe</span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'var(--font)',
-                      color: 'var(--accent)',
-                      background: 'var(--accent-soft)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <span dir="ltr">2,840 MB</span>
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  DefaultAppPool IIS Worker Process
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--paid)' }}>â— HTTP Active</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    loading={trimmingTarget === 'IIS Worker'}
-                    onClick={() => handleSpecificTrim('IIS Worker Process')}
-                    style={{ padding: '3px 8px', fontSize: 11 }}
-                  >
-                    {t('تفريغ فوري')}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Card 3: Windows Defender */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 10,
-                  background: 'var(--glass-rim-low)',
-                  border: '1px solid var(--accent-soft)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>MsMpEng.exe</span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'var(--font)',
-                      color: 'var(--accent)',
-                      background: 'var(--accent-soft)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <span dir="ltr">1,180 MB</span>
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  Antimalware Service Executable
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--chart-out)' }}>â— Real-time Guard</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    loading={trimmingTarget === 'Defender'}
-                    onClick={() => handleSpecificTrim('Microsoft Defender')}
-                    style={{ padding: '3px 8px', fontSize: 11 }}
-                  >
-                    {t('تفريغ فوري')}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Card 4: Search Indexer */}
-              <div
-                style={{
-                  padding: '14px',
-                  borderRadius: 10,
-                  background: 'var(--glass-rim-low)',
-                  border: '1px solid var(--accent-soft)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>SearchIndexer.exe</span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'var(--font)',
-                      color: 'var(--accent)',
-                      background: 'var(--accent-soft)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <span dir="ltr">690 MB</span>
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  Windows Search File Indexer
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)' }}>â— Idle Indexing</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    loading={trimmingTarget === 'SearchIndexer'}
-                    onClick={() => handleSpecificTrim('Windows Search Indexer')}
-                    style={{ padding: '3px 8px', fontSize: 11 }}
-                  >
-                    {t('تفريغ فوري')}
-                  </Button>
-                </div>
-              </div>
+              ) : (
+                topConsumers.map((p) => {
+                  const ramLabel = p.ram_mb ? `${Number(p.ram_mb).toLocaleString()} MB` : `${p.ram} GB`;
+                  return (
+                    <div
+                      key={p.pid}
+                      style={{
+                        padding: '14px',
+                        borderRadius: 10,
+                        background: 'var(--glass-rim-low)',
+                        border: '1px solid var(--accent-soft)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.name}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontFamily: 'var(--font)',
+                            color: 'var(--accent)',
+                            background: 'var(--accent-soft)',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span dir="ltr">{ramLabel}</span>
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        PID {p.pid} · {p.user || '—'} · {t('جلسة')} #{p.session}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, gap: 6 }}>
+                        <span style={{ fontSize: 10, color: 'var(--paid)' }}>● {t('قيد التشغيل')}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          loading={trimmingTarget === p.name}
+                          onClick={() => handleSpecificTrim(p.name, p.pid)}
+                          style={{ padding: '3px 8px', fontSize: 11 }}
+                        >
+                          {t('تفريغ فوري')}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* Total Reclaimed Summary */}

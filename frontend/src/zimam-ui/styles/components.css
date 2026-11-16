@@ -13,6 +13,11 @@
   font-weight: 600;
   font-size: 14px;
   white-space: nowrap;
+  /* Never let flex/grid parents compress the pill below its label —
+     the text would clip inside the button instead of wrapping the row. */
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
   transition: transform 0.35s var(--ease-spring), box-shadow 0.3s var(--ease-out), background 0.3s, opacity 0.2s;
 }
 
