@@ -23,6 +23,7 @@ const JOB_TYPES = [
   { value: 'hotfix.list', label: t('تحديثات ويندوز') },
   { value: 'ports.list', label: t('المنافذ المستمعة') },
   { value: 'startup.programs', label: t('برامج بدء التشغيل') },
+  { value: 'hyperv.vms', label: t('آلات Hyper-V الافتراضية') },
 ];
 
 // Read-only collector set dispatched by the "collect all" action.
@@ -32,7 +33,7 @@ const COLLECTOR_JOB_TYPES = [
   'inventory.collect', 'session.list', 'network.info',
   'eventlog.tail', 'software.list', 'firewall.state',
   'windows.features', 'scheduled.tasks', 'local.users',
-  'shares.list', 'hotfix.list', 'ports.list', 'startup.programs',
+  'shares.list', 'hotfix.list', 'ports.list', 'startup.programs', 'hyperv.vms',
 ];
 
 const asArray = <T,>(res: unknown): T[] =>

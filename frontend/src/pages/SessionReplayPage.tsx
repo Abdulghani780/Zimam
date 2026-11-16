@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import { Card, Button, Glass, useToast } from '../zimam-ui';
 import {
   Play,
@@ -25,11 +26,36 @@ export function SessionReplayPage() {
   const [keystrokes, setKeystrokes] = useState<Array<{ id?: string; time: string; event: string; command: string; risk: string; user?: string }>>([]);
 
   useEffect(() => {
+    // Legacy replay feed (session recordings) — kept as primary source.
     api.getReplayEvents()
       .then((res) => {
         if (res?.ok && Array.isArray(res.events)) {
           setKeystrokes(res.events);
         }
+      })
+      .catch(() => {});
+    // v1 forensic audit chain — real signed events mapped onto the same timeline.
+    apiV1.auditEvents({ limit: 200 })
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res as { events?: any[] })?.events;
+        if (!Array.isArray(list) || list.length === 0) return;
+        const mapped = list.map((ev: any) => {
+          const action = String(ev.action ?? 'event');
+          const risk = /delete|revoke|disable|block|reject|fail/i.test(action)
+            ? 'HIGH'
+            : /create|approve|grant|update/i.test(action)
+              ? 'MEDIUM'
+              : 'LOW';
+          const payloadStr = ev.payload ? JSON.stringify(ev.payload) : '';
+          const command = [ev.target_id, payloadStr].filter(Boolean).join(' · ').slice(0, 140);
+          const time = ev.created_at ? new Date(ev.created_at).toLocaleString('ar-SA') : '—';
+          return { time, event: action, command: command || '—', risk, user: ev.actor_id ?? '' };
+        });
+        setKeystrokes((prev) => {
+          const seen = new Set(prev.map((k) => `${k.time}|${k.event}|${k.command}`));
+          const fresh = mapped.filter((k) => !seen.has(`${k.time}|${k.event}|${k.command}`));
+          return [...prev, ...fresh];
+        });
       })
       .catch(() => {});
   }, []);

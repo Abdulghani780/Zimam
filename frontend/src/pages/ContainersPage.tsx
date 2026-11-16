@@ -7,10 +7,13 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
+import { NavLink } from 'react-router-dom';
 import {
   Boxes,
   RefreshCw,
   Server,
+  Bot,
 } from 'lucide-react';
 import { t } from '../lib/i18n';
 
@@ -24,6 +27,34 @@ export function ContainersPage() {
 
   // Hyper-V State
   const [hypervData, setHypervData] = useState<any>(null);
+
+  // Remote agent Hyper-V VMs — read-only hyperv.vms collector results.
+  const [fleetVms, setFleetVms] = useState<any[]>([]);
+
+  const fetchFleetVms = async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetVms([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          const entry = r?.results?.['hyperv.vms'] ?? null;
+          let arr: any[] = [];
+          const raw = entry && !entry.error ? entry.result : null;
+          const src = Array.isArray(raw) ? raw : ((raw as any)?.vms ?? (raw as any)?.items ?? []);
+          if (Array.isArray(src)) arr = src.filter((x) => x && typeof x === 'object');
+          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, vms: arr };
+        }),
+      );
+      setFleetVms(detailed);
+    } catch {
+      setFleetVms([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchFleetVms();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -274,6 +305,70 @@ export function ContainersPage() {
               </div>
             )}
           </Card>
+
+          {/* ZIMAM remote agent Hyper-V VMs — read-only hyperv.vms collector */}
+          {fleetVms.length > 0 && (
+            <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Server size={18} style={{ color: 'var(--accent)' }} />
+                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('آلات وكلاء زِمام الافتراضية (قراءة فقط)')}</h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('hyperv.vms حقيقية: آلات Hyper-V على كل وكيل')}</span>
+                </div>
+                <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+                  {t('إدارة الوكلاء')} ←
+                </NavLink>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+                {fleetVms.map((ag) => (
+                  <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Bot size={15} style={{ color: 'var(--accent)' }} />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                        {ag.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                      {ag.hostname || ag.id.slice(0, 8)}{ag.vms.length ? ` · ${ag.vms.length} ${t('آلة')}` : ''}
+                    </div>
+                    {!ag.entry ? (
+                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الآلات بعد — أرسله من صفحة الوكلاء.')}</div>
+                    ) : ag.entry.error ? (
+                      <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.entry.error}</div>
+                    ) : ag.vms.length === 0 ? (
+                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا آلات افتراضية أو Hyper-V غير متاح على هذا الوكيل.')}</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                        {ag.vms.slice(0, 30).map((vm: any, i: number) => {
+                          const vname = String(vm.name ?? vm.Name ?? '?');
+                          const vstate = String(vm.state ?? vm.State ?? '');
+                          const vmem = vm.memory_assigned_gb ?? vm.MemoryAssigned ?? '';
+                          const vcpu = vm.cpu_usage ?? vm.ProcessorUsage ?? '';
+                          return (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={vname}>{vname}</span>
+                              <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                                {vmem !== '' && <span>{vmem} GB</span>}
+                                {vcpu !== '' && <span>{typeof vcpu === 'number' ? `${Math.round(vcpu * 100)}%` : vcpu}</span>}
+                                <span style={{ color: /running|running/i.test(vstate) ? 'var(--paid)' : 'var(--unpaid)' }}>{vstate || '—'}</span>
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {ag.vms.length > 30 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ag.vms.length - 30} {t('آلة أخرى')}</div>}
+                        {ag.entry.completed_at && (
+                          <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.entry.completed_at).toLocaleString('ar-SA')}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       )}
     </div>

@@ -7,6 +7,8 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
+import { NavLink } from 'react-router-dom';
 import {
   Database,
   Table,
@@ -20,6 +22,7 @@ import {
   Layers,
   ShieldCheck,
   Server,
+  Bot,
 } from 'lucide-react';
 import { t } from '../lib/i18n';
 
@@ -51,6 +54,42 @@ export function DatabasesPage() {
   const [backupDesc, setBackupDesc] = useState('');
   const [backupModalOpen, setBackupModalOpen] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
+
+  // Remote agent DB engines — derived from real service.list/process.list collectors.
+  const [fleetDbs, setFleetDbs] = useState<any[]>([]);
+
+  const DB_PATTERN = /mssql|mysql|postgres|mongo|redis|oracle|mariadb|sql ?server|db2|elastic|cassandra|couch|influx/i;
+
+  const fetchFleetDbs = async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetDbs([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          const svcEntry = r?.results?.['service.list'] ?? null;
+          const procEntry = r?.results?.['process.list'] ?? null;
+          const rowsOf = (e: any) => {
+            const raw = e && !e.error ? e.result : null;
+            const src = Array.isArray(raw) ? raw : ((raw as any)?.services ?? (raw as any)?.items ?? (raw as any)?.processes ?? []);
+            return Array.isArray(src) ? src.filter((x: any) => x && typeof x === 'object') : [];
+          };
+          const svcs = rowsOf(svcEntry).filter((s: any) =>
+            DB_PATTERN.test(String(s.Name ?? s.name ?? s.DisplayName ?? s.display_name ?? '')));
+          const procs = rowsOf(procEntry).filter((p: any) =>
+            DB_PATTERN.test(String(p.Name ?? p.name ?? p.ProcessName ?? '')));
+          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, svcs, procs, hasData: !!(svcEntry || procEntry) };
+        }),
+      );
+      setFleetDbs(detailed);
+    } catch {
+      setFleetDbs([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchFleetDbs();
+  }, []);
 
   const fetchOverview = async () => {
     setLoading(true);
@@ -292,6 +331,67 @@ export function DatabasesPage() {
           </div>
         </Card>
       </div>
+
+      {/* ZIMAM remote agent DB engines — derived from real service/process collectors */}
+      {fleetDbs.length > 0 && (
+        <Card style={{ padding: 22, border: '1px solid var(--glass-rim)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Database size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('محركات قواعد البيانات على وكلاء زِمام')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('مُشتقة من service.list و process.list الحقيقية — خدمات وعمليات قواعد البيانات فقط')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+            {fleetDbs.map((ag) => (
+              <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Bot size={15} style={{ color: 'var(--accent)' }} />
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                    {ag.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                  {ag.hostname || ag.id.slice(0, 8)}
+                  {ag.hasData ? ` · ${ag.svcs.length} ${t('خدمة DB')} · ${ag.procs.length} ${t('عملية DB')}` : ''}
+                </div>
+                {!ag.hasData ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم تُرسل قياسات الخدمات/العمليات بعد — أرسلها من صفحة الوكلاء.')}</div>
+                ) : ag.svcs.length + ag.procs.length === 0 ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا خدمات أو عمليات قواعد بيانات مكتشفة على هذا الوكيل.')}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
+                    {ag.svcs.slice(0, 15).map((s: any, i: number) => (
+                      <div key={`s${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, padding: '4px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
+                          {String(s.Name ?? s.name ?? s.DisplayName ?? s.display_name ?? '?')}
+                        </span>
+                        <span style={{ color: /run|active/i.test(String(s.Status ?? s.status ?? '')) ? 'var(--paid)' : 'var(--unpaid)', flexShrink: 0 }}>
+                          {String(s.Status ?? s.status ?? '')}
+                        </span>
+                      </div>
+                    ))}
+                    {ag.procs.slice(0, 10).map((p: any, i: number) => (
+                      <div key={`p${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, padding: '4px 8px', borderRadius: 6, background: 'var(--surface-glass-tint)' }}>
+                        <span style={{ color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
+                          ⚙ {String(p.Name ?? p.name ?? p.ProcessName ?? '?')}
+                        </span>
+                        <span style={{ color: 'var(--text-3)', flexShrink: 0 }}>PID {String(p.Id ?? p.pid ?? p.ProcessId ?? '')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Navigation Tabs */}
       <div
