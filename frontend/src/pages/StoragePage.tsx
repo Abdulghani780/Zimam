@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   HardDrive,
   Sparkles,
@@ -15,8 +16,41 @@ import {
     Search,
   Lock,
   Unlock,
-        } from 'lucide-react';
+        Bot,
+} from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { t } from '../lib/i18n';
+
+type ResultEntry = { job_id: string; completed_at: string | null; result: unknown; error: string | null };
+
+interface FleetDiskAgent {
+  id: string;
+  name: string;
+  status: string;
+  hostname?: string | null;
+  linked_asset: { id: string; name: string; hostname: string } | null;
+  disk: ResultEntry | null;
+}
+
+// Heuristic row extraction for disk.list payloads — falls back to raw JSON.
+function diskRows(result: unknown): { label: string; used: number; total: number; pct: number }[] {
+  const arr = Array.isArray(result)
+    ? result
+    : Array.isArray((result as any)?.disks)
+      ? (result as any).disks
+      : Array.isArray((result as any)?.drives)
+        ? (result as any).drives
+        : null;
+  if (!arr) return [];
+  return arr
+    .filter((d: unknown) => d && typeof d === 'object')
+    .map((d: any) => ({
+      label: String(d.drive || d.name || d.device || d.mount || d.letter || '?'),
+      used: Number(d.used_gb ?? d.usedGB ?? d.used ?? d.size_used ?? d.pused ?? NaN),
+      total: Number(d.total_gb ?? d.totalGB ?? d.total ?? d.size ?? d.psize ?? NaN),
+      pct: Number(d.percent ?? d.percent_used ?? d.pcent ?? NaN),
+    }));
+}
 
 export function StoragePage() {
   const toast = useToast();
@@ -30,18 +64,33 @@ export function StoragePage() {
   const [customCheckResult, setCustomCheckResult] = useState<any>(null);
   const [checkingLock, setCheckingLock] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [fleetDisks, setFleetDisks] = useState<FleetDiskAgent[]>([]);
 
   const fetchStorage = async () => {
     try {
-      const [bd, us, lf] = await Promise.all([
+      const [bd, us, lf, fleetRes] = await Promise.all([
         api.getStorageBreakdown('C'),
         api.getStorageUsers().catch(() => ({ users: [] })),
         api.getLockedFiles().catch(() => ({ locked_files: [] })),
+        apiV1.fleetSummary().catch(() => null),
       ]);
       setBreakdown(bd);
       setUserProfiles(Array.isArray(us) ? us : (us as any)?.users || []);
       if (lf && Array.isArray(lf.locked_files)) {
         // lf overview
+      }
+      if (fleetRes?.agents?.length) {
+        const detailed = await Promise.all(
+          fleetRes.agents.map(async (ag) => {
+            let disk: ResultEntry | null = null;
+            const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+            disk = r?.results?.['disk.list'] ?? null;
+            return { ...ag, disk };
+          }),
+        );
+        setFleetDisks(detailed);
+      } else {
+        setFleetDisks([]);
       }
     } catch (err: any) {
       toast(err.message || t('فشل فحص التخزين'), 'error');
@@ -195,6 +244,77 @@ export function StoragePage() {
           </Button>
         </div>
       </div>
+
+      {/* 1b. ZIMAM remote agent disks — real disk.list collector results */}
+      {fleetDisks.length > 0 && (
+        <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <HardDrive size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('أقراص وكلاء زِمام')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('بيانات disk.list حقيقية من كل وكيل')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
+            {fleetDisks.map((ag) => {
+              const rows = ag.disk && !ag.disk.error ? diskRows(ag.disk.result) : [];
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Bot size={15} style={{ color: 'var(--accent)' }} />
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ag.hostname || ag.id.slice(0, 8)}
+                  </div>
+                  {!ag.disk ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الأقراص بعد — أرسله من صفحة الوكلاء.')}</div>
+                  ) : ag.disk.error ? (
+                    <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.disk.error}</div>
+                  ) : rows.length === 0 ? (
+                    <details style={{ fontSize: 11 }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-3)' }}>{t('نتيجة غير معروفة — عرض خام')} ({ag.disk.completed_at ? new Date(ag.disk.completed_at).toLocaleString('ar-SA') : '—'})</summary>
+                      <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                        {JSON.stringify(ag.disk.result, null, 2)}
+                      </pre>
+                    </details>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {rows.map((d, i) => {
+                        const pct = Number.isFinite(d.pct) ? d.pct : (Number.isFinite(d.used) && Number.isFinite(d.total) && d.total > 0 ? (d.used / d.total) * 100 : 0);
+                        return (
+                          <div key={i}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-2)', marginBottom: 3 }}>
+                              <span style={{ fontFamily: 'var(--font-telemetry)', direction: 'ltr' }}>{d.label}</span>
+                              <span style={{ color: 'var(--text-3)' }}>
+                                {Number.isFinite(d.used) && Number.isFinite(d.total) ? `${d.used.toFixed(0)}/${d.total.toFixed(0)} GB` : pct ? `${pct.toFixed(0)}%` : '—'}
+                              </span>
+                            </div>
+                            <div style={{ height: 5, background: 'var(--hairline)', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(100, Math.max(2, pct))}%`, background: pct > 90 ? 'var(--unpaid)' : 'var(--accent)' }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {ag.disk.completed_at && (
+                        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.disk.completed_at).toLocaleString('ar-SA')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* 2. Primary NVMe Matrix & Breakdown Bar (Stitch _7 L51) */}
       <Card

@@ -1691,4 +1691,9 @@ export const EN: Record<string, string> = {
   'حالة جدار الحماية وأحدث أحداث السجل من وكلاء Zimam.Agent — بيانات حقيقية مجمعة': 'Firewall state and latest log events from Zimam.Agent agents — real collected data',
   'لا بيانات': 'no data',
   'لم يُرسل هذا الجامع بعد — أرسله من صفحة الوكلاء.': 'This collector has not run yet — dispatch it from the Agents page.',
+  'أقراص وكلاء زِمام': 'ZIMAM agent disks',
+  'بيانات disk.list حقيقية من كل وكيل': 'Real disk.list data from every agent',
+  'لم يُرسل جامع الأقراص بعد — أرسله من صفحة الوكلاء.': 'Disk collector not dispatched yet — send it from the Agents page.',
+  'نتيجة غير معروفة — عرض خام': 'Unrecognized result — raw view',
+  'آخر قياس': 'Last reading',
 };
