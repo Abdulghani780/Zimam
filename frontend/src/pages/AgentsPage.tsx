@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Card, Button, Modal, Field, Select, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
+import { Card, Button, Modal, Field, Select, TextInput, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { apiV1, type V1Agent, type V1AgentJob } from '../lib/apiV1';
-import { Bot, Play, RefreshCw, Terminal } from 'lucide-react';
+import { Bot, DownloadCloud, Play, RefreshCw, Terminal } from 'lucide-react';
 import { t } from '../lib/i18n';
 
 const JOB_TYPES = [
@@ -33,13 +33,46 @@ export function AgentsPage() {
   const [jobModalAgent, setJobModalAgent] = useState<V1Agent | null>(null);
   const [jobType, setJobType] = useState('system.info');
   const [submitting, setSubmitting] = useState(false);
+  const [bundle, setBundle] = useState<Record<string, unknown> | null>(null);
+  const [bundleFile, setBundleFile] = useState<File | null>(null);
+  const [bundleVersion, setBundleVersion] = useState('');
+  const [bundleSha, setBundleSha] = useState('');
+  const [bundleBusy, setBundleBusy] = useState(false);
+
+  const sha256Hex = async (file: File) => {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const pickBundle = async (file: File | null) => {
+    setBundleFile(file);
+    setBundleSha(file ? await sha256Hex(file) : '');
+  };
+
+  const uploadBundle = async () => {
+    if (!bundleFile || !bundleVersion.trim() || !bundleSha) return;
+    setBundleBusy(true);
+    try {
+      const res = await apiV1.uploadUpdateBundle(bundleFile, bundleVersion.trim(), bundleSha);
+      toast(t('تم نشر حزمة التحديث — وجّه مهمة agent.update للوكلاء لتثبيتها.'), 'success');
+      setBundle(res as Record<string, unknown>);
+      setBundleFile(null);
+      setBundleVersion('');
+      setBundleSha('');
+    } catch (err: any) {
+      toast(err.message || t('فشل رفع الحزمة'), 'error');
+    } finally {
+      setBundleBusy(false);
+    }
+  };
 
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [a, j] = await Promise.all([apiV1.agents(), apiV1.jobs()]);
+      const [a, j, b] = await Promise.all([apiV1.agents(), apiV1.jobs(), apiV1.updateBundleStatus().catch(() => null)]);
       setAgents(asArray<V1Agent>(a));
       setJobs(asArray<V1AgentJob>(j));
+      setBundle(b as Record<string, unknown> | null);
     } catch (err: any) {
       toast(err.message || t('فشل جلب بيانات الوكلاء'), 'error');
     } finally {
@@ -122,6 +155,52 @@ export function AgentsPage() {
             </TableBody>
           </Table>
         </TableContainer>
+      </Card>
+
+      <Card title={t('حزمة التحديث الذاتي')} icon="vault">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, lineHeight: 1.7 }}>
+            {t('ارفع ملف Asaas.WindowsAgent.exe الجديد مرة واحدة، ثم أرسل مهمة agent.update موقعة — الوكيل يتحقق من البصمة SHA-256 ويطبّقها عند إعادة التشغيل.')}
+          </p>
+          {bundle?.available ? (
+            <div style={{ fontSize: 12, color: 'var(--text-2)', background: 'var(--surface-glass-tint)', borderRadius: 10, padding: '10px 14px', fontFamily: 'var(--font-telemetry)' }}>
+              {t('المنشور')}: v{String(bundle.version)} · {String(bundle.sha256).slice(0, 16)}… · {Math.round(Number(bundle.size_bytes) / 1048576)} MB · {String(bundle.uploaded_by)}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('لا توجد حزمة منشورة حالياً.')}</div>
+          )}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <Field label={t('ملف التحديث (.exe)')}>
+              {() => (
+                <input
+                  type="file"
+                  accept=".exe"
+                  aria-label={t('ملف التحديث (.exe)')}
+                  onChange={(e) => void pickBundle(e.target.files?.[0] ?? null)}
+                  style={{ fontSize: 12, color: 'var(--text-2)' }}
+                />
+              )}
+            </Field>
+            <Field label={t('الإصدار')}>
+              {(id) => <TextInput id={id} value={bundleVersion} onChange={(e) => setBundleVersion(e.target.value)} placeholder="1.1.0" dir="ltr" style={{ width: 110 }} />}
+            </Field>
+            <Button
+              size="sm"
+              variant="primary"
+              loading={bundleBusy}
+              disabled={!bundleFile || !bundleVersion.trim() || !bundleSha}
+              onClick={uploadBundle}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <DownloadCloud size={14} />{t('نشر الحزمة')}
+            </Button>
+          </div>
+          {bundleSha && (
+            <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', wordBreak: 'break-all' }}>
+              SHA-256: {bundleSha}
+            </div>
+          )}
+        </div>
       </Card>
 
       <Card title={t('سجل المهام الموقعة')} icon="vault" actions={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>{jobs.length} مهمة</span>}>
