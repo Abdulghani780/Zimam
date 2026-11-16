@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Glass, Field, TextInput, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   Send,
   CheckCircle2,
@@ -27,6 +28,7 @@ export function SettingsPage() {
   const [diskThreshold, setDiskThreshold] = useState('90');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
 
   // Stitch _12 Alert Rules Matrix Toggles
   const [ruleBruteForce, setRuleBruteForce] = useState(true);
@@ -97,6 +99,19 @@ export function SettingsPage() {
       toast(err.message || t('خطأ أثناء إرسال التجربة'), 'error');
     } finally {
       setTesting(false);
+    }
+  };
+
+  const handleBackup = async () => {
+    setBackingUp(true);
+    try {
+      const res: any = await apiV1.backup();
+      const sizeKb = res?.size_bytes ? Math.round(res.size_bytes / 1024) : 0;
+      toast(`${t('تم إنشاء النسخة الاحتياطية')}: ${res?.file || ''} (${sizeKb} KB)`, 'success');
+    } catch (err: any) {
+      toast(err?.message || t('خطأ أثناء إنشاء النسخة الاحتياطية'), 'error');
+    } finally {
+      setBackingUp(false);
     }
   };
 
@@ -506,6 +521,21 @@ export function SettingsPage() {
             </label>
           </div>
         </div>
+      </Card>
+
+      {/* 4. Control Plane Backup (v1) */}
+      <Card
+        title={t('النسخ الاحتياطي لطبقة التحكم')}
+        icon="collect"
+        actions={
+          <Button variant="secondary" onClick={handleBackup} disabled={backingUp}>
+            {backingUp ? t('جارٍ الإنشاء...') : t('إنشاء نسخة احتياطية')}
+          </Button>
+        }
+      >
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.7 }}>
+          {t('ينشئ نسخة SQLite متسقة من قاعدة بيانات طبقة التحكم في مجلد data/backups مع بصمة SHA-256 وسجل تدقيق. متاح للمشرفين فقط.')}
+        </p>
       </Card>
     </div>
   );

@@ -1610,4 +1610,8 @@ export const EN: Record<string, string> = {
   'البرامج المثبتة': 'Installed software',
   'حالة جدار الحماية': 'Firewall state',
   'حدثاً': 'events',
+  'النسخ الاحتياطي لطبقة التحكم': 'Control plane backup',
+  'إنشاء نسخة احتياطية': 'Create backup',
+  'ينشئ نسخة SQLite متسقة من قاعدة بيانات طبقة التحكم في مجلد data/backups مع بصمة SHA-256 وسجل تدقيق. متاح للمشرفين فقط.': 'Creates a consistent SQLite backup of the control-plane database into data/backups with a SHA-256 fingerprint and audit record. Admin only.',
+  'تم إنشاء النسخة الاحتياطية': 'Backup created',
 };
