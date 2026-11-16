@@ -22,7 +22,7 @@ builder.Services.AddHttpClient("control-plane", client =>
     var certPath = Environment.GetEnvironmentVariable("ASAAS_AGENT_CERT_PATH");
     var certPassword = Environment.GetEnvironmentVariable("ASAAS_AGENT_CERT_PASSWORD");
     if (!string.IsNullOrWhiteSpace(certPath))
-        handler.ClientCertificates.Add(new X509Certificate2(certPath, certPassword));
+        handler.ClientCertificates.Add(X509CertificateLoader.LoadPkcs12FromFile(certPath, certPassword));
     return handler;
 });
 builder.Services.AddHostedService<AgentWorker>();
