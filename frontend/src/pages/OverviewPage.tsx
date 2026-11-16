@@ -4,6 +4,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
+  Bot,
   CheckCircle2,
   ChevronLeft,
   Clock3,
@@ -32,7 +33,27 @@ import {
 } from '../lib/api';
 import { CpuHistoryChart, type ChartPoint } from '../components/CpuHistoryChart';
 import { HistoricalMetricsChart } from '../components/HistoricalMetricsChart';
+import { apiV1 } from '../lib/apiV1';
 import { t } from '../lib/i18n';
+
+interface FleetAgent {
+  id: string;
+  name: string;
+  status: string;
+  last_seen_at: string | null;
+  hostname?: string | null;
+  os?: string | null;
+  process_count?: number | null;
+  linked_asset: { id: string; name: string; hostname: string } | null;
+  collector_count: number;
+  collectors: string[];
+  last_collection_at: string | null;
+}
+
+interface FleetSummary {
+  agents: FleetAgent[];
+  totals: { agents: number; online: number; with_results: number };
+}
 
 interface FirewallStatus {
   ok: boolean;
@@ -120,6 +141,7 @@ export function OverviewPage() {
   const [securityStats, setSecurityStats] = useState<SecurityStats | null>(null);
   const [firewall, setFirewall] = useState<FirewallStatus | null>(null);
   const [backups, setBackups] = useState<BackupRecord[]>([]);
+  const [fleet, setFleet] = useState<FleetSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
   const host = snapshot?.host;
@@ -136,13 +158,14 @@ export function OverviewPage() {
   }, []);
 
   const loadLiveExtras = useCallback(async () => {
-    const [serverRes, auditRes, securityRes, securityStatRes, firewallRes, backupRes] = await Promise.all([
+    const [serverRes, auditRes, securityRes, securityStatRes, firewallRes, backupRes, fleetRes] = await Promise.all([
       api.getServers().catch(() => null),
       api.getAuditLogs(8).catch(() => []),
       api.getSecurityEvents().catch(() => []),
       api.getSecurityStats().catch(() => null),
       api.getFirewallStatus().catch(() => null),
       api.getDatabaseBackups().catch(() => null),
+      apiV1.fleetSummary().catch(() => null),
     ]);
     if (serverRes?.servers) setServers(serverRes.servers);
     if (Array.isArray(auditRes)) setAuditLogs(auditRes);
@@ -150,6 +173,7 @@ export function OverviewPage() {
     if (securityStatRes) setSecurityStats(securityStatRes);
     if (firewallRes) setFirewall(firewallRes as FirewallStatus);
     if (backupRes?.backups) setBackups(backupRes.backups as BackupRecord[]);
+    if (fleetRes) setFleet(fleetRes);
   }, []);
 
   useEffect(() => {
@@ -261,6 +285,57 @@ export function OverviewPage() {
           </button>
         </div>
       </div>
+
+      {fleet && (
+        <section style={{ marginBottom: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Bot size={18} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>{t('أسطول زِمام')}</h2>
+              <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)' }}>
+                {fleet.totals.online}/{fleet.totals.agents} {t('متصل')} · {fleet.totals.with_results} {t('بقياسات')}
+              </span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          {fleet.agents.length === 0 ? (
+            <div style={{ border: '1px dashed var(--accent-soft)', borderRadius: 14, padding: '18px 20px', color: 'var(--text-3)', fontSize: 13 }}>
+              {t('لا يوجد وكلاء مسجلون بعد — ثبّت Zimam.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.')}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+              {fleet.agents.map((ag) => (
+                <NavLink
+                  key={ag.id}
+                  to="/agents"
+                  style={{ textDecoration: 'none', border: '1px solid var(--accent-soft)', borderRadius: 14, padding: '14px 16px', background: 'var(--glass-rim-low)', display: 'block' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)' }}>{ag.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--status-safe-surface, rgba(34,197,94,.15))' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--status-safe, #22c55e)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>
+                    {ag.hostname || ag.id.slice(0, 8)}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
+                    {ag.os ? String(ag.os).slice(0, 48) : '—'}
+                    {ag.linked_asset ? ` · ${ag.linked_asset.name}` : ''}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
+                    {ag.collector_count > 0
+                      ? `${ag.collector_count} ${t('قياس')} · ${ag.last_collection_at ? new Date(ag.last_collection_at).toLocaleString('ar-SA') : ''}`
+                      : t('لا قياسات بعد')}
+                  </div>
+                </NavLink>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="kpi-grid">
         <article className="kpi">

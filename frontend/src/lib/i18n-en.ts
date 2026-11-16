@@ -1679,4 +1679,10 @@ export const EN: Record<string, string> = {
   'تم إرسال كل مهام الجمع — ستظهر النتائج خلال ~30 ثانية في زر «نتائج».': 'All collection jobs dispatched — results appear under "Results" in ~30s.',
   'أُرسلت': 'Dispatched',
   'مهمة — بعضها فشل': 'jobs — some failed',
+  'أسطول زِمام': 'ZIMAM fleet',
+  'بقياسات': 'with telemetry',
+  'إدارة الوكلاء': 'Manage agents',
+  'قياس': 'readings',
+  'لا قياسات بعد': 'no readings yet',
+  'لا يوجد وكلاء مسجلون بعد — ثبّت Zimam.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.': 'No agents enrolled yet — install Zimam.Agent on your servers to start seeing real telemetry here.',
 };

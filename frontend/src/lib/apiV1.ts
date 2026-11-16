@@ -291,6 +291,17 @@ export const apiV1 = {
     request<{ agent_id: string; results: Record<string, { job_id: string; completed_at: string | null; result: unknown; error: string | null }> }>(
       `/agents/${encodeURIComponent(agentId)}/results/latest`,
     ),
+  fleetSummary: () =>
+    request<{
+      agents: {
+        id: string; name: string; status: string;
+        last_seen_at: string | null; hostname?: string | null; os?: string | null;
+        process_count?: number | null;
+        linked_asset: { id: string; name: string; hostname: string } | null;
+        collector_count: number; collectors: string[]; last_collection_at: string | null;
+      }[];
+      totals: { agents: number; online: number; with_results: number };
+    }>('/fleet/summary'),
   agentHeartbeat: (agentId: string, agentKey: string, inventory: Record<string, unknown>) =>
     request<unknown>(`/agents/${agentId}/heartbeat`, {
       method: 'POST',

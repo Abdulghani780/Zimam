@@ -1010,24 +1010,13 @@ def download_agent_update(agent_id: str, x_agent_key: str | None = Header(defaul
     )
 
 
-@router.get("/agents/{agent_id}/results/latest")
-def agent_latest_results(agent_id: str, _: User = Depends(_current_user)) -> dict:
-    """Latest succeeded result per collector job type for one agent.
-
-    Agent job results already persist in ``agent_jobs.result_json``; this
-    read-model dedupes to the most recent success per ``job_type`` so the UI
-    can render real collector output (system.info, service.list, network.info…)
-    without replaying job history.
-    """
-    with db_session() as db:
-        agent = db.get(Agent, agent_id)
-        if not agent:
-            raise HTTPException(status_code=404, detail="Agent not found")
-        rows = list(db.scalars(
-            select(AgentJob)
-            .where(AgentJob.agent_id == agent_id, AgentJob.status == "succeeded", AgentJob.result_json.is_not(None))
-            .order_by(AgentJob.completed_at.desc())
-        ))
+def _latest_results_map(db, agent_id: str) -> dict:
+    """Most recent succeeded result per job_type for an agent (open session)."""
+    rows = list(db.scalars(
+        select(AgentJob)
+        .where(AgentJob.agent_id == agent_id, AgentJob.status == "succeeded", AgentJob.result_json.is_not(None))
+        .order_by(AgentJob.completed_at.desc())
+    ))
     latest: dict[str, dict] = {}
     for job in rows:
         if job.job_type in latest:
@@ -1042,7 +1031,76 @@ def agent_latest_results(agent_id: str, _: User = Depends(_current_user)) -> dic
             "result": payload.get("result") if isinstance(payload, dict) else payload,
             "error": payload.get("error") if isinstance(payload, dict) else None,
         }
+    return latest
+
+
+@router.get("/agents/{agent_id}/results/latest")
+def agent_latest_results(agent_id: str, _: User = Depends(_current_user)) -> dict:
+    """Latest succeeded result per collector job type for one agent.
+
+    Agent job results already persist in ``agent_jobs.result_json``; this
+    read-model dedupes to the most recent success per ``job_type`` so the UI
+    can render real collector output (system.info, service.list, network.info…)
+    without replaying job history.
+    """
+    with db_session() as db:
+        agent = db.get(Agent, agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        latest = _latest_results_map(db, agent_id)
     return {"agent_id": agent_id, "results": latest}
+
+
+@router.get("/fleet/summary")
+def fleet_summary(_: User = Depends(_current_user)) -> dict:
+    """Fleet-wide read-model: every agent with status, inventory summary,
+    hostname-matched v1 asset, and per-collector latest-result coverage.
+
+    Powers the Overview dashboard with real agent telemetry instead of
+    legacy-only metrics. No fabricated values — agents without results
+    simply report ``collector_count: 0``.
+    """
+    with db_session() as db:
+        agents = list(db.scalars(select(Agent).order_by(Agent.name)))
+        assets = list(db.scalars(select(Asset)))
+        entries = []
+        for ag in agents:
+            try:
+                inv = json.loads(ag.inventory_json or "{}")
+            except (TypeError, ValueError):
+                inv = {}
+            if not isinstance(inv, dict):
+                inv = {}
+            hn = str(inv.get("hostname") or "").lower()
+            linked = None
+            for a in assets:
+                ah = str(a.hostname or "").lower()
+                if hn and ah and (ah == hn or ah in hn or hn in ah):
+                    linked = {"id": a.id, "name": a.name, "hostname": a.hostname}
+                    break
+            results = _latest_results_map(db, ag.id)
+            completed = [r["completed_at"] for r in results.values() if r.get("completed_at")]
+            entries.append({
+                "id": ag.id,
+                "name": ag.name,
+                "status": ag.status,
+                "last_seen_at": ag.last_seen_at.isoformat() if ag.last_seen_at else None,
+                "hostname": inv.get("hostname"),
+                "os": inv.get("os"),
+                "process_count": inv.get("process_count"),
+                "linked_asset": linked,
+                "collector_count": len(results),
+                "collectors": sorted(results.keys()),
+                "last_collection_at": max(completed) if completed else None,
+            })
+    return {
+        "agents": entries,
+        "totals": {
+            "agents": len(entries),
+            "online": sum(1 for e in entries if e["status"] == "online"),
+            "with_results": sum(1 for e in entries if e["collector_count"] > 0),
+        },
+    }
 
 
 @router.post("/jobs", status_code=201)
