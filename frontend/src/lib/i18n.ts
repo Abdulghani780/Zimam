@@ -1,5 +1,5 @@
 /**
- * ASAAS Console i18n — Arabic-first with a full English mode.
+ * ZIMAM Console i18n — Arabic-first with a full English mode.
  *
  * `t()` is a plain function (no hook needed): it reads the active language
  * from module state. `LangRoot` in main.tsx subscribes via `useLang`, applies
@@ -11,7 +11,7 @@ import { EN } from './i18n-en';
 
 export type Lang = 'ar' | 'en';
 
-const STORAGE_KEY = 'asaas-lang';
+const STORAGE_KEY = 'zimam-lang';
 
 function initialLang(): Lang {
   try {

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, Component, type ReactNode } from 'react';
+import { useState, useEffect, Component, type ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { HeaderBar } from './HeaderBar';
@@ -6,8 +6,8 @@ import { MobileNavigation } from './MobileNavigation';
 import { BroadcastModal } from './BroadcastModal';
 import { AiDiagModal } from './AiDiagModal';
 import { UserAccountModal } from './UserAccountModal';
-import { Ambient } from '../asaas-ui';
-import { AssistantWidget } from '../asaas-ui/assistant/AssistantWidget';
+import { Ambient } from '../zimam-ui';
+import { AssistantWidget } from '../zimam-ui/assistant/AssistantWidget';
 import { useTelemetry } from '../lib/useTelemetry';
 import { api, type AppUser } from '../lib/api';
 import { CheckCircle2, Server, Wrench } from 'lucide-react';
@@ -102,7 +102,7 @@ export function Layout() {
 
           <footer className="app-footer">
             <div className="app-footer__group">
-              <span dir="ltr">v{health?.version || '3.0.0'} | ASAAS Server Control</span>
+              <span dir="ltr">v{health?.version || '3.0.0'} | ZIMAM</span>
             </div>
             <div className="app-footer__group">
               <span><Server size={13} /> {t('الجلسات النشطة:')} {activeSessions}</span>
@@ -145,7 +145,7 @@ export function Layout() {
           id: currentUser?.username || 'admin',
           displayName: currentUser?.full_name || currentUser?.username || t('مدير النظام'),
         }}
-        title={t('مساعد أساس الذكي')}
+        title={t('مساعد زِمام الذكي')}
         subtitle={t('الروبوت السيادي لإدارة وتحليل Windows Server')}
         suggestions={[
           t('ما هي حالة الموارد واستهلاك المعالج حالياً؟'),
@@ -157,8 +157,8 @@ export function Layout() {
           const diag = await api.getAiDiagnosis().catch(() => null);
           const rec = diag?.recommendations?.[0];
           const text = rec
-            ? `${t('تحليل ذكاء أساس: ')}${diag.summary || t('النظام يعمل بحالة مستقرة.')}${t('\\n\\nالتوصية بخصوص (')}${userQuery}): ${rec}`
-            : `${t('منظومة أساس تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ')}${userQuery}`;
+            ? `${t('تحليل ذكاء زِمام: ')}${diag.summary || t('النظام يعمل بحالة مستقرة.')}${t('\\n\\nالتوصية بخصوص (')}${userQuery}): ${rec}`
+            : `${t('زِمام تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ')}${userQuery}`;
           return { reply: text };
         }}
       />

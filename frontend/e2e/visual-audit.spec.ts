@@ -26,7 +26,7 @@ const pagesToAudit = [
   { name: '13_Stitch_Gallery', path: '/gallery' },
 ];
 
-test.describe('ASAAS Server Control - Visual & Layout Cohesion Audit', () => {
+test.describe('ZIMAM - Visual & Layout Cohesion Audit', () => {
   for (const pageItem of pagesToAudit) {
     test(`Visual Audit: ${pageItem.name}`, async ({ page }) => {
       const consoleErrors: string[] = [];

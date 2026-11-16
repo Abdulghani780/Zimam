@@ -81,7 +81,7 @@ def _ensure_asset_columns() -> None:
 def _legacy_db_path() -> str | None:
     import os
 
-    raw = os.getenv("ASAAS_LEGACY_DB", "data/asaas_v2.db")
+    raw = os.getenv("ZIMAM_LEGACY_DB", "data/zimam_v2.db")
     path = resolve_data_path(raw)
     return str(path) if path.exists() else None
 

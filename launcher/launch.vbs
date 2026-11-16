@@ -1,5 +1,5 @@
 ' ==============================================================================
-' ASAAS Server Control v2.5 - Enterprise Desktop Launcher
+' ZIMAM v2.5 - Enterprise Desktop Launcher
 ' Zero-Console Window Guarantee (Native Detached Process Architecture)
 ' ==============================================================================
 Option Explicit
@@ -15,7 +15,7 @@ Set FSO = CreateObject("Scripting.FileSystemObject")
 ScriptDir = FSO.GetParentFolderName(WScript.ScriptFullName)
 ProjectDir = FSO.GetParentFolderName(ScriptDir)
 mainPy = ProjectDir & "\backend\main.py"
-exePath = ScriptDir & "\AsaasServerControl.exe"
+exePath = ScriptDir & "\ZimamLauncher.exe"
 dataDir = ProjectDir & "\data"
 browserProfile = dataDir & "\browser_profile"
 url = "http://127.0.0.1:8765"

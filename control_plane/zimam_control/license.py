@@ -1,4 +1,4 @@
-"""ASAAS Server Control — license model, verification, and entitlement state.
+"""ZIMAM — license model, verification, and entitlement state.
 
 Licenses are Ed25519-signed JSON payloads delivered to customers as a single
 compact string ``<base64url-json>.<base64url-signature>``. Verification is
@@ -9,7 +9,7 @@ is used only by ``tools/sign-license.py``.
 States
 ------
 trial     No license installed; full enterprise features until
-          ``first_boot + ASAAS_TRIAL_DAYS`` (default 30).
+          ``first_boot + ZIMAM_TRIAL_DAYS`` (default 30).
 licensed  Valid license; ``expires_at`` governs, ``grace_days`` of write
           access after expiry, then read-only.
 expired   Past expiry + grace → mutating endpoints return 403.
@@ -32,16 +32,16 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 # and must never be committed or shipped.
 # ---------------------------------------------------------------------------
 LICENSE_PUBLIC_KEY_HEX = os.getenv(
-    "ASAAS_LICENSE_PUBLIC_KEY",
+    "ZIMAM_LICENSE_PUBLIC_KEY",
     "",  # empty -> dev mode: licenses signed by data/license-signing.key are accepted
 )
 
 from .config import resolve_data_path
 
-TRIAL_DAYS = int(os.getenv("ASAAS_TRIAL_DAYS", "30"))
-LICENSE_FILE = resolve_data_path(os.getenv("ASAAS_LICENSE_FILE", "data/license.json"))
-_FIRST_BOOT_FILE = resolve_data_path(os.getenv("ASAAS_FIRST_BOOT_FILE", "data/.first_boot"))
-_DEV_KEY_FILE = resolve_data_path(os.getenv("ASAAS_LICENSE_DEV_PUBKEY_FILE", "data/license-pubkey.hex"))
+TRIAL_DAYS = int(os.getenv("ZIMAM_TRIAL_DAYS", "30"))
+LICENSE_FILE = resolve_data_path(os.getenv("ZIMAM_LICENSE_FILE", "data/license.json"))
+_FIRST_BOOT_FILE = resolve_data_path(os.getenv("ZIMAM_FIRST_BOOT_FILE", "data/.first_boot"))
+_DEV_KEY_FILE = resolve_data_path(os.getenv("ZIMAM_LICENSE_DEV_PUBKEY_FILE", "data/license-pubkey.hex"))
 
 VALID_TIERS = ("starter", "pro", "enterprise")
 

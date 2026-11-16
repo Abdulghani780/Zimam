@@ -12,7 +12,7 @@ target = """  const [grants, setGrants] = useState<JitGrant[]>([
     {
       id: 'jit-01',
       user: 'khalid.ops',
-      target: 'SRV-PROD-ASAAS-01',
+      target: 'SRV-PROD-ZIMAM-01',
       role: 'Local Administrator',
       ticket: 'CHG-9021',
       duration_mins: 30,
@@ -64,7 +64,7 @@ target = """  const [grants, setGrants] = useState<JitGrant[]>([
       const newGrant: JitGrant = {
         id: `jit-${Date.now()}`,
         user: 'admin',
-        target: 'SRV-PROD-ASAAS-01',
+        target: 'SRV-PROD-ZIMAM-01',
         role: targetRole,
         ticket: 'REQ-LIVE',
         duration_mins: durationMins,
@@ -96,7 +96,7 @@ replacement = """  const [grants, setGrants] = useState<JitGrant[]>([]);
         setGrants(res.grants.map((g: any) => ({
           id: g.id || `jit-${Math.random()}`,
           user: g.user || 'Unknown',
-          target: g.target || 'SRV-PROD-ASAAS-01',
+          target: g.target || 'SRV-PROD-ZIMAM-01',
           role: g.role || g.target_role || 'Operator',
           ticket: g.ticket || 'CHG-LIVE',
           duration_mins: g.duration_mins || 30,

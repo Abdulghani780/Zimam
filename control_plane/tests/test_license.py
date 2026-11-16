@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "control_plane"))
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
 
-from asaas_control import license as lic_mod
+from zimam_control import license as lic_mod
 
 
 def _keypair():

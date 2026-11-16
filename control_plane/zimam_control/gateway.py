@@ -2,7 +2,7 @@
 
 The browser opens ``/api/v1/gateway/{protocol}?token=<connection-token>`` as a
 WebSocket; the control plane consumes the one-time token, resolves the sealed
-account secret, performs the guacd handshake against ``ASAAS_GUACD_HOST`` and
+account secret, performs the guacd handshake against ``ZIMAM_GUACD_HOST`` and
 then pumps instructions in both directions.
 
 Wire format (Apache Guacamole protocol): instructions are comma-delimited
@@ -16,14 +16,14 @@ import codecs
 import logging
 import os
 
-log = logging.getLogger("asaas_control.gateway")
+log = logging.getLogger("zimam_control.gateway")
 
-GUACD_HOST = os.getenv("ASAAS_GUACD_HOST", "")
-GUACD_PORT = int(os.getenv("ASAAS_GUACD_PORT", "4822"))
-CONNECT_TIMEOUT = float(os.getenv("ASAAS_GUACD_TIMEOUT", "10"))
+GUACD_HOST = os.getenv("ZIMAM_GUACD_HOST", "")
+GUACD_PORT = int(os.getenv("ZIMAM_GUACD_PORT", "4822"))
+CONNECT_TIMEOUT = float(os.getenv("ZIMAM_GUACD_TIMEOUT", "10"))
 DEFAULT_PORTS = {"rdp": "3389", "ssh": "22", "telnet": "23", "vnc": "5900"}
 GUACAMOLE_VERSION = "1.5.0"
-SCREEN = (os.getenv("ASAAS_GW_WIDTH", "1920"), os.getenv("ASAAS_GW_HEIGHT", "1080"), os.getenv("ASAAS_GW_DPI", "96"))
+SCREEN = (os.getenv("ZIMAM_GW_WIDTH", "1920"), os.getenv("ZIMAM_GW_HEIGHT", "1080"), os.getenv("ZIMAM_GW_DPI", "96"))
 
 SUPPORTED_PROTOCOLS = frozenset(DEFAULT_PORTS)
 
@@ -145,7 +145,7 @@ async def open_session(protocol: str, params: dict[str, str]) -> GuacdSession:
     if protocol not in SUPPORTED_PROTOCOLS:
         raise ValueError(f"Unsupported gateway protocol: {protocol}")
     if not enabled():
-        raise ConnectionError("guacd is not configured (set ASAAS_GUACD_HOST)")
+        raise ConnectionError("guacd is not configured (set ZIMAM_GUACD_HOST)")
     reader, writer = await asyncio.wait_for(
         asyncio.open_connection(GUACD_HOST, GUACD_PORT), timeout=CONNECT_TIMEOUT
     )

@@ -51,9 +51,9 @@ const NAV_ITEMS = [
 export function Sidebar() {
   return (
     <aside className="app-sidebar" aria-label={t('شريط التنقل الجانبي')}>
-      <NavLink to="/" className="sidebar-brand" aria-label={t('منظومة أساس - لوحة القيادة')}>
+      <NavLink to="/" className="sidebar-brand" aria-label={t('زِمام - لوحة القيادة')}>
         <span className="sidebar-brand__text">
-          <strong>ASAAS</strong>
+          <strong>ZIMAM</strong>
           <span>Server Control</span>
         </span>
         <img

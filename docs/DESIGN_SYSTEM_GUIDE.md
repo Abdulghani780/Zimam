@@ -1,4 +1,4 @@
-# دليل نظام التصميم والتوكنز الموحد (ASAAS Sovereign Design System Guide)
+# دليل نظام التصميم والتوكنز الموحد (ZIMAM Sovereign Design System Guide)
 
 > **الإصدار**: v2.5.0 Enterprise  
 > **النمط البصري**: Cyber Dark Luxury Glassmorphism  
@@ -8,7 +8,7 @@
 
 ## 1. الهيكل المعماري ثلاثي الطبقات (Three-Layer Token Architecture)
 
-يعتمد نظام التصميم في منظومة أساس على المعمارية القياسية ثلاثية الطبقات الموصى بها في أنظمة التصميم العالمية (W3C Design Tokens Community Group):
+يعتمد نظام التصميم في زِمام على المعمارية القياسية ثلاثية الطبقات الموصى بها في أنظمة التصميم العالمية (W3C Design Tokens Community Group):
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
@@ -42,7 +42,7 @@
 | **مصدر الحقيقة (JSON)** | `frontend/src/tokens/design-tokens.json` | ملف الإعدادات الكامل بصيغة JSON الموحدة للتوكنز. |
 | **متغيرات CSS المُصدّرة** | `frontend/src/tokens/design-tokens.css` | ملف متغيرات CSS الرسمي (يتضمن الطبقات الثلاث وفئات المساعدة). |
 | **تكامل Tailwind** | `frontend/tailwind.config.js` | ربط فئات Tailwind مباشرة بمتغيرات CSS. |
-| **جسر التوافقية القديم** | `frontend/src/asaas-ui/styles/tokens.css` | توفير متغيرات التوافقية العكسية للمكونات السابقة. |
+| **جسر التوافقية القديم** | `frontend/src/zimam-ui/styles/tokens.css` | توفير متغيرات التوافقية العكسية للمكونات السابقة. |
 
 ---
 

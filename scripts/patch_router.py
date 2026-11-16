@@ -60,7 +60,7 @@ administrative session:i:1
             body_bytes = rdp_content.encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'application/x-rdp')
-            self.send_header('Content-Disposition', f'attachment; filename="asaas-bastion-{host}.rdp"')
+            self.send_header('Content-Disposition', f'attachment; filename="zimam-bastion-{host}.rdp"')
             self.send_header('Content-Length', str(len(body_bytes)))
             self.end_headers()
             self.wfile.write(body_bytes)

@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2 - Telemetry & System Monitoring Service.
+"""ZIMAM v2 - Telemetry & System Monitoring Service.
 
 Provides instant system metrics, per-core utilization history, and active sessions.
 Uses native Win32 APIs and psutil for zero-subprocess, low-overhead performance.

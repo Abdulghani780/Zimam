@@ -4,7 +4,7 @@ using System.IO;
 using System.Net;
 using System.Threading;
 
-namespace AsaasLauncher
+namespace ZimamLauncher
 {
     static class Program
     {

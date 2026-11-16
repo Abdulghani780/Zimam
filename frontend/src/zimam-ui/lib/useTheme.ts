@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
-const KEY = 'asaas-theme';
+const KEY = 'zimam-theme';
 
 function savedTheme(): Theme | null {
   try {

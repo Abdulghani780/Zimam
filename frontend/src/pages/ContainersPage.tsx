@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
+/**
+ * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 6: Containers & Virtualization (إدارة حاويات Docker والآلات الافتراضية Hyper-V)
  * Zero-Mock Production with Real Windows Hyper-V vmms & Docker CLI
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, useToast } from '../asaas-ui';
+import { Card, Button, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
 import {
   Boxes,

@@ -19,19 +19,19 @@ class LegacySecurityBaselineTests(unittest.TestCase):
 
     def test_browser_auth_is_not_stored_in_local_storage(self) -> None:
         api = (ROOT / "frontend/src/lib/api.ts").read_text(encoding="utf-8")
-        self.assertNotIn("asaas_session_token", api)
-        self.assertNotIn("asaas_auth_claim", api)
-        self.assertNotIn("X-Asaas-Token", api)
+        self.assertNotIn("zimam_session_token", api)
+        self.assertNotIn("zimam_auth_claim", api)
+        self.assertNotIn("X-Zimam-Token", api)
         self.assertIn("credentials: 'same-origin'", api)
 
     def test_no_known_default_credentials_are_seeded(self) -> None:
         db = (ROOT / "backend/app/infrastructure/db.py").read_text(encoding="utf-8")
         login = (ROOT / "frontend/src/pages/ZeroTrustLoginPage.tsx").read_text(encoding="utf-8")
         for known_password in (
-            "admin@asaas2026",
-            "operator@asaas2026",
-            "viewer@asaas2026",
-            "Admin@Asaas#2026!",
+            "admin@zimam2026",
+            "operator@zimam2026",
+            "viewer@zimam2026",
+            "Admin@Zimam#2026!",
         ):
             self.assertNotIn(known_password, db)
             self.assertNotIn(known_password, login)

@@ -1,9 +1,9 @@
-# ASAAS Server Control — خطة المعالجة الشاملة
+# ZIMAM — خطة المعالجة الشاملة
 
 الحالة بعد جولة التنفيذ (main @ 9778c83):
 
 ## ✅ منجز
-- الهوية الرسمية الكاملة من AI-ASAAS/skills (توكنات ink/gold، Thmanyah Serif، ثيم فاتح/داكن) — commit 6be66c0
+- الهوية الرسمية الكاملة من AI-ZIMAM/skills (توكنات ink/gold، Thmanyah Serif، ثيم فاتح/داكن) — commit 6be66c0
 - بيانات وهمية أُزيلت من 6 صفحات — 34a9cd0
 - تحصينات: rate limit v1 login، حد باسورد ويندوز 8، NetUserAdd/NetUserSetInfo (لا باسورد في argv) — fdf7d27 + 495b274
 - e2e smoke في CI (login/theme/overflow/governor) — 495b274

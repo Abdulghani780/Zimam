@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - Comprehensive Enterprise Verification Suite.
+"""ZIMAM v2.5 - Comprehensive Enterprise Verification Suite.
 
 Tests RBAC, Security, Privilege Escalation Prevention, Historical Metrics,
 Restart Manager Locked Files, and Native Win32 Performance.
@@ -17,7 +17,7 @@ import urllib.request
 
 BASE_URL = 'http://127.0.0.1:8765'
 ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = 'admin@asaas2026'
+ADMIN_PASSWORD = 'admin@zimam2026'
 
 
 def _post(path: str, data: dict, token: str = None) -> tuple[int, dict]:

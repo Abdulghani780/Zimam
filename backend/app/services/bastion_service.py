@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - Multi-Protocol Bastion Service (JumpServer Architecture).
+"""ZIMAM v2.5 - Multi-Protocol Bastion Service (JumpServer Architecture).
 
 Handles SSH, RDP, SFTP, VNC, Telnet, WinRM, Database, and K8s remote sessions.
 Includes Command Risk Interceptor (ACL Regex Firewall), Asset Inventory management,

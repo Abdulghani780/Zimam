@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -127,7 +127,7 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <img src="/logo-light.png" alt="" width="28" height="28" style={{ objectFit: 'contain' }} />
                 <div>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>ASAAS Server Control</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>ZIMAM</span>
                   <span style={{ fontSize: 10, color: 'var(--text-3)', display: 'block' }}>{t('بوابة التحكم الآمن')}</span>
                 </div>
               </div>

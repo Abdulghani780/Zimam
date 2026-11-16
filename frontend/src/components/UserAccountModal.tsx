@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Button, Field, TextInput, PasswordInput, useToast } from '../asaas-ui';
+import { Modal, Button, Field, TextInput, PasswordInput, useToast } from '../zimam-ui';
 import { api, type AppUser } from '../lib/api';
 import { User, LogIn, LogOut } from 'lucide-react';
 import { t } from '../lib/i18n';

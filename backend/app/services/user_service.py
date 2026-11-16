@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2 - Local Windows User & Access Management Service.
+"""ZIMAM v2 - Local Windows User & Access Management Service.
 
 Lists Windows user accounts, administrator rights, RDP access permissions, and session associations.
 """

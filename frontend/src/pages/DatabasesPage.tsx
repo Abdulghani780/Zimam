@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
+/**
+ * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 10: Database Management & Sovereign SQL Studio (إدارة واستكشاف قواعد البيانات)
  * Zero-Mock Production with Real Windows SQL Server, PostgreSQL, and SQLite Engine
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
 import {
   Database,
@@ -858,7 +858,7 @@ export function DatabasesPage() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ fontSize: 12, color: 'var(--text-2)' }}>
-              {t('سيتم إنشاء لقطة فيزيائية مشفرة لقاعدة البيانات')} <code>asaas_v2.db</code> {t('وحفظها في المجلد السيادي مع حساب الهاش SHA-256.')}
+              {t('سيتم إنشاء لقطة فيزيائية مشفرة لقاعدة البيانات')} <code>zimam_v2.db</code> {t('وحفظها في المجلد السيادي مع حساب الهاش SHA-256.')}
             </p>
             <div>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 4 }}>

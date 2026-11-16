@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Server Control v2.5 - Screen _7
+/**
+ * ZIMAM v2.5 - Screen _7
  * إدارة سعة التخزين وتطهير السيرفر وفك أقفال العمليات (Storage & Handle Locks)
  * Strict implementation of Stitch Prototype _7
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, useToast } from '../asaas-ui';
+import { Card, Button, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
 import {
   HardDrive,
@@ -26,7 +26,7 @@ export function StoragePage() {
   const [cleaningUser, setCleaningUser] = useState<string | null>(null);
 
   // Locked files diagnostic state (Story 9)
-    const [customFilePath, setCustomFilePath] = useState('C:\\Data\\ASAAS_PROD.mdf');
+    const [customFilePath, setCustomFilePath] = useState('C:\\Data\\ZIMAM_PROD.mdf');
   const [customCheckResult, setCustomCheckResult] = useState<any>(null);
   const [checkingLock, setCheckingLock] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
@@ -319,7 +319,7 @@ export function StoragePage() {
               <Search size={16} color="var(--text-3)" style={{ position: 'absolute', insetInlineStart: 12, top: 12 }} />
               <input
                 type="text"
-                placeholder={t('أدخل المسار الكامل للملف (مثال: C:\\Data\\ASAAS_PROD.mdf)...')}
+                placeholder={t('أدخل المسار الكامل للملف (مثال: C:\\Data\\ZIMAM_PROD.mdf)...')}
                 value={customFilePath}
                 onChange={(e) => setCustomFilePath(e.target.value)}
                 className="text-input"

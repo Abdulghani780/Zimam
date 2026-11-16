@@ -33,12 +33,12 @@ class EnvelopeVault:
         return cls(secrets.token_bytes(32))
 
     def seal(self, plaintext: bytes, *, account_id: str) -> SealedSecret:
-        aad = f"asaas/account/{account_id}".encode()
+        aad = f"zimam/account/{account_id}".encode()
         nonce = secrets.token_bytes(12)
         return SealedSecret(nonce, AESGCM(self._key).encrypt(nonce, plaintext, aad), aad)
 
     def open(self, sealed: SealedSecret, *, account_id: str) -> bytes:
-        aad = f"asaas/account/{account_id}".encode()
+        aad = f"zimam/account/{account_id}".encode()
         if sealed.aad != aad:
             raise ValueError("Secret is bound to a different account")
         try:

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('ASAAS Server Control - Mobile Responsiveness & Containment', () => {
+test.describe('ZIMAM - Mobile Responsiveness & Containment', () => {
   test.use({ viewport: { width: 390, height: 844 } }); // Modern Mobile Viewport
 
   test('MOB-01: Mobile viewport displays bottom navigation and prevents horizontal shift', async ({ page }) => {

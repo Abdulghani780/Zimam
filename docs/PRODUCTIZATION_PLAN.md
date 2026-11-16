@@ -1,4 +1,4 @@
-# ASAAS Server Control — خطة تحويل المشروع إلى منتج تجاري
+# ZIMAM — خطة تحويل المشروع إلى منتج تجاري
 
 > الهدف: تحويل المستودع الحالي إلى **منتج Appliance** قابل للبيع باشتراكات —
 > العميل ينصّب على Windows Server عنده، يدير خوادمه ووكلاءه، ويدفع حسب الباقة.
@@ -11,14 +11,14 @@
 ```
 ┌────────────────────────────── جهاز العميل (Windows Server) ──────────────────────────────┐
 │                                                                                          │
-│  ASAAS Appliance (خدمة Windows واحدة أو أكثر)                                            │
-│  ├── asaas-backend.exe      FastAPI :8765  (legacy API + proxy source)                   │
-│  ├── asaas-control.exe      FastAPI :8876  (SPA + /api/v1 + proxy + agent channel)        │
+│  ZIMAM Appliance (خدمة Windows واحدة أو أكثر)                                            │
+│  ├── zimam-backend.exe      FastAPI :8765  (legacy API + proxy source)                   │
+│  ├── zimam-control.exe      FastAPI :8876  (SPA + /api/v1 + proxy + agent channel)        │
 │  ├── data/                  SQLite + vault key + backups (مجلد محمي ACL)                  │
 │  └── frontend/dist          ملفات static تُقدَّم من الـ control plane                     │
 │                                                                                          │
-│  ASAAS Agent (خدمة Windows على كل جهاز مُدار)                                             │
-│  └── Asaas.WindowsAgent.exe  outbound-only، مهام موقّعة Ed25519                          │
+│  ZIMAM Agent (خدمة Windows على كل جهاز مُدار)                                             │
+│  └── Zimam.Agent.exe  outbound-only، مهام موقّعة Ed25519                          │
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -33,8 +33,8 @@
 
 | المكوّن | التقنية الحالية | شكل التوزيع |
 |---|---|---|
-| Backend | Python 3 + FastAPI (`backend/main.py`) | **PyInstaller onefile exe** (`asaas-backend.exe`) |
-| Control Plane | Python + FastAPI + SQLAlchemy (`control_plane/`) | **PyInstaller onefile exe** (`asaas-control.exe`) |
+| Backend | Python 3 + FastAPI (`backend/main.py`) | **PyInstaller onefile exe** (`zimam-backend.exe`) |
+| Control Plane | Python + FastAPI + SQLAlchemy (`control_plane/`) | **PyInstaller onefile exe** (`zimam-control.exe`) |
 | Frontend | React/Vite `dist/` | static files داخل الـ MSI (لا يحتاج Node) |
 | Agent | .NET 10 (`agent/`) | **`dotnet publish -r win-x64 --self-contained`** single exe — بدون .NET runtime |
 | SQLite | مدمج في Python | لا يحتاج تثبيت |
@@ -50,23 +50,23 @@
 ### 2.3 محتوى الـ MSI (Inno Setup)
 
 ```
-C:\Program Files\ASAAS\
-├── bin\asaas-backend.exe
-├── bin\asaas-control.exe
-├── bin\Asaas.WindowsAgent.exe      (للنشر على الأجهزة المُدارة)
+C:\Program Files\ZIMAM\
+├── bin\zimam-backend.exe
+├── bin\zimam-control.exe
+├── bin\Zimam.Agent.exe      (للنشر على الأجهزة المُدارة)
 ├── web\                            (frontend dist)
 ├── data\                           (يُنشأ عند أول تشغيل، ACL: SYSTEM+Admins فقط)
 └── unins000.dat
 
 Windows Services:
-├── ASAAS Control Plane   → asaas-control.exe --service
-├── ASAAS Backend         → asaas-backend.exe --service
+├── ZIMAM Control Plane   → zimam-control.exe --service
+├── ZIMAM Backend         → zimam-backend.exe --service
 └── (Agent يُثبَّت اختيارياً على نفس الجهاز أو يُوزَّع على الباقي)
 ```
 
 - الخدمات `Automatic` + `Recovery` (restart on failure)
 - قاعدة Firewall: السماح لـ 8876 inbound من localhost فقط (أو subnet محدد اختياري)
-- اختصار "ASAAS Console" في Start Menu → يفتح `http://127.0.0.1:8876`
+- اختصار "ZIMAM Console" في Start Menu → يفتح `http://127.0.0.1:8876`
 - إضافة/إزالة من Programs and Features بشكل نظيف
 
 ### 2.4_FIRST RUN WIZARD_ (صفحة `/setup` في الواجهة)
@@ -130,7 +130,7 @@ Windows Services:
 ### 3.4 التفعيل والتجديد (اختياري — Phase لاحقة)
 
 - **Offline أولاً** (ملف موقّع) — يكفي للإطلاق
-- لاحقاً: portal ترخيص على موقعك (license.asaas.example) — توليد/تجديد تلقائي للعملاء المتصلين
+- لاحقاً: portal ترخيص على موقعك (license.zimam.example) — توليد/تجديد تلقائي للعملاء المتصلين
 - telemetry opt-in فقط (عدد agents، إصدار المنتج) — بلا بيانات حساسة
 
 ---
@@ -139,7 +139,7 @@ Windows Services:
 
 | # | الفجوة | الحالة الآن | المطلوب |
 |---|---|---|---|
-| 1 | تشغيل يدوي (`run_asaas.ps1`) | يدوي | Windows Services + auto-start ✅ قابل |
+| 1 | تشغيل يدوي (`run_zimam.ps1`) | يدوي | Windows Services + auto-start ✅ قابل |
 | 2 | لا installer | لا يوجد | Inno Setup script + build pipeline |
 | 3 | لا license | لا يوجد | `license.py` + Ed25519 verify + middleware |
 | 4 | Python/.NET dependencies على جهاز العميل | مطلوبة | PyInstaller + self-contained publish |
@@ -157,9 +157,9 @@ Windows Services:
 ### Phase A — أساس المنتج (الأولوية القصوى) ✅ مكتملة
 
 1. ✅ `tools/build-release.ps1` — يبني frontend + PyInstaller للبايثونين + agent publish + يتحقق من المخرجات
-2. ✅ `packaging/asaas.iss` — Inno Setup script كامل (services + firewall + start menu + data ACLs)
-3. ✅ `asaas_control/license.py` — نموذج License + تحقق Ed25519 + `GET /api/v1/license` + `POST /api/v1/license/activate`
-4. ✅ `asaas_control/entitlements.py` — middleware يفرض max_agents/max_users/features + read-only expiry mode
+2. ✅ `packaging/zimam.iss` — Inno Setup script كامل (services + firewall + start menu + data ACLs)
+3. ✅ `zimam_control/license.py` — نموذج License + تحقق Ed25519 + `GET /api/v1/license` + `POST /api/v1/license/activate`
+4. ✅ `zimam_control/entitlements.py` — middleware يفرض max_agents/max_users/features + read-only expiry mode
 5. ✅ First-run `/setup` wizard في الواجهة — `SetupWizardPage` + `/api/v1/setup/status|complete` (تُقفل بعد أول أدمن)
 6. ✅ `tools/sign-license.py` — أداة لك (البائع) لتوقيع licenses
 
@@ -167,10 +167,10 @@ Windows Services:
 
 ### Phase B — صلابة الإنتاج 🟡 جارٍ
 
-7. 🟡 TLS: `ASAAS_TLS_CERT`/`ASAAS_TLS_KEY` في serve.py + `tools/gen-server-cert.py` (self-signed بـ SANs) — متحقق حياً على :8898؛ production CA/reverse proxy لاحقاً
-8. ✅ Agent installer UX: `Asaas.WindowsAgent.exe install|uninstall|status` — يسجّل خدمة auto-start + يثبّت ASAAS_* env في الريجستري (يتطلب elevation)
+7. 🟡 TLS: `ZIMAM_TLS_CERT`/`ZIMAM_TLS_KEY` في serve.py + `tools/gen-server-cert.py` (self-signed بـ SANs) — متحقق حياً على :8898؛ production CA/reverse proxy لاحقاً
+8. ✅ Agent installer UX: `Zimam.Agent.exe install|uninstall|status` — يسجّل خدمة auto-start + يثبّت ZIMAM_* env في الريجستري (يتطلب elevation)
 9. ✅ Secrets hygiene: مراجعة logs (لا secrets تُطبع) + `.gitignore` يغطي `data/*.key|pem|pfx|p12` + `data/tls/` + `control-plane.env`
-10. ✅ نسخ احتياطي مجدول: `backup.py` مشترك + asyncio loop في lifespan — `ASAAS_BACKUP_INTERVAL_HOURS` (24h) + `ASAAS_BACKUP_KEEP` (14) + prune + audit
+10. ✅ نسخ احتياطي مجدول: `backup.py` مشترك + asyncio loop في lifespan — `ZIMAM_BACKUP_INTERVAL_HOURS` (24h) + `ZIMAM_BACKUP_KEEP` (14) + prune + audit
 11. ✅ `control-plane.env` — ملف config بجانب الـ exe للـ SYSTEM tasks (التي لا ترث env المستخدم) — `serve.py` يحمّله بـ setdefault
 
 ### Phase C — نمو الباقات 🟡 جارٍ
@@ -192,7 +192,7 @@ Windows Services:
 
 | القرار | الخيارات | توصيتي |
 |---|---|---|
-| اسم المنتج التجاري | ASAAS Server Control / ASAAS Fleet / غيره | قرر قبل الـ branding في installer |
+| اسم المنتج التجاري | ZIMAM / ZIMAM Fleet / غيره | قرر قبل الـ branding في installer |
 | نموذج التسعير | subscription فقط / + perpetual license | subscription فقط — أبسط وأوضح |
 | Trial | 30 يوم full features / limited | 30 يوم full — يبيع نفسه |
 | التفعيل | offline key فقط / + portal | offline أولاً |

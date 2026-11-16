@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Server Control v2.5 - Screens _11 & _13 & PAM
+/**
+ * ZIMAM v2.5 - Screens _11 & _13 & PAM
  * دليل الخوادم والبنية التحتية السيادية + بطاقة الفحص الميداني وتفاصيل الخادم
  * Strict implementation of Stitch Prototypes _11 & _13
  */
 
 import { useState, useEffect } from 'react';
-import { Button, Modal, Field, TextInput, Glass, useToast } from '../asaas-ui';
+import { Button, Modal, Field, TextInput, Glass, useToast } from '../zimam-ui';
 import { api, type AssetItem } from '../lib/api';
 import { apiV1, type V1Asset, type V1Account, type V1Agent } from '../lib/apiV1';
 import { RemoteSession } from '../components/RemoteSession';
@@ -529,7 +529,7 @@ export function AssetsPage() {
                 <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>{t('جارٍ تحميل قياسات الوكيل...')}</p>
               ) : !drawerAgent ? (
                 <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-                  {t('لا يوجد وكيل ASAAS مطابق لاسم المضيف — ثبّت وكيلاً على هذا الخادم لتظهر القياسات الحقيقية هنا.')}
+                  {t('لا يوجد وكيل ZIMAM مطابق لاسم المضيف — ثبّت وكيلاً على هذا الخادم لتظهر القياسات الحقيقية هنا.')}
                 </p>
               ) : Object.keys(drawerResults).length === 0 ? (
                 <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
@@ -564,7 +564,7 @@ export function AssetsPage() {
                 {t('الخدمات النشطة — غير متاحة')}
               </h4>
               <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-                {t('لا تُجمع بيانات الخدمات بعد. عندما يرتبط وكيلاً ASAAS بهذا الأصل عبر /api/v1/agents وتُنفَّذ مهمة service.list موقعة ستظهر النتائج الحقيقية هنا.')}
+                {t('لا تُجمع بيانات الخدمات بعد. عندما يرتبط وكيلاً ZIMAM بهذا الأصل عبر /api/v1/agents وتُنفَّذ مهمة service.list موقعة ستظهر النتائج الحقيقية هنا.')}
               </p>
             </div>
 

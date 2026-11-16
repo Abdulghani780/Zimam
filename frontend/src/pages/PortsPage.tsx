@@ -1,4 +1,4 @@
-﻿import {
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -8,7 +8,7 @@
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { useToast } from '../asaas-ui';
+import { useToast } from '../zimam-ui';
 import { api, type ManagedServer, type PortItem } from '../lib/api';
 import {
   AlertCircle,
@@ -299,7 +299,7 @@ export function PortsPage() {
   const [autoAllocate, setAutoAllocate] = useState(() => {
     if (typeof window === 'undefined') return true;
     try {
-      return window.localStorage.getItem('asaas.ports.autoAllocate') !== '0';
+      return window.localStorage.getItem('zimam.ports.autoAllocate') !== '0';
     } catch {
       return true;
     }
@@ -362,7 +362,7 @@ export function PortsPage() {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('asaas.ports.autoAllocate', autoAllocate ? '1' : '0');
+      window.localStorage.setItem('zimam.ports.autoAllocate', autoAllocate ? '1' : '0');
     } catch {
       // The preference remains in memory when storage is unavailable.
     }
@@ -846,7 +846,7 @@ export function PortsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `asaas-ports-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `zimam-ports-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -1686,7 +1686,7 @@ export function PortsPage() {
                         setFormProject(event.target.value);
                         setFormError(null);
                       }}
-                      placeholder={t('مثال: متجر أساس / نظام ERP')}
+                      placeholder={t('مثال: متجر زِمام / نظام ERP')}
                     />
                   </label>
                 </div>

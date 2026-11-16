@@ -1,6 +1,6 @@
 # TESTS.md — Test Assets and Required Test Points
 
-> This registry governs the test assets, verification gates, and regression protection for **ASAAS Server Control v2**.
+> This registry governs the test assets, verification gates, and regression protection for **ZIMAM v2**.
 > Test code remains the executable truth; this document stores indexes, assessments, and verifiable evidence.
 
 ---

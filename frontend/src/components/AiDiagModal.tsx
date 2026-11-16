@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Modal, Button, Skeleton } from '../asaas-ui';
+import { Modal, Button, Skeleton } from '../zimam-ui';
 import { api } from '../lib/api';
 import { ShieldCheck, AlertTriangle, CheckCircle, RefreshCw, Cpu, Database, HardDrive } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -34,7 +34,7 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
   if (!open) return null;
 
   return (
-    <Modal onClose={onClose} title={t('تقرير التشخيص الذكي لخوادم أساس (AI Ops Radar)')}>
+    <Modal onClose={onClose} title={t('تقرير التشخيص الذكي لخوادم زِمام (AI Ops Radar)')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         {loading ? (
           <Skeleton count={4} height={42} />

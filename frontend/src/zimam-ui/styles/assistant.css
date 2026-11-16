@@ -5,7 +5,7 @@
   --launcher-bottom: var(--launcher-gap);
 }
 
-/* Asaas robot: the full figure outside the chat, its face inside. */
+/* Zimam robot: the full figure outside the chat, its face inside. */
 .assistant-face {
   flex: none;
   width: 44px;

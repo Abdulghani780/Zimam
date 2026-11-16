@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Server Control v2.5 - Screens _4 & _12
+/**
+ * ZIMAM v2.5 - Screens _4 & _12
  * إعدادات المنظومة وتنبيهات تيليجرام الفورية والربط السيبراني ومصفوفة الإنذارات
  * Strict implementation of Stitch Prototypes _4 & _12
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Glass, Field, TextInput, useToast } from '../asaas-ui';
+import { Card, Button, Glass, Field, TextInput, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -89,7 +89,7 @@ export function SettingsPage() {
   const handleTestAlert = async () => {
     setTesting(true);
     try {
-      const res = await api.testAlert(t('اختبار إشعار فوري من لوحة تحكم سيرفرات أساس (ASAAS Server Control v2.5)'));
+      const res = await api.testAlert(t('اختبار إشعار فوري من لوحة تحكم سيرفرات زِمام (ZIMAM v2.5)'));
       if (res.ok) {
         toast(t('تم إرسال إشعار التجربة لهاتفك عبر تيليجرام بنجاح!'), 'success');
       } else {

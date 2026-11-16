@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
+/**
+ * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 8: Network & Storage (إدارة الأقراص، وحدات التخزين، مشاركات SMB، مستعرض الملفات، المحولات، الجدار الناري والتشخيص)
  * Zero-Mock Production with Real Windows Physical Disks, Volumes, NetAdapters & Firewall
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
 import {
   HardDrive,

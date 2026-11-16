@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('ASAAS Server Control - Modals & Interactive Dialogs', () => {
+test.describe('ZIMAM - Modals & Interactive Dialogs', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
@@ -15,7 +15,7 @@ test.describe('ASAAS Server Control - Modals & Interactive Dialogs', () => {
     // 2. Dialog appears and is centered
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText(/تقرير التشخيص الذكي لخوادم أساس/i)).toBeVisible();
+    await expect(dialog.getByText(/تقرير التشخيص الذكي لخوادم زِمام/i)).toBeVisible();
 
     // 3. Vital signals inside dialog
     await expect(dialog.getByText(/المعالج والأنوية/i)).toBeVisible();

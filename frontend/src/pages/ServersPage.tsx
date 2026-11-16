@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
+/**
+ * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 2: Servers & Server Groups (إدارة الخوادم ومجموعات البنية التحتية)
  * Zero-Mock Production with Real Windows Server 2025 Standard APIs
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, Select, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, Select, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
 import {
   Server,

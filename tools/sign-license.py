@@ -1,4 +1,4 @@
-"""ASAAS Server Control — vendor license signer (run on YOUR machine only).
+"""ZIMAM — vendor license signer (run on YOUR machine only).
 
 Generates the vendor Ed25519 keypair on first run and signs license payloads.
 
@@ -11,8 +11,8 @@ Usage:
 Key material:
     private: data/license-signing.key  (32-byte hex seed — NEVER ship/commit)
     public : printed by --init; embed the hex in
-             control_plane/asaas_control/license.py -> LICENSE_PUBLIC_KEY_HEX
-             for production builds (or set ASAAS_LICENSE_PUBLIC_KEY env).
+             control_plane/zimam_control/license.py -> LICENSE_PUBLIC_KEY_HEX
+             for production builds (or set ZIMAM_LICENSE_PUBLIC_KEY env).
 """
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def _sign(payload: dict, key: Ed25519PrivateKey) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Sign ASAAS Server Control licenses")
+    ap = argparse.ArgumentParser(description="Sign ZIMAM licenses")
     ap.add_argument("--init", action="store_true", help="generate keypair and print public key")
     ap.add_argument("--customer")
     ap.add_argument("--tier", default="pro", choices=["starter", "pro", "enterprise"])

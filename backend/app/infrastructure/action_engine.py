@@ -1,4 +1,4 @@
-"""ASAAS Enterprise v3.0 - Unified Action Engine & Risk Governance Pipeline.
+"""ZIMAM Enterprise v3.0 - Unified Action Engine & Risk Governance Pipeline.
 
 Implements the mandatory 15-stage execution pipeline for all administrative and
 mutating operations across Windows Server 2022/2025:
@@ -34,7 +34,7 @@ from .db import (
     db_add_security_event,
 )
 
-logger = logging.getLogger('asaas.action_engine')
+logger = logging.getLogger('zimam.action_engine')
 
 
 class RiskLevel(str, Enum):

@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - Master Backend Server Entrypoint.
+"""ZIMAM v2.5 - Master Backend Server Entrypoint.
 
 Starts ThreadingHTTPServer on port 8765 with zero-subprocess architecture,
 clean service orchestration, LAN network binding, and optional TLS/HTTPS encryption.
@@ -35,7 +35,7 @@ if sys.stderr is None:
 # Add backend directory to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from app.api.router import AsaasApiHandler
+from app.api.router import ZimamApiHandler
 from app.core.config import SERVER_HOST, SERVER_PORT, DATA_DIR
 from app.infrastructure.win32_wts import Win32WtsService
 
@@ -57,7 +57,7 @@ def generate_self_signed_cert(cert_path: Path, key_path: Path) -> bool:
     try:
         cmd = [
             'powershell', '-NoProfile', '-Command',
-            f'$cert = New-SelfSignedCertificate -DnsName "asaas.local", "localhost", "127.0.0.1" -CertStoreLocation "cert:\\LocalMachine\\My"; '
+            f'$cert = New-SelfSignedCertificate -DnsName "zimam.local", "localhost", "127.0.0.1" -CertStoreLocation "cert:\\LocalMachine\\My"; '
             f'Export-Certificate -Cert $cert -FilePath "{cert_path}"'
         ]
         # In python standard library without cryptography package, check openssl or powershell
@@ -81,18 +81,18 @@ def _exit_port_in_use(port: int, exc: OSError) -> None:
     except Exception:
         pass
     print(f"[X] Cannot bind port {port}: address already in use{owner}.")
-    print("    Another ASAAS instance is already running. Stop it first, or relaunch")
+    print("    Another ZIMAM instance is already running. Stop it first, or relaunch")
     print("    via start-server.bat / the desktop shortcut (it terminates the old PID).")
     sys.exit(1)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ASAAS Server Control v2.5 Backend")
+    parser = argparse.ArgumentParser(description="ZIMAM v2.5 Backend")
     parser.add_argument('--replace-pid', type=int, default=None, help="Terminate old PID when elevating")
     parser.add_argument('--port', type=int, default=SERVER_PORT, help="Port to listen on")
     parser.add_argument('--host', type=str, default=SERVER_HOST, help="Host to bind to (e.g. 127.0.0.1 or 0.0.0.0)")
-    parser.add_argument('--ssl-cert', type=str, default=os.getenv('ASAAS_SSL_CERT', ''), help="Path to TLS certificate .pem")
-    parser.add_argument('--ssl-key', type=str, default=os.getenv('ASAAS_SSL_KEY', ''), help="Path to TLS private key .pem")
+    parser.add_argument('--ssl-cert', type=str, default=os.getenv('ZIMAM_SSL_CERT', ''), help="Path to TLS certificate .pem")
+    parser.add_argument('--ssl-key', type=str, default=os.getenv('ZIMAM_SSL_KEY', ''), help="Path to TLS private key .pem")
     args = parser.parse_args()
 
     # Terminate un-elevated previous instance if upgrading
@@ -118,7 +118,7 @@ def main() -> None:
     protocol = "https" if use_ssl else "http"
 
     print("=" * 65)
-    print(" ASAAS Server Control v2.5 - Enterprise Architecture")
+    print(" ZIMAM v2.5 - Enterprise Architecture")
     print(f" Status:    {status_role}")
     print(f" Protocol:  {protocol.upper()}")
     print(f" Address:   {protocol}://{args.host}:{args.port}")
@@ -141,13 +141,13 @@ def main() -> None:
     # instance and a new one serve requests interchangeably (split-brain).
     server_cls.allow_reuse_address = False
     try:
-        server = server_cls(bind_addr, AsaasApiHandler)
+        server = server_cls(bind_addr, ZimamApiHandler)
     except OSError as exc:
         # Fallback to standard IPv4 if dual-stack fails on older environments
         if server_cls is DualStackServer:
             print(f"[!] Dual-stack bind notice ({exc}), falling back to IPv4...")
             try:
-                server = ThreadingHTTPServer(('0.0.0.0', args.port), AsaasApiHandler)
+                server = ThreadingHTTPServer(('0.0.0.0', args.port), ZimamApiHandler)
             except OSError as exc2:
                 _exit_port_in_use(args.port, exc2)
         else:
@@ -162,7 +162,7 @@ def main() -> None:
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n[!] ASAAS Server Control v2.5 shutting down gracefully...")
+        print("\n[!] ZIMAM v2.5 shutting down gracefully...")
     finally:
         server.server_close()
 

@@ -1,4 +1,4 @@
-r"""ASAAS Server Control v2.5 - Storage Management & Profiling Service.
+r"""ZIMAM v2.5 - Storage Management & Profiling Service.
 
 Profiles host drive C:\, detects user profile directory footprints, performs safe cleanup,
 and provides native Win32 Restart Manager diagnostic for locked/open file handles.
@@ -281,7 +281,7 @@ class StorageService:
             r'C:\Windows\System32\config\SYSTEM',
             r'C:\Windows\System32\config\SOFTWARE',
             r'C:\Windows\System32\LogFiles\WMI\RtBackup\EtwRTEventLog-Application.etl',
-            str(Path(__file__).resolve().parent.parent.parent / 'data' / 'asaas_v2.db'),
+            str(Path(__file__).resolve().parent.parent.parent / 'data' / 'zimam_v2.db'),
         ]
         results = []
         for path in candidates:

@@ -1,4 +1,4 @@
-"""ASAAS Enterprise v3.0 - Unified Windows Infrastructure Providers.
+"""ZIMAM Enterprise v3.0 - Unified Windows Infrastructure Providers.
 
 Provides high-performance, Zero-Mock direct integration with Windows Server 2022/2025:
 - SystemProvider: Local Server metadata, OS build, CPU/RAM, power management.
@@ -33,7 +33,7 @@ import psutil
 from .silent_subprocess import run_silent, CREATE_NO_WINDOW
 from .win32_wts import Win32WtsService
 
-logger = logging.getLogger('asaas.providers')
+logger = logging.getLogger('zimam.providers')
 IS_WINDOWS = sys.platform == 'win32'
 
 
@@ -181,7 +181,7 @@ class SystemProvider:
         }
 
     @classmethod
-    def restart_server(cls, reason: str = "Administrative Restart via ASAAS Console", timeout_sec: int = 30) -> Dict[str, Any]:
+    def restart_server(cls, reason: str = "Administrative Restart via ZIMAM Console", timeout_sec: int = 30) -> Dict[str, Any]:
         if not Win32WtsService.is_admin():
             return {'ok': False, 'error': 'يتطلب إعادة تشغيل الخادم صلاحيات مسؤول النظام (Administrator).'}
         try:
@@ -192,7 +192,7 @@ class SystemProvider:
             return {'ok': False, 'error': f'فشل في إعادة تشغيل الخادم: {e}'}
 
     @classmethod
-    def shutdown_server(cls, reason: str = "Administrative Shutdown via ASAAS Console", timeout_sec: int = 30) -> Dict[str, Any]:
+    def shutdown_server(cls, reason: str = "Administrative Shutdown via ZIMAM Console", timeout_sec: int = 30) -> Dict[str, Any]:
         if not Win32WtsService.is_admin():
             return {'ok': False, 'error': 'يتطلب إيقاف الخادم صلاحيات مسؤول النظام (Administrator).'}
         try:

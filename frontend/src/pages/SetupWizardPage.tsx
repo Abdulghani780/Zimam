@@ -1,12 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KeyRound, Languages, Moon, ShieldCheck, Sparkles, Sun, UserPlus } from 'lucide-react';
-import { Button, Field, FormError, Glass, PasswordInput, Stretch, TextInput, useTheme } from '../asaas-ui';
+import { Button, Field, FormError, Glass, PasswordInput, Stretch, TextInput, useTheme } from '../zimam-ui';
 import { apiV1 } from '../lib/apiV1';
 import { useLang, toggleLang, t } from '../lib/i18n';
 
 /**
- * First-run wizard for the ASAAS Server Control appliance.
+ * First-run wizard for the ZIMAM appliance.
  * Shown only while GET /api/v1/setup/status reports needs_setup — the
  * endpoint seals itself permanently after the first administrator exists.
  */
@@ -49,10 +49,10 @@ export function SetupWizardPage() {
   return (
     <main className="auth-page">
       <header className="auth-page__topbar">
-        <span className="brand auth-brand" aria-label={t('منظومة أساس')}>
+        <span className="brand auth-brand" aria-label={t('زِمام')}>
           <span className="brand__mark" aria-hidden="true" />
           <span>
-            <strong className="brand__name">{t('منظومة أساس')}</strong>
+            <strong className="brand__name">{t('زِمام')}</strong>
             <small className="brand__tag">{t('إعداد أول تشغيل')}</small>
           </span>
         </span>
@@ -64,7 +64,7 @@ export function SetupWizardPage() {
 
       <section className="auth-page__content" aria-labelledby="setup-title">
         <div className="auth-intro">
-          <span className="auth-intro__eyebrow"><Sparkles size={16} /> {t('ترحيب بك في ASAAS Server Control')}</span>
+          <span className="auth-intro__eyebrow"><Sparkles size={16} /> {t('ترحيب بك في ZIMAM')}</span>
           <p className="auth-intro__greeting" aria-hidden="true">
             <Stretch before={t('مس')} after={t('اء')} length={3} /> {t('الخير')}
           </p>
@@ -135,7 +135,7 @@ export function SetupWizardPage() {
       </section>
 
       <footer className="auth-page__footer">
-        <span>ASAAS Server Control</span>
+        <span>ZIMAM</span>
         <span>{t('أول تشغيل · رخصةoffline · عربي وإنجليزي')}</span>
       </footer>
     </main>

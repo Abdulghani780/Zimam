@@ -63,7 +63,7 @@ export default function App() {
   return (
     <Suspense fallback={<PageFallback />}>
     <Routes>
-      {/* Standalone ASAAS access screens */}
+      {/* Standalone ZIMAM access screens */}
       <Route path="login" element={<ZeroTrustLoginPage />} />
       <Route path="lockout" element={<PerimeterLockoutPage />} />
 

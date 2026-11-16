@@ -12,7 +12,7 @@ print(f"[+] Created {bat_path}")
 
 cmd = [
     'schtasks', '/create',
-    '/tn', 'ASAAS_Backend_Service',
+    '/tn', 'ZIMAM_Backend_Service',
     '/tr', f'"{bat_path}"',
     '/sc', 'onstart',
     '/rl', 'highest',

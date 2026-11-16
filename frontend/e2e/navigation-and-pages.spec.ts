@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('ASAAS Server Control - Navigation & Core Pages Journeys', () => {
+test.describe('ZIMAM - Navigation & Core Pages Journeys', () => {
   test('NAV-01: Navigate to Resource Governor (/control)', async ({ page }) => {
     await page.goto('/control');
     await expect(page).toHaveURL(/.*control/);

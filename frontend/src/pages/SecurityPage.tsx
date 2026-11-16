@@ -1,11 +1,11 @@
-﻿/**
- * ASAAS Server Control v2.5 - Screens _5 & _9
+/**
+ * ZIMAM v2.5 - Screens _5 & _9
  * مصفوفة الدفاع السيبراني ورادار الاختراق ومحلل مخاطر الأوامر
  * Strict implementation of Stitch Prototypes _5 & _9
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../asaas-ui';
+import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../zimam-ui';
 import { api, type SecurityStats, type SecurityEvent } from '../lib/api';
 import {
   ShieldAlert,
@@ -378,7 +378,7 @@ export function SecurityPage() {
                       {ip}
                     </TableCell>
                     <TableCell style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                      Inbound Block Rule (ASAAS-DEFENSE)
+                      Inbound Block Rule (ZIMAM-DEFENSE)
                     </TableCell>
                     <TableCell style={{ fontSize: 12, color: 'var(--text-3)' }}>
                       {t('محاولات تخمين RDP متكررة (Brute-force)')}

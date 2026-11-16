@@ -1,4 +1,4 @@
-# ASAAS Server Control - registers auto-start scheduled tasks.
+# ZIMAM - registers auto-start scheduled tasks.
 # Runs elevated from the Inno installer ([Run] postinstall).
 #
 # Uses the ScheduledTasks PowerShell module instead of schtasks.exe: the /tr
@@ -15,7 +15,7 @@ trap { Stop-Transcript | Out-Null; throw }
 $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
 
-function Register-AsaasServiceTask([string]$Name, [string]$Exe, [string]$ExtraArgs) {
+function Register-ZimamServiceTask([string]$Name, [string]$Exe, [string]$ExtraArgs) {
     $action = if ([string]::IsNullOrWhiteSpace($ExtraArgs)) {
         New-ScheduledTaskAction -Execute $Exe
     } else {
@@ -28,8 +28,8 @@ function Register-AsaasServiceTask([string]$Name, [string]$Exe, [string]$ExtraAr
     }
 }
 
-function Register-AsaasWatchdog([string]$Name, [int]$Port, [string]$TaskToRun) {
-    $guard = switch ($Name) { 'ASAAS Backend Watchdog' { 'backend' } 'ASAAS Control Plane Watchdog' { 'control' } }
+function Register-ZimamWatchdog([string]$Name, [int]$Port, [string]$TaskToRun) {
+    $guard = switch ($Name) { 'ZIMAM Backend Watchdog' { 'backend' } 'ZIMAM Control Plane Watchdog' { 'control' } }
     $script = Join-Path $PSScriptRoot "watchdog-$guard.ps1"
     $body = "if (-not (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)) { schtasks /run /tn '$TaskToRun' | Out-Null }"
     $body | Out-File $script -Encoding ascii
@@ -39,15 +39,15 @@ function Register-AsaasWatchdog([string]$Name, [int]$Port, [string]$TaskToRun) {
     Register-ScheduledTask -TaskName $Name -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 }
 
-Register-AsaasServiceTask 'ASAAS Backend'        (Join-Path $bin 'asaas-backend.exe')  '--host 127.0.0.1 --port 8765'
-Register-AsaasServiceTask 'ASAAS Control Plane' (Join-Path $bin 'asaas-control.exe')  ''
+Register-ZimamServiceTask 'ZIMAM Backend'        (Join-Path $bin 'zimam-backend.exe')  '--host 127.0.0.1 --port 8765'
+Register-ZimamServiceTask 'ZIMAM Control Plane' (Join-Path $bin 'zimam-control.exe')  ''
 
-Register-AsaasWatchdog 'ASAAS Backend Watchdog'       8765 'ASAAS Backend'
-Register-AsaasWatchdog 'ASAAS Control Plane Watchdog' 8876 'ASAAS Control Plane'
+Register-ZimamWatchdog 'ZIMAM Backend Watchdog'       8765 'ZIMAM Backend'
+Register-ZimamWatchdog 'ZIMAM Control Plane Watchdog' 8876 'ZIMAM Control Plane'
 
 # Start immediately.
-schtasks.exe /run /tn 'ASAAS Backend' | Out-Null
-schtasks.exe /run /tn 'ASAAS Control Plane' | Out-Null
+schtasks.exe /run /tn 'ZIMAM Backend' | Out-Null
+schtasks.exe /run /tn 'ZIMAM Control Plane' | Out-Null
 
-Write-Host 'ASAAS Server Control tasks registered.'
+Write-Host 'ZIMAM tasks registered.'
 Stop-Transcript | Out-Null

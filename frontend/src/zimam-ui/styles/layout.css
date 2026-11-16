@@ -1,4 +1,4 @@
-/* Page primitives from the Asaas apps. The app shell (sidebar, top bar, tab bar) is per site. */
+/* Page primitives from the Zimam apps. The app shell (sidebar, top bar, tab bar) is per site. */
 .brand {
   display: flex;
   align-items: center;

@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - SQLite Database Persistence Layer.
+"""ZIMAM v2.5 - SQLite Database Persistence Layer.
 
 Stores Bastion assets, port reservations, security audit events, multi-user accounts (RBAC),
 active sessions with expiration, brute force protection, and historical telemetry metrics.
@@ -21,7 +21,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from ..core.config import DB_PATH, DATA_DIR
 
-logger = logging.getLogger('asaas.db')
+logger = logging.getLogger('zimam.db')
 
 # Session-scoped resource governor accounting.  A single server session can
 # legitimately reclaim a few gigabytes, never hundreds of terabytes.
@@ -31,7 +31,7 @@ MAX_RECLAIMED_MB = 65_536.0
 # policy is enabled they must never be created or silently reactivated again.
 LEGACY_BANNED_USERNAMES = {
     'admin', 'administrator', 'operator', 'viewer', 'root', 'guest',
-    'test', 'tester', 'demo', 'user', 'asaas', 'sysadmin',
+    'test', 'tester', 'demo', 'user', 'zimam', 'sysadmin',
 }
 DEMO_VAULT_IDS = ('vault-local-adm', 'vault-docker-reg', 'vault-sql-sa')
 
@@ -390,7 +390,7 @@ def init_db() -> None:
             # demo/screenshot environments.  A clean production appliance
             # starts with an empty vault.
             cur.execute("SELECT COUNT(*) AS count FROM vault_credentials")
-            seed_demo = os.getenv('ASAAS_SEED_DEMO_DATA', '0').lower() in {'1', 'true', 'yes'}
+            seed_demo = os.getenv('ZIMAM_SEED_DEMO_DATA', '0').lower() in {'1', 'true', 'yes'}
             if seed_demo and cur.fetchone()['count'] == 0:
                 try:
                     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -456,7 +456,7 @@ def init_db() -> None:
             # Demo fixtures are opt-in for local screenshots only. A clean
             # appliance starts with zero assets and requires explicit enrollment.
             cur.execute("SELECT COUNT(*) AS count FROM bastion_assets")
-            if os.getenv('ASAAS_SEED_DEMO_DATA', '0').lower() in {'1', 'true', 'yes'} and cur.fetchone()['count'] == 0:
+            if os.getenv('ZIMAM_SEED_DEMO_DATA', '0').lower() in {'1', 'true', 'yes'} and cur.fetchone()['count'] == 0:
                 hostname = socket.gethostname()
                 default_assets = [
                     (
@@ -520,11 +520,11 @@ def init_db() -> None:
 
             # Seed initial audit log if empty
             cur.execute("SELECT COUNT(*) AS count FROM security_audit_events")
-            if os.getenv('ASAAS_SEED_DEMO_DATA', '0').lower() in {'1', 'true', 'yes'} and cur.fetchone()['count'] == 0:
+            if os.getenv('ZIMAM_SEED_DEMO_DATA', '0').lower() in {'1', 'true', 'yes'} and cur.fetchone()['count'] == 0:
                 cur.execute("""
                     INSERT INTO security_audit_events (event_type, ip, details, severity, created_at)
                     VALUES (?, ?, ?, ?, datetime('now'))
-                """, ('SYSTEM_STARTUP', '127.0.0.1', 'ASAAS Server Control v2.5 started with clean database persistence.', 'INFO'))
+                """, ('SYSTEM_STARTUP', '127.0.0.1', 'ZIMAM v2.5 started with clean database persistence.', 'INFO'))
 
             # Governor accounting is session-scoped.  Clamp obviously corrupt
             # accumulated values produced by older builds.
@@ -1240,7 +1240,7 @@ def db_verify_audit_chain() -> Dict[str, Any]:
         rows = cur.fetchall()
 
     h = hashlib.sha256()
-    h.update(b"ASAAS_GENESIS_ROOT_LEDGER_V2")
+    h.update(b"ZIMAM_GENESIS_ROOT_LEDGER_V2")
     records_checked = 0
 
     for r in rows:
@@ -1377,7 +1377,7 @@ def db_set_system_metadata(key: str, value: str) -> None:
 
 
 # =====================================================================
-# ASAAS Enterprise v3.0: Core Infrastructure & Workspaces Database APIs
+# ZIMAM Enterprise v3.0: Core Infrastructure & Workspaces Database APIs
 # =====================================================================
 
 _SERVER_HEALTH_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -1406,7 +1406,7 @@ def _server_probe_ports(os_name: str) -> List[int]:
 
 def _probe_server(host: str, os_name: str, is_local: bool) -> Tuple[str, float]:
     if is_local or host in ('127.0.0.1', 'localhost', '::1'):
-        port = int(os.getenv('ASAAS_PORT', '8765') or 8765)
+        port = int(os.getenv('ZIMAM_PORT', '8765') or 8765)
         latency = _tcp_ping('127.0.0.1', port, timeout=0.3)
         return 'online', latency if latency is not None else 0.2
 

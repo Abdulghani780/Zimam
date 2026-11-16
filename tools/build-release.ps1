@@ -1,12 +1,12 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  ASAAS Server Control - release build pipeline.
+  ZIMAM - release build pipeline.
 
   Produces a staged appliance payload under release\:
-    release\bin\asaas-backend.exe
-    release\bin\asaas-control.exe
-    release\bin\Asaas.WindowsAgent.exe (+ libsodium.dll)
+    release\bin\zimam-backend.exe
+    release\bin\zimam-control.exe
+    release\bin\Zimam.Agent.exe (+ libsodium.dll)
     release\web\            (frontend dist, served by the control plane)
     release\data\           (created at first run - ACL'd by the installer)
 
@@ -55,8 +55,8 @@ if (-not $SkipFrontend) {
 
 # --- 2. Python services (PyInstaller onefile) ---------------------------------
 if (-not $SkipPython) {
-    Invoke-Step 'asaas-backend.exe (PyInstaller)' {
-        & $py -m PyInstaller --onefile --name asaas-backend `
+    Invoke-Step 'zimam-backend.exe (PyInstaller)' {
+        & $py -m PyInstaller --onefile --name zimam-backend `
             --paths (Join-Path $root 'backend') `
             --distpath (Join-Path $root 'dist-py') `
             --workpath (Join-Path $root 'build-py') `
@@ -64,8 +64,8 @@ if (-not $SkipPython) {
             --noconfirm `
             (Join-Path $root 'backend\main.py')
     }
-    Invoke-Step 'asaas-control.exe (PyInstaller)' {
-        & $py -m PyInstaller --onefile --name asaas-control `
+    Invoke-Step 'zimam-control.exe (PyInstaller)' {
+        & $py -m PyInstaller --onefile --name zimam-control `
             --paths (Join-Path $root 'control_plane') `
             --distpath (Join-Path $root 'dist-py') `
             --workpath (Join-Path $root 'build-py') `
@@ -73,7 +73,7 @@ if (-not $SkipPython) {
             --noconfirm `
             (Join-Path $root 'control_plane\serve.py')
     }
-    foreach ($exe in 'asaas-backend.exe', 'asaas-control.exe') {
+    foreach ($exe in 'zimam-backend.exe', 'zimam-control.exe') {
         $src = Join-Path $root "dist-py\$exe"
         if (-not (Test-Path $src)) { throw "Missing build output: $src" }
         Copy-Item $src (Join-Path $binDir $exe) -Force
@@ -82,13 +82,13 @@ if (-not $SkipPython) {
 
 # --- 3. Windows agent (self-contained single file) ----------------------------
 if (-not $SkipAgent) {
-    Invoke-Step 'Asaas.WindowsAgent.exe (dotnet publish)' {
-        dotnet publish (Join-Path $root 'agent\Asaas.WindowsAgent.csproj') `
+    Invoke-Step 'Zimam.Agent.exe (dotnet publish)' {
+        dotnet publish (Join-Path $root 'agent\Zimam.Agent.csproj') `
             -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true `
             -o (Join-Path $root 'agent\publish-single')
     }
-    $agentExe = Join-Path $root 'agent\publish-single\Asaas.WindowsAgent.exe'
+    $agentExe = Join-Path $root 'agent\publish-single\Zimam.Agent.exe'
     if (-not (Test-Path $agentExe)) { throw "Missing agent output: $agentExe" }
     Copy-Item $agentExe $binDir -Force
     # libsodium.dll is bundled inside the compressed single-file exe; copy it
@@ -103,4 +103,4 @@ Get-ChildItem $binDir | ForEach-Object { "{0,-28} {1,8:N1} MB" -f $_.Name, ($_.L
 $webIndex = Join-Path $webDir 'index.html'
 if (-not $SkipFrontend -and -not (Test-Path $webIndex)) { throw "web\index.html missing from stage" }
 Write-Host "`nRelease staged at: $stage" -ForegroundColor Green
-Write-Host "Next: Inno Setup script (packaging\asaas.iss) consumes this stage."
+Write-Host "Next: Inno Setup script (packaging\zimam.iss) consumes this stage."

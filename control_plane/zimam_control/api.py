@@ -32,7 +32,7 @@ from .storage import append_audit, db_session
 from .vault import EnvelopeVault
 
 router = APIRouter(prefix="/api/v1")
-log = logging.getLogger("asaas_control.api")
+log = logging.getLogger("zimam_control.api")
 
 _VALID_ROLES = {"admin", "operator", "viewer"}
 
@@ -155,7 +155,7 @@ def _set_session(response: Response, user_id: str) -> str:
     expires = datetime.now(UTC) + timedelta(seconds=settings.session_ttl_seconds)
     with db_session() as db:
         db.add(AppSession(id=uuid.uuid4().hex, user_id=user_id, token_hash=token_hash(raw), expires_at=expires, revoked=False))
-    response.set_cookie("asaas_v1_session", raw, httponly=True, secure=settings.secure_cookies, samesite="lax", max_age=settings.session_ttl_seconds, path="/")
+    response.set_cookie("zimam_v1_session", raw, httponly=True, secure=settings.secure_cookies, samesite="lax", max_age=settings.session_ttl_seconds, path="/")
     return raw
 
 
@@ -164,7 +164,7 @@ def _expired(value: datetime) -> bool:
     return current <= datetime.now(UTC)
 
 
-def _current_user(session_cookie: str | None = Cookie(default=None, alias="asaas_v1_session"), authorization: str | None = Header(default=None)) -> User:
+def _current_user(session_cookie: str | None = Cookie(default=None, alias="zimam_v1_session"), authorization: str | None = Header(default=None)) -> User:
     raw = session_cookie or (authorization[7:] if authorization and authorization.lower().startswith("bearer ") else None)
     if not raw:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
@@ -186,7 +186,7 @@ def _bootstrap_token(token: str | None) -> None:
 
 @router.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "asaas-control-plane", "authenticated": False}
+    return {"status": "ok", "service": "zimam-control-plane", "authenticated": False}
 
 
 # --- First-run setup wizard (appliance) ---------------------------------------
@@ -287,13 +287,13 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict:
 
 
 @router.post("/auth/logout")
-def logout(response: Response, session_cookie: str | None = Cookie(default=None, alias="asaas_v1_session")) -> dict:
+def logout(response: Response, session_cookie: str | None = Cookie(default=None, alias="zimam_v1_session")) -> dict:
     if session_cookie:
         with db_session() as db:
             row = db.scalar(select(AppSession).where(AppSession.token_hash == token_hash(session_cookie)))
             if row:
                 row.revoked = True
-    response.delete_cookie("asaas_v1_session", path="/")
+    response.delete_cookie("zimam_v1_session", path="/")
     return {"authenticated": False}
 
 
@@ -311,7 +311,7 @@ def setup_mfa(user: User = Depends(_current_user)) -> dict:
     with db_session() as db:
         row = db.get(User, user.id)
         row.mfa_secret = secret
-    return {"enabled": True, "secret": secret, "otpauth_uri": pyotp.TOTP(secret).provisioning_uri(name=user.username, issuer_name="ASAAS")}
+    return {"enabled": True, "secret": secret, "otpauth_uri": pyotp.TOTP(secret).provisioning_uri(name=user.username, issuer_name="ZIMAM")}
 
 
 @router.post("/auth/mfa/verify")
@@ -469,7 +469,7 @@ async def gateway_session(websocket: WebSocket, protocol: str, token: str = "") 
     guacamole-common-js ``WebSocketTunnel``); this endpoint consumes the token,
     resolves credentials server-side (they never reach the browser), runs the
     guacd handshake, then pumps instructions both ways. Requires
-    ``ASAAS_GUACD_HOST`` — otherwise the socket closes with 1013.
+    ``ZIMAM_GUACD_HOST`` — otherwise the socket closes with 1013.
     """
     # guacamole-common-js always offers the "guacamole" subprotocol; browsers
     # reject the handshake if the server does not echo one back.
@@ -487,7 +487,7 @@ async def gateway_session(websocket: WebSocket, protocol: str, token: str = "") 
         await _close(1008, f"Unsupported protocol: {protocol}")
         return
     if not gateway_enabled():
-        await _close(1013, "Session gateway is not configured (ASAAS_GUACD_HOST)")
+        await _close(1013, "Session gateway is not configured (ZIMAM_GUACD_HOST)")
         return
     try:
         claims = _connection_store.consume(token, expected_protocol=protocol)
@@ -842,7 +842,7 @@ def _check_capacity(kind: str, current: int) -> None:
     if limit is not None and current >= limit:
         raise HTTPException(
             status_code=403,
-            detail=f"License limit reached (max_{kind}={limit}). Upgrade your ASAAS Server Control plan.",
+            detail=f"License limit reached (max_{kind}={limit}). Upgrade your ZIMAM plan.",
         )
 
 
@@ -888,7 +888,7 @@ def _require_agent(agent_id: str, agent_key: str | None) -> Agent:
 
 
 def _job_signature_payload(job_id: str, agent_id: str, job_type: str, payload_json: str) -> bytes:
-    return f"asaas-job|{job_id}|{agent_id}|{job_type}|{payload_json}".encode()
+    return f"zimam-job|{job_id}|{agent_id}|{job_type}|{payload_json}".encode()
 
 
 @router.get("/agents")
@@ -970,7 +970,7 @@ async def upload_update_bundle(request: Request, user: User = Depends(_current_u
 
     bundle_dir = _update_bundle_dir()
     bundle_dir.mkdir(parents=True, exist_ok=True)
-    exe_path = bundle_dir / "Asaas.WindowsAgent.exe"
+    exe_path = bundle_dir / "Zimam.Agent.exe"
     exe_path.write_bytes(body)
     manifest = {
         "version": version,
@@ -999,13 +999,13 @@ def download_agent_update(agent_id: str, x_agent_key: str | None = Header(defaul
     """Agent-key-authenticated bundle download used by the agent.update job."""
     _require_agent(agent_id, x_agent_key)
     manifest = _update_manifest()
-    exe_path = _update_bundle_dir() / "Asaas.WindowsAgent.exe"
+    exe_path = _update_bundle_dir() / "Zimam.Agent.exe"
     if not manifest or not exe_path.is_file():
         raise HTTPException(status_code=404, detail="No agent update bundle published")
     return FileResponse(
         exe_path,
         media_type="application/octet-stream",
-        filename="Asaas.WindowsAgent.exe",
+        filename="Zimam.Agent.exe",
         headers={"X-Update-Version": str(manifest.get("version", "")), "X-Update-Sha256": str(manifest.get("sha256", ""))},
     )
 

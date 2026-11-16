@@ -32,7 +32,7 @@ def resolve_data_path(value: str) -> Path:
 
 def resolve_database_path() -> Path | None:
     """Absolute path of the SQLite control-plane DB, or None for non-sqlite URLs."""
-    value = os.getenv("ASAAS_DATABASE_URL", "sqlite:///./data/control_plane.db")
+    value = os.getenv("ZIMAM_DATABASE_URL", "sqlite:///./data/control_plane.db")
     if not value.startswith("sqlite:///"):
         return None
     path = Path(value.removeprefix("sqlite:///"))
@@ -47,25 +47,25 @@ def resolve_database_path() -> Path | None:
 
 @dataclass(frozen=True)
 class Settings:
-    database_url: str = os.getenv("ASAAS_DATABASE_URL", "sqlite:///./data/control_plane.db")
-    session_ttl_seconds: int = int(os.getenv("ASAAS_SESSION_TTL", "28800"))
-    connection_token_ttl_seconds: int = int(os.getenv("ASAAS_CONNECTION_TOKEN_TTL", "60"))
-    bootstrap_token: str = os.getenv("ASAAS_BOOTSTRAP_TOKEN", "")
-    gateway_token: str = os.getenv("ASAAS_GATEWAY_TOKEN", "")
-    agent_enrollment_token: str = os.getenv("ASAAS_AGENT_ENROLLMENT_TOKEN", "")
-    allowed_origins: tuple[str, ...] = tuple(x.strip() for x in os.getenv("ASAAS_ALLOWED_ORIGINS", "").split(",") if x.strip())
-    secure_cookies: bool = _bool("ASAAS_SECURE_COOKIES", False)
-    vault_key_file: Path = resolve_data_path(os.getenv("ASAAS_VAULT_KEY_FILE", "data/control-plane-vault.key"))
+    database_url: str = os.getenv("ZIMAM_DATABASE_URL", "sqlite:///./data/control_plane.db")
+    session_ttl_seconds: int = int(os.getenv("ZIMAM_SESSION_TTL", "28800"))
+    connection_token_ttl_seconds: int = int(os.getenv("ZIMAM_CONNECTION_TOKEN_TTL", "60"))
+    bootstrap_token: str = os.getenv("ZIMAM_BOOTSTRAP_TOKEN", "")
+    gateway_token: str = os.getenv("ZIMAM_GATEWAY_TOKEN", "")
+    agent_enrollment_token: str = os.getenv("ZIMAM_AGENT_ENROLLMENT_TOKEN", "")
+    allowed_origins: tuple[str, ...] = tuple(x.strip() for x in os.getenv("ZIMAM_ALLOWED_ORIGINS", "").split(",") if x.strip())
+    secure_cookies: bool = _bool("ZIMAM_SECURE_COOKIES", False)
+    vault_key_file: Path = resolve_data_path(os.getenv("ZIMAM_VAULT_KEY_FILE", "data/control-plane-vault.key"))
 
     def vault_key(self) -> bytes:
-        raw = os.getenv("ASAAS_VAULT_KEY", "")
+        raw = os.getenv("ZIMAM_VAULT_KEY", "")
         if raw:
             try:
                 key = base64.urlsafe_b64decode(raw.encode())
             except Exception as exc:
-                raise RuntimeError("ASAAS_VAULT_KEY must be URL-safe base64") from exc
+                raise RuntimeError("ZIMAM_VAULT_KEY must be URL-safe base64") from exc
             if len(key) != 32:
-                raise RuntimeError("ASAAS_VAULT_KEY must decode to 32 bytes")
+                raise RuntimeError("ZIMAM_VAULT_KEY must decode to 32 bytes")
             return key
         self.vault_key_file.parent.mkdir(parents=True, exist_ok=True)
         if self.vault_key_file.exists():

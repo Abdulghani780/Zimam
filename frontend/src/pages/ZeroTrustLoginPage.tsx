@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Languages, Moon, ShieldCheck, Sun } from 'lucide-react';
-import { Button, Field, FormError, Glass, PasswordInput, Stretch, TextInput, useTheme } from '../asaas-ui';
+import { Button, Field, FormError, Glass, PasswordInput, Stretch, TextInput, useTheme } from '../zimam-ui';
 import { api } from '../lib/api';
 import { apiV1, ApiV1Error } from '../lib/apiV1';
 import { useLang, toggleLang } from '../lib/i18n';
@@ -59,10 +59,10 @@ export function ZeroTrustLoginPage() {
   return (
     <main className="auth-page">
       <header className="auth-page__topbar">
-        <a href="/login" className="brand auth-brand" aria-label={t('منظومة أساس')}>
+        <a href="/login" className="brand auth-brand" aria-label={t('زِمام')}>
           <span className="brand__mark" aria-hidden="true" />
           <span>
-            <strong className="brand__name">{t('منظومة أساس')}</strong>
+            <strong className="brand__name">{t('زِمام')}</strong>
             <small className="brand__tag">{t('إدارة الوصول والخوادم')}</small>
           </span>
         </a>
@@ -149,13 +149,13 @@ export function ZeroTrustLoginPage() {
           </form>
 
           <p className="auth-card__help">
-            {t('إذا نسيت كلمة المرور، أعد ضبط حساب الطوارئ من الجهاز المثبّت عليه ASAAS باستخدام أداة bootstrap.')}
+            {t('إذا نسيت كلمة المرور، أعد ضبط حساب الطوارئ من الجهاز المثبّت عليه ZIMAM باستخدام أداة bootstrap.')}
           </p>
         </Glass>
       </section>
 
       <footer className="auth-page__footer">
-        <span>ASAAS Server Control</span>
+        <span>ZIMAM</span>
         <span>{t('واجهة عربية · تشغيل محلي · صلاحيات حسب الدور')}</span>
       </footer>
     </main>

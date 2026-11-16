@@ -1,12 +1,12 @@
 from pathlib import Path
 
 # 1. Fix cx.ts
-cx_p = Path('frontend/src/asaas-ui/lib/cx.ts')
+cx_p = Path('frontend/src/zimam-ui/lib/cx.ts')
 cx_p.write_text("/** Joins truthy class names. */\nexport const cx = (...names: Array<any>) => names.filter(Boolean).join(' ');\n", encoding='utf-8')
 print("cx.ts fixed!")
 
 # 2. Fix Toast.tsx
-toast_p = Path('frontend/src/asaas-ui/ui/Toast.tsx')
+toast_p = Path('frontend/src/zimam-ui/ui/Toast.tsx')
 toast_text = toast_p.read_text(encoding='utf-8')
 toast_text = toast_text.replace("type Tone = 'success' | 'error';", "type Tone = 'success' | 'error' | 'info' | 'warn';")
 toast_p.write_text(toast_text, encoding='utf-8')

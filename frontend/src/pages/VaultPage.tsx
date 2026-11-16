@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LockKeyhole, ShieldCheck, Plus, Trash2, Eye, Copy, RefreshCw, Key } from 'lucide-react';
 import { apiV1, type V1Account, type V1Asset } from '../lib/apiV1';
-import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
 import { t } from '../lib/i18n';
 
 interface VaultRow {

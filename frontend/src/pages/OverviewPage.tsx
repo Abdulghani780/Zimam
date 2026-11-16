@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -45,7 +45,7 @@ interface BackupRecord {
   size_mb: number;
 }
 
-const RANGE_KEY = 'asaas-overview-range';
+const RANGE_KEY = 'zimam-overview-range';
 
 function formatTimeLabel(value: string, range: '24h' | '7d'): string {
   const date = new Date(value.includes('T') ? value : value.replace(' ', 'T'));

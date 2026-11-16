@@ -1,4 +1,4 @@
-"""Generate a self-signed TLS certificate for the ASAAS control plane.
+"""Generate a self-signed TLS certificate for the ZIMAM control plane.
 
 Usage (from repo root, venv python):
 
@@ -23,11 +23,11 @@ from cryptography.x509.oid import NameOID
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Self-signed TLS cert for ASAAS Server Control")
+    parser = argparse.ArgumentParser(description="Self-signed TLS cert for ZIMAM")
     parser.add_argument("--days", type=int, default=825, help="validity in days (max ~825 for browser trust)")
     parser.add_argument("--host", action="append", default=[], help="extra DNS name or IP for SANs (repeatable)")
     parser.add_argument("--out", default="data/tls", help="output directory for cert.pem/key.pem")
-    parser.add_argument("--cn", default="ASAAS Server Control", help="certificate CN")
+    parser.add_argument("--cn", default="ZIMAM", help="certificate CN")
     args = parser.parse_args()
 
     sans: list[x509.GeneralName] = [
@@ -88,7 +88,7 @@ def main() -> None:
         pass
     print(f"wrote {cert_path}")
     print(f"wrote {key_path}")
-    print("serve with: ASAAS_TLS_CERT=<cert.pem> ASAAS_TLS_KEY=<key.pem>")
+    print("serve with: ZIMAM_TLS_CERT=<cert.pem> ZIMAM_TLS_KEY=<key.pem>")
 
 
 if __name__ == "__main__":

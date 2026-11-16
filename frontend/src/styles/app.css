@@ -38,7 +38,7 @@ button, input, select, textarea, .btn, .badge {
   font-variant-numeric: tabular-nums;
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Shared ASAAS authentication surfaces â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ Shared ZIMAM authentication surfaces â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth-page {
   position: relative;
   z-index: 1;
@@ -293,7 +293,7 @@ button, input, select, textarea, .btn, .badge {
   .access-state-card__actions .btn { width: 100%; }
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ ASAAS Server Control Application Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€ ZIMAM Application Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 .app-layout {
   display: flex;
@@ -425,7 +425,7 @@ button, input, select, textarea, .btn, .badge {
   gap: 8px;
 }
 
-/* Main area and shared ASAAS product header */
+/* Main area and shared ZIMAM product header */
 .app-main {
   flex: 1;
   min-width: 0;
@@ -1286,7 +1286,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
 }
 
 /* =====================================================================
-   ASAAS v3.0 â€” Slate & Gold Dashboard Design System
+   ZIMAM v3.0 â€” Slate & Gold Dashboard Design System
    Shared shell, navigation, panels, KPI cards, charts, tables and the
    RDP / PAM / Port-Isolation workspaces.
    ===================================================================== */

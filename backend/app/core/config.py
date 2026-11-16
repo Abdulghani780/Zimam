@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2 - Application Configuration & Environment Settings.
+"""ZIMAM v2 - Application Configuration & Environment Settings.
 
 Centralized configuration adhering to Clean Architecture.
 """
@@ -55,11 +55,11 @@ def _load_dotenv(path: Path) -> None:
 _load_dotenv(PROJECT_ROOT / '.env')
 
 # Server network settings. Packaged appliances bind localhost by default —
-# the control plane on :8876 is the only public surface; set ASAAS_HOST
+# the control plane on :8876 is the only public surface; set ZIMAM_HOST
 # explicitly (e.g. via .env) to expose the legacy port.
 _default_host = '127.0.0.1' if getattr(sys, 'frozen', False) else '0.0.0.0'
-SERVER_HOST: str = os.getenv('ASAAS_HOST', _default_host)
-SERVER_PORT: int = int(os.getenv('ASAAS_PORT', '8765'))
+SERVER_HOST: str = os.getenv('ZIMAM_HOST', _default_host)
+SERVER_PORT: int = int(os.getenv('ZIMAM_PORT', '8765'))
 
 # Security settings
 TOKEN_FILE = DATA_DIR / '.session_token'
@@ -81,4 +81,4 @@ def get_or_create_session_token() -> str:
     return token
 
 SESSION_TOKEN: str = get_or_create_session_token()
-DB_PATH = DATA_DIR / 'asaas_v2.db'
+DB_PATH = DATA_DIR / 'zimam_v2.db'

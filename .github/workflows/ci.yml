@@ -1,4 +1,4 @@
-name: ASAAS Server Control CI/CD
+name: ZIMAM CI/CD
 
 on:
   push:
@@ -66,7 +66,7 @@ jobs:
           from app.infrastructure.db import init_db, get_db_connection, hash_password
           from datetime import datetime, timezone
           init_db()
-          h, s = hash_password('admin@asaas2026')
+          h, s = hash_password('admin@zimam2026')
           conn = get_db_connection(); cur = conn.cursor()
           cur.execute('SELECT id FROM app_users WHERE username = ?', ('admin',))
           if not cur.fetchone():
@@ -129,7 +129,7 @@ jobs:
         run: |
           python -c "import sys; sys.path.insert(0,'.'); from app.infrastructure.db import init_db, db_bootstrap_admin; init_db(); print(db_bootstrap_admin('e2e-admin', 'E2e!Smoke#Passw0rd2026!', 'E2E Admin'))"
 
-      - name: Start ASAAS Backend
+      - name: Start ZIMAM Backend
         run: |
           Start-Process -FilePath python -ArgumentList 'backend/main.py' -WindowStyle Hidden
           Start-Sleep -Seconds 5
@@ -184,11 +184,11 @@ jobs:
           $iscc = Get-ChildItem "C:\Program Files (x86)\Inno Setup 6\ISCC.exe","$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
           if (-not $iscc) { $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source }
           if (-not $iscc) { throw "ISCC.exe not found after choco install" }
-          & $iscc packaging\asaas.iss
+          & $iscc packaging\zimam.iss
 
       - name: Verify installer artifact
         run: |
-          $exe = Get-ChildItem installer-out\ASAAS-Server-Control-Setup-*.exe | Select-Object -First 1
+          $exe = Get-ChildItem installer-out\ZIMAM-Setup-*.exe | Select-Object -First 1
           if (-not $exe) { throw "Installer exe missing" }
           if ($exe.Length -lt 10MB) { throw "Installer suspiciously small: $($exe.Length) bytes" }
           Write-Host "Installer: $($exe.Name) ($([math]::Round($exe.Length/1MB,1)) MB)"
@@ -196,6 +196,6 @@ jobs:
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: asaas-server-control-setup
+          name: zimam-server-control-setup
           path: installer-out/*.exe
           retention-days: 30

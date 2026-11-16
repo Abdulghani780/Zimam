@@ -32,21 +32,21 @@ class JobSigner:
 
 from .config import resolve_data_path
 
-_KEY_FILE = resolve_data_path(os.getenv("ASAAS_JOB_SIGNING_KEY_FILE", "data/agent-signing.key"))
+_KEY_FILE = resolve_data_path(os.getenv("ZIMAM_JOB_SIGNING_KEY_FILE", "data/agent-signing.key"))
 _signer: JobSigner | None = None
 
 
 def get_job_signer() -> JobSigner:
     """Process-wide Ed25519 signer for agent jobs.
 
-    The 32-byte seed is persisted at ``ASAAS_JOB_SIGNING_KEY_FILE`` (or the
-    ``ASAAS_JOB_SIGNING_KEY`` hex env var) so signatures survive restarts —
+    The 32-byte seed is persisted at ``ZIMAM_JOB_SIGNING_KEY_FILE`` (or the
+    ``ZIMAM_JOB_SIGNING_KEY`` hex env var) so signatures survive restarts —
     agents pin the matching public key delivered at enrollment.
     """
     global _signer
     if _signer is not None:
         return _signer
-    raw_hex = os.getenv("ASAAS_JOB_SIGNING_KEY", "")
+    raw_hex = os.getenv("ZIMAM_JOB_SIGNING_KEY", "")
     if raw_hex:
         seed = bytes.fromhex(raw_hex)
     else:

@@ -1,6 +1,6 @@
 /**
  * ==============================================================================
- * ASAAS SOVEREIGN DESIGN SYSTEM - THREE-LAYER DESIGN TOKENS
+ * ZIMAM SOVEREIGN DESIGN SYSTEM - THREE-LAYER DESIGN TOKENS
  * Architecture: Primitives -> Semantics (Light/Dark) -> Components
  * Standard: Sovereign Signature — warm obsidian, heritage gold, editorial glass
  * ==============================================================================
@@ -196,7 +196,7 @@
   /* Directional Reading Axis: -1 in RTL (Arabic), 1 in LTR */
   --dir-x: -1;
 
-  /* Compatibility aliases → official ASAAS kit tokens */
+  /* Compatibility aliases → official ZIMAM kit tokens */
   --text-1:                 var(--text);
   --accent-soft:            rgba(212, 175, 106, 0.16);
   --danger:                 var(--unpaid);
@@ -261,7 +261,7 @@
   --chart-5:                   #5f7ea8;
   --chart-6:                   #a08a5a;
 
-  /* Compatibility aliases → official ASAAS kit tokens (light) */
+  /* Compatibility aliases → official ZIMAM kit tokens (light) */
   --text-1:                 var(--text);
   --accent-soft:            rgba(186, 149, 85, 0.18);
   --danger:                 var(--unpaid);

@@ -116,7 +116,7 @@ def db_verify_audit_chain() -> Dict[str, Any]:
         rows = cur.fetchall()
 
     h = hashlib.sha256()
-    h.update(b"ASAAS_GENESIS_ROOT_LEDGER_V2")
+    h.update(b"ZIMAM_GENESIS_ROOT_LEDGER_V2")
     records_checked = 0
 
     for r in rows:

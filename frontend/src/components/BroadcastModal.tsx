@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Modal, Button, Field, TextInput, TextArea, useToast } from '../asaas-ui';
+import { Modal, Button, Field, TextInput, TextArea, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
 import { ShieldAlert, Send, AlertTriangle } from 'lucide-react';
 import { t } from '../lib/i18n';

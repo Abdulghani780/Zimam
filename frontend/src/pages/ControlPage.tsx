@@ -1,9 +1,9 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTelemetry } from '../lib/useTelemetry';
 import { api, type UserSession } from '../lib/api';
 import { SessionDrawer } from '../components/SessionDrawer';
 import { BroadcastModal } from '../components/BroadcastModal';
-import { useToast } from '../asaas-ui';
+import { useToast } from '../zimam-ui';
 import {
   AlertCircle,
   Check,
