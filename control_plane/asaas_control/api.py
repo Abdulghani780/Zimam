@@ -12,12 +12,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .audit import AuditChain
 from .config import settings
 from .connection_tokens import ConnectionTokenStore
 from .identity import verify_legacy_password
+from .license import LicenseError, activate_license, deactivate_license, get_license_state
 from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, User
 from .permissions import AccessContext, AccessPolicy, PermissionEngine
 from .security import hash_password, new_token, token_hash, verify_password
@@ -442,6 +443,9 @@ def create_user(payload: UserCreateRequest, user: User = Depends(_current_user))
     with db_session() as db:
         if db.scalar(select(User.id).where(User.username == username)):
             raise HTTPException(status_code=409, detail="Username already exists")
+        user_count = db.scalar(select(func.count()).select_from(User)) or 0
+    _check_capacity("users", user_count)
+    with db_session() as db:
         item = User(id=uuid.uuid4().hex, username=username, password_hash=hash_password(payload.password), is_admin=payload.role == "admin", role=payload.role, full_name=payload.full_name, created_at=datetime.now(UTC))
         db.add(item)
         append_audit(db, actor_id=user.id, action="user.create", target_id=item.id, payload={"username": username, "role": payload.role})
@@ -570,6 +574,49 @@ def system_backup(user: User = Depends(_current_user)) -> dict:
     return {"file": target.name, "path": str(target), "size_bytes": manifest["size_bytes"], "sha256": digest, "row_counts": counts}
 
 
+# --- License & entitlements ---------------------------------------------------
+
+
+def _check_capacity(kind: str, current: int) -> None:
+    """Enforce license limits (max_agents / max_users). ``None`` = unlimited."""
+    limit = get_license_state().limits.get(f"max_{kind}")
+    if limit is not None and current >= limit:
+        raise HTTPException(
+            status_code=403,
+            detail=f"License limit reached (max_{kind}={limit}). Upgrade your ASAAS Server Control plan.",
+        )
+
+
+class LicenseActivateRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=8192)
+
+
+@router.get("/license")
+def license_status(_: User = Depends(_current_user)) -> dict:
+    return get_license_state().to_dict()
+
+
+@router.post("/license/activate")
+def license_activate(payload: LicenseActivateRequest, user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    try:
+        lic = activate_license(payload.token)
+    except LicenseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    with db_session() as db:
+        append_audit(db, actor_id=user.id, action="license.activate", target_id=lic.license_id, payload={"tier": lic.tier, "customer": lic.customer, "expires_at": lic.expires_at})
+    return {"ok": True, "license_id": lic.license_id, "tier": lic.tier, "expires_at": lic.expires_at}
+
+
+@router.post("/license/deactivate")
+def license_deactivate(user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    removed = deactivate_license()
+    with db_session() as db:
+        append_audit(db, actor_id=user.id, action="license.deactivate", payload={})
+    return {"ok": True, "removed": removed}
+
+
 def _require_agent(agent_id: str, agent_key: str | None) -> Agent:
     if not agent_key:
         raise HTTPException(status_code=401, detail="Agent key required")
@@ -595,6 +642,9 @@ def list_agents(_: User = Depends(_current_user)) -> list[dict]:
 def enroll_agent(name: str, x_agent_enrollment_token: str | None = Header(default=None)) -> dict:
     if not settings.agent_enrollment_token or not x_agent_enrollment_token or not secrets.compare_digest(x_agent_enrollment_token, settings.agent_enrollment_token):
         raise HTTPException(status_code=403, detail="Agent enrollment is disabled or token is invalid")
+    with db_session() as db:
+        agent_count = db.scalar(select(func.count()).select_from(Agent)) or 0
+    _check_capacity("agents", agent_count)
     raw = new_token()
     with db_session() as db:
         agent = Agent(id=uuid.uuid4().hex, name=name, enrollment_hash=token_hash(raw), status="enrolled", inventory_json="{}")

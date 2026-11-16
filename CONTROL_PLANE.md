@@ -21,6 +21,7 @@ Session gateway ----------------------> one-time connection token
 - signed agent job channel: control plane issues Ed25519-signed read-only jobs, agent verifies the signature over the canonical payload before executing and posts results back;
 - `GET /api/v1/agents` + `/api/v1/jobs` power the console `/agents` page (enrolled agents, job history, dispatch modal);
 - append-only audit rows with `previous_hash`, `event_hash` and verification endpoint;
+- Ed25519-signed licenses (`data/license.json`) with offline verification, tier defaults (starter/pro/enterprise), 30-day trial, grace period, read-only expiry mode, and capacity/feature enforcement (`license.py`, `entitlements.py`); vendor signing via `tools/sign-license.py`;
 - Compose baseline for PostgreSQL, Redis, MinIO and guacd;
 - legacy v2 compatibility routes no longer generate RDP files, reveal vault secrets, or claim fake JIT/replay success.
 

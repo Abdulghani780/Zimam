@@ -77,3 +77,8 @@ build-py/
 release/
 agent/publish/
 agent/publish-single/
+
+data/license-signing.key
+data/license.json
+data/license-pubkey.hex
+data/.first_boot

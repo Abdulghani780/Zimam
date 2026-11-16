@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from .api import router
 from .config import settings
+from .entitlements import license_guard
 from .legacy_proxy import router as legacy_proxy_router
 from .storage import init_db
 
@@ -24,6 +25,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="ASAAS Control Plane", version="1.0.0", lifespan=lifespan)
 if settings.allowed_origins:
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.allowed_origins), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.middleware("http")(license_guard)
 app.include_router(router)
 # Legacy /api/* passthrough — registered after /api/v1 so v1 always wins.
 app.include_router(legacy_proxy_router)
