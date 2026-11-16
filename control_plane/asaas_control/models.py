@@ -99,6 +99,21 @@ class AgentJob(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class JitGrantRow(Base):
+    __tablename__ = "jit_grants"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    username: Mapped[str] = mapped_column(String(128))
+    target_role: Mapped[str] = mapped_column(String(128), default="")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    duration_mins: Mapped[int] = mapped_column(Integer, default=30)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)  # pending|active|rejected|revoked
+    approver: Mapped[str] = mapped_column(String(128), default="")
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

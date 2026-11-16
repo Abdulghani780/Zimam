@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import { Card, Button, Glass, Field, TextInput, useToast } from '../asaas-ui';
 import {
   CheckCircle2,
@@ -78,13 +78,13 @@ export function JitElevationPage() {
 
   const fetchGrants = async () => {
     try {
-      const res = await api.getJitGrants();
-      if (res && res.ok && Array.isArray(res.grants)) {
-        setGrants(res.grants.map((g: any) => ({
-          id: g.id || `jit-${Math.random()}`,
+      const res = await apiV1.jitGrants();
+      if (res && Array.isArray(res.grants)) {
+        setGrants(res.grants.map((g) => ({
+          id: g.id,
           user: g.user || '—',
           target: g.target || '—',
-          role: g.role || g.target_role || '—',
+          role: g.role || g.target || '—',
           ticket: g.reason || g.ticket || '—',
           duration_mins: g.duration_mins ?? 0,
           remaining_sec: g.status === 'PENDING' ? 0 : (g.remaining_sec ?? 0),
@@ -100,8 +100,9 @@ export function JitElevationPage() {
 
   const fetchIdentity = async () => {
     try {
-      const res = await api.getCurrentUser();
-      if (res && res.ok && res.user) setCurrentRole(res.user.role || 'viewer');
+      const res = await apiV1.me();
+      const role = res?.is_admin ? 'admin' : (res?.role || 'viewer');
+      setCurrentRole(role);
     } catch {
       // viewer remains the safe default
     }
@@ -132,12 +133,12 @@ export function JitElevationPage() {
 
   const handleRevoke = async (id: string, user: string) => {
     try {
-      const res = await api.revokeJitElevation(id);
+      const res = await apiV1.revokeJitGrant(id);
       if (res && res.ok) {
-        toast(res.message || `${t('تم سحب الصلاحيات المؤقتة للمستخدم [')}${user}${t('] فوراً.')}`, 'success');
+        toast(`${t('تم سحب الصلاحيات المؤقتة للمستخدم [')}${user}${t('] فوراً.')}`, 'success');
         fetchGrants();
       } else {
-        toast((res as any)?.error || t('فشل سحب الصلاحيات.'), 'error');
+        toast(t('فشل سحب الصلاحيات.'), 'error');
       }
     } catch (err: any) {
       toast(err.message || t('خطأ أثناء سحب الصلاحيات'), 'error');
@@ -147,17 +148,17 @@ export function JitElevationPage() {
   const handleDecision = async (id: string, approve: boolean, user: string) => {
     setDecidingId(id);
     try {
-      const res = await api.approveJitElevation(id, approve);
+      const res = await apiV1.decideJitGrant(id, approve);
       if (res && res.ok) {
         toast(
-          res.message || (approve
+          approve
             ? `${t('تم اعتماد طلب الترقية المؤقتة للمستخدم [')}${user}].`
-            : `${t('تم رفض طلب الترقية المؤقتة للمستخدم [')}${user}].`),
+            : `${t('تم رفض طلب الترقية المؤقتة للمستخدم [')}${user}].`,
           approve ? 'success' : 'info',
         );
         fetchGrants();
       } else {
-        toast(res?.error || t('فشل تنفيذ قرار الاعتماد.'), 'error');
+        toast(t('فشل تنفيذ قرار الاعتماد.'), 'error');
       }
     } catch (err: any) {
       toast(err.message || t('خطأ أثناء تنفيذ قرار الاعتماد'), 'error');
@@ -170,8 +171,8 @@ export function JitElevationPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await api.requestJitElevation({
-        role: targetRole,
+      const res = await apiV1.requestJitGrant({
+        target_role: targetRole,
         reason,
         duration_mins: durationMins,
       });
@@ -179,7 +180,7 @@ export function JitElevationPage() {
         toast(res.message || `${t('تم تسجيل طلب الترقية المؤقتة لمدة (')}${durationMins}${t(' دقيقة).')}`, 'success');
         fetchGrants();
       } else {
-        toast((res as any)?.error || t('فشل اعتماد طلب الترقية المؤقتة.'), 'error');
+        toast(t('فشل اعتماد طلب الترقية المؤقتة.'), 'error');
       }
     } catch (err: any) {
       toast(err.message || t('فشل تقديم طلب الترقية المؤقتة'), 'error');

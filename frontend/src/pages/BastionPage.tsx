@@ -2,6 +2,7 @@
 import { Link } from 'react-router-dom';
 import { useToast } from '../asaas-ui';
 import { api, type AssetItem, type JitGrant, type LocalUser } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   Activity,
   AlertCircle,
@@ -252,8 +253,8 @@ export function BastionPage() {
     async (silent = false) => {
       if (!silent) setGrantLoading(true);
       try {
-        const res = await api.getJitGrants();
-        setGrants(Array.isArray(res.grants) ? res.grants : []);
+        const res = await apiV1.jitGrants();
+        setGrants((res.grants || []) as unknown as JitGrant[]);
       } catch (err) {
         if (!silent) {
           toast(err instanceof Error ? err.message : t('تعذر تحميل طلبات الوصول.'), 'error');
@@ -483,17 +484,17 @@ export function BastionPage() {
     setRequestSubmitting(true);
     setRequestError(null);
     try {
-      const res = await api.requestJitElevation({
-        role: requestForm.role,
+      const res = await apiV1.requestJitGrant({
+        target_role: requestForm.role,
         reason,
         duration_mins: Number(requestForm.duration),
-        ...(requestForm.user.trim() ? { user: requestForm.user.trim() } : {}),
+        ...(requestForm.user.trim() ? { username: requestForm.user.trim() } : {}),
       });
       toast(res.message || t('تم تسجيل طلب الصلاحية بنجاح.'), 'success');
       setRequestOpen(false);
       setTab('requests');
       await fetchGrants(true);
-      if (res.id) setSelectedId(res.id);
+      if (res.grant?.id) setSelectedId(res.grant.id);
     } catch (err) {
       setRequestError(err instanceof Error ? err.message : t('تعذر تسجيل طلب الصلاحية.'));
     } finally {
@@ -504,7 +505,7 @@ export function BastionPage() {
   const handleApprove = async (grant: JitGrant) => {
     setBusyAction(`${grant.id}:approve`);
     try {
-      const res = await api.approveJitElevation(grant.id, true);
+      const res = await apiV1.decideJitGrant(grant.id, true);
       toast(res.message || t('تم اعتماد الطلب بنجاح.'), 'success');
       await fetchGrants(true);
     } catch (err) {
@@ -521,8 +522,8 @@ export function BastionPage() {
     try {
       const res =
         kind === 'reject'
-          ? await api.approveJitElevation(grant.id, false)
-          : await api.revokeJitElevation(grant.id);
+          ? await apiV1.decideJitGrant(grant.id, false)
+          : await apiV1.revokeJitGrant(grant.id);
       toast(
         res.message || (kind === 'reject' ? t('تم رفض طلب الوصول.') : t('تم سحب الصلاحية المؤقتة.')),
         'success',

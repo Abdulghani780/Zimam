@@ -99,6 +99,23 @@ export interface V1Account {
   [key: string]: unknown;
 }
 
+export interface V1JitGrant {
+  id: string;
+  user: string;
+  user_id?: string;
+  target?: string;
+  role?: string;
+  reason?: string;
+  ticket?: string;
+  duration_mins?: number;
+  remaining_sec?: number;
+  status?: string;
+  approver?: string;
+  created_at?: string | null;
+  expires_at?: string | null;
+  [key: string]: unknown;
+}
+
 export interface V1AccessPolicy {
   id: string;
   name: string;
@@ -202,6 +219,15 @@ export const apiV1 = {
     post<unknown>(`/users/${encodeURIComponent(username)}/status`, { is_active: isActive }),
   groups: () => request<unknown>('/groups'),
   directorySync: () => post<unknown>('/directory/sync'),
+
+  // JIT elevation grants
+  jitGrants: () => request<{ ok?: boolean; grants?: V1JitGrant[] }>('/jit-grants'),
+  requestJitGrant: (body: { target_role: string; reason: string; duration_mins: number; username?: string }) =>
+    post<{ ok?: boolean; grant?: V1JitGrant; message?: string }>('/jit-grants', body),
+  decideJitGrant: (id: string, approve: boolean) =>
+    post<{ ok?: boolean; grant?: V1JitGrant; message?: string }>(`/jit-grants/${encodeURIComponent(id)}/decision`, { approve }),
+  revokeJitGrant: (id: string) =>
+    post<{ ok?: boolean; grant?: V1JitGrant; message?: string }>(`/jit-grants/${encodeURIComponent(id)}/revoke`, {}),
   directoryUsers: () =>
     request<{ users?: V1DirectoryUser[] } | V1DirectoryUser[]>('/directory/users'),
 

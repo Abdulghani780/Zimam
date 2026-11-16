@@ -24,7 +24,7 @@ from .connection_tokens import ConnectionTokenStore
 from .gateway import DEFAULT_PORTS, SUPPORTED_PROTOCOLS, enabled as gateway_enabled, open_session, parse_instruction
 from .identity import verify_legacy_password
 from .license import LicenseError, activate_license, deactivate_license, get_license_state
-from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, User
+from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, JitGrantRow, User
 from .permissions import AccessContext, AccessPolicy, PermissionEngine
 from .security import hash_password, new_token, token_hash, verify_password
 from .signing import get_job_signer
@@ -672,6 +672,137 @@ def db_scalar_user(username: str) -> User | None:
             db.expunge(row)
             return row
     return None
+
+
+# --- JIT elevation grants (time-boxed privileged access, admin-approved) ---
+
+class JitRequest(BaseModel):
+    target_role: str = Field(default="Local Administrator", max_length=128)
+    reason: str = Field(default="", max_length=2000)
+    duration_mins: int = Field(default=30, ge=1, le=480)
+    username: str | None = Field(default=None, max_length=128)
+
+
+class JitDecision(BaseModel):
+    approve: bool = True
+
+
+def _jit_view(row: JitGrantRow) -> dict:
+    now = datetime.now(UTC)
+    expires = row.expires_at
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=UTC)
+    status = row.status
+    if status == "active" and expires is not None and expires <= now:
+        status = "expired"
+    remaining = max(0, int((expires - now).total_seconds())) if status == "active" and expires else 0
+    requested = row.requested_at
+    if requested is not None and requested.tzinfo is None:
+        requested = requested.replace(tzinfo=UTC)
+    decided = row.decided_at
+    if decided is not None and decided.tzinfo is None:
+        decided = decided.replace(tzinfo=UTC)
+    return {
+        "id": row.id,
+        "user": row.username,
+        "user_id": row.user_id,
+        "target": row.target_role,
+        "target_role": row.target_role,
+        "role": row.target_role,
+        "reason": row.reason,
+        "ticket": row.reason,
+        "duration_mins": row.duration_mins,
+        "remaining_sec": remaining,
+        "status": status.upper(),
+        "approver": row.approver,
+        "created_at": requested.isoformat() if requested else None,
+        "decided_at": decided.isoformat() if decided else None,
+        "expires_at": expires.isoformat() if expires else None,
+    }
+
+
+@router.get("/jit-grants")
+def list_jit_grants(user: User = Depends(_current_user)) -> dict:
+    with db_session() as db:
+        query = select(JitGrantRow).order_by(JitGrantRow.requested_at.desc())
+        if not user.is_admin:
+            query = query.where(JitGrantRow.user_id == user.id)
+        rows = list(db.scalars(query))
+        return {"ok": True, "grants": [_jit_view(r) for r in rows]}
+
+
+@router.post("/jit-grants", status_code=201)
+def create_jit_grant(payload: JitRequest, user: User = Depends(_current_user)) -> dict:
+    now = datetime.now(UTC)
+    # Admins may request on behalf of another user; that grant still needs a
+    # second admin's approval, mirroring the legacy PAM workflow.
+    target_user_id, target_username = user.id, user.username
+    on_behalf = False
+    if payload.username and payload.username.strip() and payload.username.strip() != user.username:
+        if not user.is_admin:
+            raise HTTPException(status_code=403, detail="Only admins can request grants for other users")
+        with db_session() as db:
+            other = db.scalar(select(User).where(User.username == payload.username.strip()))
+        if not other or not other.is_active:
+            raise HTTPException(status_code=404, detail="Target user not found")
+        target_user_id, target_username, on_behalf = other.id, other.username, True
+    auto = bool(user.is_admin) and not on_behalf
+    row = JitGrantRow(
+        id=uuid.uuid4().hex,
+        user_id=target_user_id,
+        username=target_username,
+        target_role=payload.target_role.strip() or "Local Administrator",
+        reason=payload.reason.strip(),
+        duration_mins=payload.duration_mins,
+        status="active" if auto else "pending",
+        approver=f"Admin Policy Engine ({user.username})" if auto else "Pending Admin Approval",
+        requested_at=now,
+        decided_at=now if auto else None,
+        expires_at=now + timedelta(minutes=payload.duration_mins) if auto else None,
+    )
+    with db_session() as db:
+        db.add(row)
+        append_audit(db, actor_id=user.id, action="jit.request", target_id=row.id, payload={"role": row.target_role, "duration_mins": row.duration_mins, "auto": auto})
+    return {"ok": True, "grant": _jit_view(row), "message": "JIT grant activated" if auto else "JIT request submitted for approval"}
+
+
+@router.post("/jit-grants/{grant_id}/decision")
+def decide_jit_grant(grant_id: str, payload: JitDecision, user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    now = datetime.now(UTC)
+    with db_session() as db:
+        row = db.get(JitGrantRow, grant_id)
+        if not row or row.status != "pending":
+            raise HTTPException(status_code=404, detail="Pending JIT request not found")
+        if payload.approve:
+            row.status = "active"
+            row.approver = user.username
+            row.decided_at = now
+            row.expires_at = now + timedelta(minutes=row.duration_mins)
+            action = "jit.approve"
+        else:
+            row.status = "rejected"
+            row.approver = user.username
+            row.decided_at = now
+            action = "jit.reject"
+        append_audit(db, actor_id=user.id, action=action, target_id=row.id, payload={"user": row.username})
+        return {"ok": True, "grant": _jit_view(row)}
+
+
+@router.post("/jit-grants/{grant_id}/revoke")
+def revoke_jit_grant(grant_id: str, user: User = Depends(_current_user)) -> dict:
+    now = datetime.now(UTC)
+    with db_session() as db:
+        row = db.get(JitGrantRow, grant_id)
+        if not row or row.status not in {"active", "pending"}:
+            raise HTTPException(status_code=404, detail="Active JIT grant not found")
+        if not user.is_admin and row.user_id != user.id:
+            raise HTTPException(status_code=403, detail="Cannot revoke another user's grant")
+        row.status = "revoked"
+        row.decided_at = now
+        row.approver = user.username if user.is_admin else row.approver
+        append_audit(db, actor_id=user.id, action="jit.revoke", target_id=row.id, payload={"user": row.username})
+        return {"ok": True, "grant": _jit_view(row)}
 
 
 @router.get("/groups")
