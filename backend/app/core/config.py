@@ -6,16 +6,26 @@ from __future__ import annotations
 
 import os
 import secrets
+import sys
 from pathlib import Path
 
-# Paths
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+# Paths — inside a PyInstaller-frozen exe, __file__ points into the temp
+# extraction dir, so the install root is the directory of the executable.
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = Path(sys.executable).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 BASE_DIR = PROJECT_ROOT
 BACKEND_DIR = PROJECT_ROOT / 'backend'
 APP_DIR = BACKEND_DIR / 'app'
 DATA_DIR = PROJECT_ROOT / 'data'
-FRONTEND_DIST_DIR = PROJECT_ROOT / 'frontend' / 'dist'
-LEGACY_DIST_DIR = PROJECT_ROOT / 'dist'
+if getattr(sys, 'frozen', False):
+    # Packaged layout: <install>/web holds the built SPA.
+    FRONTEND_DIST_DIR = PROJECT_ROOT / 'web'
+    LEGACY_DIST_DIR = PROJECT_ROOT / 'web'
+else:
+    FRONTEND_DIST_DIR = PROJECT_ROOT / 'frontend' / 'dist'
+    LEGACY_DIST_DIR = PROJECT_ROOT / 'dist'
 
 # Ensure required directories exist
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -41,8 +51,11 @@ def _load_dotenv(path: Path) -> None:
 
 _load_dotenv(PROJECT_ROOT / '.env')
 
-# Server network settings (0.0.0.0 enables dual-stack IPv4/IPv6 & LAN access)
-SERVER_HOST: str = os.getenv('ASAAS_HOST', '0.0.0.0')
+# Server network settings. Packaged appliances bind localhost by default —
+# the control plane on :8876 is the only public surface; set ASAAS_HOST
+# explicitly (e.g. via .env) to expose the legacy port.
+_default_host = '127.0.0.1' if getattr(sys, 'frozen', False) else '0.0.0.0'
+SERVER_HOST: str = os.getenv('ASAAS_HOST', _default_host)
 SERVER_PORT: int = int(os.getenv('ASAAS_PORT', '8765'))
 
 # Security settings

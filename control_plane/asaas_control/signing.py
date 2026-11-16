@@ -30,7 +30,9 @@ class JobSigner:
         return self.public_key.public_bytes(Encoding.Raw, PublicFormat.Raw).hex()
 
 
-_KEY_FILE = Path(os.getenv("ASAAS_JOB_SIGNING_KEY_FILE", "data/agent-signing.key"))
+from .config import resolve_data_path
+
+_KEY_FILE = resolve_data_path(os.getenv("ASAAS_JOB_SIGNING_KEY_FILE", "data/agent-signing.key"))
 _signer: JobSigner | None = None
 
 

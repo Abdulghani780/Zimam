@@ -22,7 +22,6 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -37,10 +36,12 @@ LICENSE_PUBLIC_KEY_HEX = os.getenv(
     "",  # empty -> dev mode: licenses signed by data/license-signing.key are accepted
 )
 
+from .config import resolve_data_path
+
 TRIAL_DAYS = int(os.getenv("ASAAS_TRIAL_DAYS", "30"))
-LICENSE_FILE = Path(os.getenv("ASAAS_LICENSE_FILE", "data/license.json"))
-_FIRST_BOOT_FILE = Path(os.getenv("ASAAS_FIRST_BOOT_FILE", "data/.first_boot"))
-_DEV_KEY_FILE = Path(os.getenv("ASAAS_LICENSE_DEV_PUBKEY_FILE", "data/license-pubkey.hex"))
+LICENSE_FILE = resolve_data_path(os.getenv("ASAAS_LICENSE_FILE", "data/license.json"))
+_FIRST_BOOT_FILE = resolve_data_path(os.getenv("ASAAS_FIRST_BOOT_FILE", "data/.first_boot"))
+_DEV_KEY_FILE = resolve_data_path(os.getenv("ASAAS_LICENSE_DEV_PUBKEY_FILE", "data/license-pubkey.hex"))
 
 VALID_TIERS = ("starter", "pro", "enterprise")
 

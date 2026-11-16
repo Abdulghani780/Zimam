@@ -13,6 +13,8 @@ from asaas_control.app import app
 
 
 def main() -> None:
+    # Packaged appliances need no env file: default the legacy proxy target.
+    os.environ.setdefault("ASAAS_LEGACY_API_URL", "http://127.0.0.1:8765")
     host = os.getenv("ASAAS_HOST", "127.0.0.1")
     port = int(os.getenv("ASAAS_CP_PORT", "8876"))
     uvicorn.run(app, host=host, port=port, log_level=os.getenv("ASAAS_LOG_LEVEL", "info"))

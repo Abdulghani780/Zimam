@@ -82,3 +82,5 @@ data/license-signing.key
 data/license.json
 data/license-pubkey.hex
 data/.first_boot
+
+installer-out/

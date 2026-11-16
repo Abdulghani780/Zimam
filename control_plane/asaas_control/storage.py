@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Iterator
@@ -18,8 +19,17 @@ def _engine_url() -> str:
     value = settings.database_url
     if value.startswith("sqlite:///"):
         path = value.removeprefix("sqlite:///")
-        if path.startswith("./"):
-            os.makedirs(path[2:].rsplit("/", 1)[0] if "/" in path[2:] else ".", exist_ok=True)
+        # Relative sqlite paths resolve against the process CWD, which is
+        # unreliable for scheduled tasks/services — anchor them to the
+        # install dir when frozen, else the repo root.
+        if not os.path.isabs(path):
+            if getattr(sys, "frozen", False):
+                base = os.path.dirname(os.path.abspath(sys.executable))
+            else:
+                base = os.getcwd()
+            path = os.path.join(base, path.lstrip("./"))
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        return "sqlite:///" + path.replace("\\", "/")
     return value
 
 

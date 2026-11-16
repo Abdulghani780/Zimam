@@ -3,12 +3,27 @@ from __future__ import annotations
 import base64
 import os
 import secrets
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 
 def _bool(name: str, default: bool = False) -> bool:
     return os.getenv(name, "1" if default else "0").lower() in {"1", "true", "yes", "on"}
+
+
+def resolve_data_path(value: str) -> Path:
+    """Anchor relative data paths to the install dir when frozen.
+
+    Scheduled tasks/services run with an arbitrary CWD, so relative paths
+    like ``data/...`` must not depend on it.
+    """
+    p = Path(value)
+    if p.is_absolute():
+        return p
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / p
+    return p
 
 
 @dataclass(frozen=True)
@@ -21,7 +36,7 @@ class Settings:
     agent_enrollment_token: str = os.getenv("ASAAS_AGENT_ENROLLMENT_TOKEN", "")
     allowed_origins: tuple[str, ...] = tuple(x.strip() for x in os.getenv("ASAAS_ALLOWED_ORIGINS", "").split(",") if x.strip())
     secure_cookies: bool = _bool("ASAAS_SECURE_COOKIES", False)
-    vault_key_file: Path = Path(os.getenv("ASAAS_VAULT_KEY_FILE", "data/control-plane-vault.key"))
+    vault_key_file: Path = resolve_data_path(os.getenv("ASAAS_VAULT_KEY_FILE", "data/control-plane-vault.key"))
 
     def vault_key(self) -> bytes:
         raw = os.getenv("ASAAS_VAULT_KEY", "")
