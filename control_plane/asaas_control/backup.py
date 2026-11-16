@@ -13,8 +13,15 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .config import settings
+from .config import resolve_database_path, settings
 from .storage import append_audit, db_session
+
+
+def _db_path() -> str:
+    path = resolve_database_path()
+    if path is None:
+        raise FileNotFoundError(settings.database_url)
+    return str(path)
 
 
 def create_backup(*, created_by: str = "scheduler", actor_id: str = "system") -> dict:
@@ -23,9 +30,7 @@ def create_backup(*, created_by: str = "scheduler", actor_id: str = "system") ->
     Raises ``FileNotFoundError`` when the database file is missing so callers
     can map it to their own error surface (HTTP 503 for the endpoint).
     """
-    db_path = settings.database_url.removeprefix("sqlite:///")
-    if not os.path.isabs(db_path):
-        db_path = os.path.abspath(db_path)
+    db_path = _db_path()
     if not os.path.exists(db_path):
         raise FileNotFoundError(db_path)
 
@@ -74,7 +79,10 @@ def create_backup(*, created_by: str = "scheduler", actor_id: str = "system") ->
 
 def prune_backups(keep: int) -> int:
     """Delete oldest ``control_plane_*.db`` + manifests beyond ``keep``. Returns count removed."""
-    db_path = settings.database_url.removeprefix("sqlite:///")
+    try:
+        db_path = _db_path()
+    except FileNotFoundError:
+        return 0
     backup_dir = Path(db_path).parent / "backups"
     if not backup_dir.is_dir():
         return 0

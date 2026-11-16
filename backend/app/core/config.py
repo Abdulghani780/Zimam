@@ -12,7 +12,10 @@ from pathlib import Path
 # Paths — inside a PyInstaller-frozen exe, __file__ points into the temp
 # extraction dir, so the install root is the directory of the executable.
 if getattr(sys, 'frozen', False):
-    PROJECT_ROOT = Path(sys.executable).resolve().parent
+    _exe_dir = Path(sys.executable).resolve().parent
+    # Installed/packaged layout is <root>/bin/<exe> with state in <root>/data
+    # and the SPA in <root>/web; a bare exe falls back to <exe dir>.
+    PROJECT_ROOT = _exe_dir.parent if _exe_dir.name.lower() == 'bin' else _exe_dir
 else:
     PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 BASE_DIR = PROJECT_ROOT

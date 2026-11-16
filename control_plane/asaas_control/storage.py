@@ -11,25 +11,21 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from .audit import AuditChain, AuditRecord
-from .config import settings
+from .config import resolve_data_path, resolve_database_path, settings
 from .models import AuditEvent, Base
 
 
 def _engine_url() -> str:
     value = settings.database_url
     if value.startswith("sqlite:///"):
-        path = value.removeprefix("sqlite:///")
         # Relative sqlite paths resolve against the process CWD, which is
-        # unreliable for scheduled tasks/services — anchor them to the
-        # install dir when frozen, else the repo root.
-        if not os.path.isabs(path):
-            if getattr(sys, "frozen", False):
-                base = os.path.dirname(os.path.abspath(sys.executable))
-            else:
-                base = os.getcwd()
-            path = os.path.join(base, path.lstrip("./"))
-        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        return "sqlite:///" + path.replace("\\", "/")
+        # unreliable for scheduled tasks/services — anchor them via
+        # resolve_database_path (install root when frozen, repo root otherwise).
+        db_path = resolve_database_path()
+        if db_path is not None:
+            path = str(db_path)
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            return "sqlite:///" + path.replace("\\", "/")
     return value
 
 
@@ -86,7 +82,8 @@ def _legacy_db_path() -> str | None:
     import os
 
     raw = os.getenv("ASAAS_LEGACY_DB", "data/asaas_v2.db")
-    return raw if os.path.exists(raw) else None
+    path = resolve_data_path(raw)
+    return str(path) if path.exists() else None
 
 
 def sync_legacy_identities() -> int:

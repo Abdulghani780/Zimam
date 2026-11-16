@@ -17,7 +17,7 @@ from sqlalchemy import func, select
 
 from .audit import AuditChain
 from .backup import create_backup
-from .config import settings
+from .config import resolve_database_path, settings
 from .connection_tokens import ConnectionTokenStore
 from .identity import verify_legacy_password
 from .license import LicenseError, activate_license, deactivate_license, get_license_state
@@ -688,10 +688,10 @@ def heartbeat(agent_id: str, payload: AgentHeartbeat, x_agent_key: str | None = 
 
 
 def _update_bundle_dir() -> Path:
-    db_path = settings.database_url.removeprefix("sqlite:///")
-    if not os.path.isabs(db_path):
-        db_path = os.path.abspath(db_path)
-    return Path(db_path).parent / "agent-updates"
+    db_path = resolve_database_path()
+    if db_path is None:
+        raise HTTPException(status_code=503, detail="SQLite database required for update bundles")
+    return db_path.parent / "agent-updates"
 
 
 def _update_manifest() -> dict | None:

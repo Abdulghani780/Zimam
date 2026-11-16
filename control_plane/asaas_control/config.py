@@ -22,8 +22,27 @@ def resolve_data_path(value: str) -> Path:
     if p.is_absolute():
         return p
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve().parent / p
+        exe_dir = Path(sys.executable).resolve().parent
+        # Installed/packaged layout is <root>/bin/<exe> with state in <root>/data;
+        # a bare exe falls back to <exe dir>/data.
+        root = exe_dir.parent if exe_dir.name.lower() == "bin" else exe_dir
+        return root / p
     return p
+
+
+def resolve_database_path() -> Path | None:
+    """Absolute path of the SQLite control-plane DB, or None for non-sqlite URLs."""
+    value = os.getenv("ASAAS_DATABASE_URL", "sqlite:///./data/control_plane.db")
+    if not value.startswith("sqlite:///"):
+        return None
+    path = Path(value.removeprefix("sqlite:///"))
+    if path.is_absolute():
+        return path
+    resolved = resolve_data_path(str(path))
+    if not resolved.is_absolute():
+        # Non-frozen dev runs: anchor to the repo root regardless of CWD.
+        resolved = Path(__file__).resolve().parents[2] / resolved
+    return resolved
 
 
 @dataclass(frozen=True)
