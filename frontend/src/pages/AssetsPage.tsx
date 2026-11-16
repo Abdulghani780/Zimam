@@ -165,7 +165,14 @@ export function AssetsPage() {
       if (match) {
         setDrawerAgent(match);
         const res = await apiV1.agentLatestResults(match.id);
-        setDrawerResults(res.results || {});
+        const rr = { ...(res.results || {}) };
+        // Normalize software.list payloads ({software:[...]}|{programs:[...]}) to a bare array for the table renderer.
+        const sw = rr['software.list'];
+        if (sw && !Array.isArray(sw.result) && sw.result && typeof sw.result === 'object') {
+          const inner = (sw.result as Record<string, unknown>).software ?? (sw.result as Record<string, unknown>).programs ?? (sw.result as Record<string, unknown>).items;
+          if (Array.isArray(inner)) rr['software.list'] = { ...sw, result: inner };
+        }
+        setDrawerResults(rr);
       }
     } catch {
       // telemetry is best-effort; the drawer still shows honest empty states
@@ -547,6 +554,22 @@ export function AssetsPage() {
                       </summary>
                       {entry.error ? (
                         <span className="text-status-danger" style={{ fontSize: 11, display: 'block', marginTop: 6 }}>{entry.error}</span>
+                      ) : jobType === 'software.list' && Array.isArray(entry.result) ? (
+                        <div style={{ marginTop: 8, maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {(entry.result as any[]).slice(0, 60).map((sw: any, i: number) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, padding: '4px 6px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {String(sw?.name || sw?.Name || sw?.DisplayName || '?')}
+                              </span>
+                              <span style={{ color: 'var(--text-3)', flexShrink: 0 }} dir="ltr">
+                                {String(sw?.version || sw?.Version || '')}{sw?.publisher || sw?.Publisher ? ` · ${String(sw.publisher || sw.Publisher).slice(0, 30)}` : ''}
+                              </span>
+                            </div>
+                          ))}
+                          {(entry.result as any[]).length > 60 && (
+                            <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{(entry.result as any[]).length - 60} {t('برنامج آخر')}</div>
+                          )}
+                        </div>
                       ) : (
                         <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 180, overflowY: 'auto' }}>
                           {JSON.stringify(entry.result, null, 2)}

@@ -58,6 +58,7 @@ interface FleetSessionAgent {
   hostname?: string | null;
   linked_asset: { id: string; name: string; hostname: string } | null;
   sessions: ResultEntry | null;
+  processes: ResultEntry | null;
 }
 
 // Heuristic row extraction for session.list payloads — falls back to raw JSON.
@@ -75,6 +76,29 @@ function sessionRows(result: unknown): { user: string; id: string; state: string
       id: String(s.id ?? s.session_id ?? s.sessionId ?? ''),
       state: String(s.state || s.status || ''),
       logon: String(s.logon_time || s.logonTime || s.logontime || s.login_time || ''),
+    }));
+}
+
+// Heuristic row extraction for process.list payloads — falls back to raw JSON.
+interface ProcRow { name: string; pid: string; mem: string; cpu: string }
+function procRows(result: unknown): ProcRow[] {
+  const arr = Array.isArray(result)
+    ? result
+    : Array.isArray((result as any)?.processes)
+      ? (result as any).processes
+      : null;
+  if (!arr) return [];
+  const pick = (o: any, ...keys: string[]) => {
+    for (const k of keys) { const v = o?.[k]; if (v !== undefined && v !== null && v !== '') return v; }
+    return '';
+  };
+  return arr
+    .filter((p: unknown) => p && typeof p === 'object')
+    .map((p: any) => ({
+      name: String(pick(p, 'ProcessName', 'Name', 'name', 'process_name') || '?'),
+      pid: String(pick(p, 'ProcessId', 'PID', 'pid', 'Id', 'id') || ''),
+      mem: String(pick(p, 'WorkingSetMB', 'MemoryMB', 'memory_mb', 'WorkingSet64', 'mem') || ''),
+      cpu: String(pick(p, 'CPU', 'CpuPercent', 'cpu_percent', 'cpu') || ''),
     }));
 }
 
@@ -112,9 +136,11 @@ export function ControlPage() {
       const detailed = await Promise.all(
         fleetRes.agents.map(async (ag) => {
           let sessionsEntry: ResultEntry | null = null;
+          let processesEntry: ResultEntry | null = null;
           const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
           sessionsEntry = r?.results?.['session.list'] ?? null;
-          return { ...ag, sessions: sessionsEntry };
+          processesEntry = r?.results?.['process.list'] ?? null;
+          return { ...ag, sessions: sessionsEntry, processes: processesEntry };
         }),
       );
       setFleetSessions(detailed);
@@ -477,6 +503,65 @@ export function ControlPage() {
                       {rows.length > 8 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{rows.length - 8} {t('جلسة أخرى')}</div>}
                       {ag.sessions.completed_at && (
                         <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.sessions.completed_at).toLocaleString('ar-SA')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ZIMAM remote agent processes — real process.list collector data */}
+      {fleetSessions.length > 0 && (
+        <section style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <MonitorPlay size={18} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('عمليات وكلاء زِمام')}</h2>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('process.list حقيقية من كل وكيل — عرض فقط')}</span>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+            {fleetSessions.map((ag) => {
+              const procs = ag.processes && !ag.processes.error ? procRows(ag.processes.result) : [];
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ag.hostname || ag.id.slice(0, 8)}
+                    {procs.length > 0 ? ` · ${procs.length} ${t('عملية')}` : ''}
+                  </div>
+                  {!ag.processes ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع العمليات بعد — أرسله من صفحة الوكلاء.')}</div>
+                  ) : ag.processes.error ? (
+                    <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.processes.error}</div>
+                  ) : procs.length === 0 ? (
+                    <details style={{ fontSize: 11 }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-3)' }}>{t('نتيجة غير معروفة — عرض خام')}</summary>
+                      <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                        {JSON.stringify(ag.processes.result, null, 2)}
+                      </pre>
+                    </details>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                      {procs.slice(0, 25).map((p, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                          <span style={{ color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', flexShrink: 0 }} dir="ltr">
+                            {p.pid ? `#${p.pid}` : ''}{p.mem ? ` · ${p.mem}` : ''}{p.cpu ? ` · ${p.cpu}` : ''}
+                          </span>
+                        </div>
+                      ))}
+                      {procs.length > 25 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{procs.length - 25} {t('عملية أخرى')}</div>}
+                      {ag.processes.completed_at && (
+                        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.processes.completed_at).toLocaleString('ar-SA')}</div>
                       )}
                     </div>
                   )}

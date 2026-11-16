@@ -28,6 +28,29 @@ import { t } from '../lib/i18n';
 
 type ResultEntry = { job_id: string; completed_at: string | null; result: unknown; error: string | null };
 
+// Heuristic extraction for service.list payloads — falls back to raw JSON.
+interface RemoteService { name: string; status: string; start: string; display: string }
+function serviceRows(result: unknown): RemoteService[] {
+  const arr = Array.isArray(result)
+    ? result
+    : Array.isArray((result as any)?.services)
+      ? (result as any).services
+      : null;
+  if (!arr) return [];
+  const pick = (o: any, ...keys: string[]) => {
+    for (const k of keys) { const v = o?.[k]; if (v !== undefined && v !== null && v !== '') return v; }
+    return '';
+  };
+  return arr
+    .filter((s: unknown) => s && typeof s === 'object')
+    .map((s: any) => ({
+      name: String(pick(s, 'Name', 'name', 'ServiceName') || '?'),
+      display: String(pick(s, 'DisplayName', 'display_name', 'displayName') || ''),
+      status: String(pick(s, 'Status', 'status', 'State', 'state') || ''),
+      start: String(pick(s, 'StartType', 'start_type', 'StartMode', 'startMode') || ''),
+    }));
+}
+
 interface FleetNetAgent {
   id: string;
   name: string;
@@ -35,6 +58,7 @@ interface FleetNetAgent {
   hostname?: string | null;
   linked_asset: { id: string; name: string; hostname: string } | null;
   net: ResultEntry | null;
+  services: ResultEntry | null;
 }
 
 interface NetIface {
@@ -120,9 +144,11 @@ export function InfrastructurePage() {
       const detailed = await Promise.all(
         fleetRes.agents.map(async (ag) => {
           let net: ResultEntry | null = null;
+          let services: ResultEntry | null = null;
           const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
           net = r?.results?.['network.info'] ?? null;
-          return { ...ag, net };
+          services = r?.results?.['service.list'] ?? null;
+          return { ...ag, net, services };
         }),
       );
       setFleetNet(detailed);
@@ -344,6 +370,72 @@ export function InfrastructurePage() {
                       {ifaces.length > 6 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ifaces.length - 6} {t('واجهة أخرى')}</div>}
                       {ag.net.completed_at && (
                         <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.net.completed_at).toLocaleString('ar-SA')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* ZIMAM remote agent services — real service.list collector data */}
+      {fleetNet.length > 0 && (
+        <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Cog size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('خدمات وكلاء زِمام')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('service.list حقيقية: حالة وخدمة بدء كل خدمة على كل وكيل')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+            {fleetNet.map((ag) => {
+              const svcs = ag.services && !ag.services.error ? serviceRows(ag.services.result) : [];
+              const running = svcs.filter((s) => /run|active|started/i.test(s.status)).length;
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ag.hostname || ag.id.slice(0, 8)}
+                    {svcs.length > 0 ? ` · ${svcs.length} ${t('خدمة')} (${running} ${t('تعمل')})` : ''}
+                  </div>
+                  {!ag.services ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الخدمات بعد — أرسله من صفحة الوكلاء.')}</div>
+                  ) : ag.services.error ? (
+                    <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.services.error}</div>
+                  ) : svcs.length === 0 ? (
+                    <details style={{ fontSize: 11 }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-3)' }}>{t('نتيجة غير معروفة — عرض خام')}</summary>
+                      <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                        {JSON.stringify(ag.services.result, null, 2)}
+                      </pre>
+                    </details>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                      {svcs.slice(0, 40).map((s, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={s.display || s.name}>
+                            {s.display || s.name}
+                          </span>
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                            {s.start && <span style={{ fontSize: 9 }}>{s.start}</span>}
+                            <span style={{ color: /run|active|started/i.test(s.status) ? 'var(--paid)' : 'var(--unpaid)' }}>{s.status || '—'}</span>
+                          </span>
+                        </div>
+                      ))}
+                      {svcs.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{svcs.length - 40} {t('خدمة أخرى')}</div>}
+                      {ag.services.completed_at && (
+                        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.services.completed_at).toLocaleString('ar-SA')}</div>
                       )}
                     </div>
                   )}

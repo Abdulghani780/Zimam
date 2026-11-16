@@ -1704,4 +1704,13 @@ export const EN: Record<string, string> = {
   'network.info حقيقية: IP وDNS والبوابة والسرعة لكل وكيل': 'Real network.info: IP, DNS, gateway and link speed per agent',
   'لم يُرسل جامع الشبكة بعد — أرسله من صفحة الوكلاء.': 'Network collector not dispatched yet — send it from the Agents page.',
   'واجهة أخرى': 'more interfaces',
+  'خدمات وكلاء زِمام': 'ZIMAM agent services',
+  'service.list حقيقية: حالة وخدمة بدء كل خدمة على كل وكيل': 'Real service.list: status and start type of every service per agent',
+  'خدمة أخرى': 'more services',
+  'عملية أخرى': 'more processes',
+  'لم يُرسل جامع الخدمات بعد — أرسله من صفحة الوكلاء.': 'Service collector not dispatched yet — send it from the Agents page.',
+  'لم يُرسل جامع العمليات بعد — أرسله من صفحة الوكلاء.': 'Process collector not dispatched yet — send it from the Agents page.',
+  'عمليات وكلاء زِمام': 'ZIMAM agent processes',
+  'process.list حقيقية من كل وكيل — عرض فقط': 'Real process.list from every agent — read-only view',
+  'برنامج آخر': 'more programs',
 };
