@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
@@ -40,6 +41,9 @@ static int InstallService()
     var binPath = $"\"{exe}\"";
     if (Sc("create", ServiceName, $"binPath= {binPath}", "start= auto", $"DisplayName= {ServiceName}") != 0) return 1;
     Sc("description", ServiceName, "ASAAS Server Control outbound agent - polls for signed jobs and reports inventory.");
+    // Restart-on-failure covers the self-update handoff: the agent exits after
+    // swapping binaries and SCM brings the new version back automatically.
+    Sc("failure", ServiceName, "reset= 86400", "actions= restart/5000/restart/10000/restart/30000");
 
     var envVars = Environment.GetEnvironmentVariables()
         .Cast<System.Collections.DictionaryEntry>()
@@ -66,6 +70,46 @@ static int UninstallService()
     return Sc("delete", ServiceName);
 }
 
+// If a previous run staged an update (<exe>.new + <exe>.pending.json), swap the
+// binaries now and exit so the service/task restarts onto the new build. Windows
+// allows renaming a running executable, which is what makes in-place self-update
+// possible without an external updater.
+static void ApplyPendingUpdate()
+{
+    try
+    {
+        var exe = Environment.ProcessPath;
+        if (exe is null) return;
+        var staged = exe + ".new";
+        var pending = exe + ".pending.json";
+        if (!File.Exists(staged))
+        {
+            if (File.Exists(pending)) File.Delete(pending);
+            return;
+        }
+        var old = exe + ".old";
+        if (File.Exists(old)) File.Delete(old);
+        File.Move(exe, old);
+        try
+        {
+            File.Move(staged, exe);
+        }
+        catch
+        {
+            File.Move(old, exe); // roll back so the agent is never left exeless
+            throw;
+        }
+        File.Delete(old);
+        if (File.Exists(pending)) File.Delete(pending);
+        Console.WriteLine("[update] agent binary swapped; exiting for restart onto the new build");
+        Environment.Exit(0);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"[update] failed to apply staged update: {ex.Message}");
+    }
+}
+
 var cli = args.FirstOrDefault()?.ToLowerInvariant();
 if (cli is "install" or "uninstall" or "status")
 {
@@ -77,6 +121,8 @@ if (cli is "install" or "uninstall" or "status")
     };
     Environment.Exit(code);
 }
+
+ApplyPendingUpdate();
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options => options.ServiceName = "ASAAS Windows Agent");
@@ -111,7 +157,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     private static readonly HashSet<string> AllowedJobs = new(StringComparer.Ordinal)
     {
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff",
-        "network.info", "eventlog.tail", "software.list", "firewall.state"
+        "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -194,7 +240,9 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         string? error = null;
         try
         {
-            result = ExecuteJob(job.Type, job.Payload);
+            result = job.Type == "agent.update"
+                ? await StageUpdateAsync(client, agentId, agentKey, job.Payload, ct)
+                : ExecuteJob(job.Type, job.Payload);
         }
         catch (Exception ex)
         {
@@ -254,8 +302,43 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
             disk_count = DriveInfo.GetDrives().Count(d => d.IsReady),
             observed_at = DateTimeOffset.UtcNow
         },
+        "agent.update" => throw new InvalidOperationException("agent.update is handled asynchronously"),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
+
+    // Signed self-update: downloads the bundle hosted by the control plane,
+    // verifies SHA-256 against the signed job payload, and stages it as
+    // <exe>.new + update-pending.json. ApplyPendingUpdate swaps binaries at
+    // the next start and exits so SCM/the operator restarts into the new build.
+    private async Task<object> StageUpdateAsync(HttpClient client, string agentId, string agentKey, JsonElement payload, CancellationToken ct)
+    {
+        var expectedSha = payload.TryGetProperty("sha256", out var shaEl) ? shaEl.GetString() : null;
+        var version = payload.TryGetProperty("version", out var verEl) ? verEl.GetString() : null;
+        if (string.IsNullOrWhiteSpace(expectedSha))
+            throw new InvalidOperationException("agent.update requires payload.sha256 (hex)");
+
+        using var req = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/agents/{agentId}/update");
+        req.Headers.Add("X-Agent-Key", agentKey);
+        using var resp = await client.SendAsync(req, ct);
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException($"update bundle unavailable: HTTP {(int)resp.StatusCode}");
+        var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
+
+        var actual = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        if (!string.Equals(actual, expectedSha.Trim().ToLowerInvariant(), StringComparison.Ordinal))
+            throw new InvalidOperationException($"update sha256 mismatch (expected {expectedSha}, got {actual})");
+
+        var exePath = Environment.ProcessPath;
+        if (exePath is null)
+            throw new InvalidOperationException("cannot resolve running executable path");
+        var stagedPath = exePath + ".new";
+        await File.WriteAllBytesAsync(stagedPath, bytes, ct);
+        await File.WriteAllTextAsync(
+            exePath + ".pending.json",
+            JsonSerializer.Serialize(new { version, sha256 = actual, size_bytes = bytes.Length, staged_at = DateTimeOffset.UtcNow }),
+            ct);
+        return new { staged = true, version, sha256 = actual, size_bytes = bytes.Length, applies_on = "next agent restart" };
+    }
 
     private static async Task SubmitResultAsync(HttpClient client, string agentId, string agentKey, string jobId, string status, object? result, string? error, CancellationToken ct)
     {

@@ -15,6 +15,7 @@ const JOB_TYPES = [
   { value: 'eventlog.tail', label: t('أحداث سجل النظام') },
   { value: 'software.list', label: t('البرامج المثبتة') },
   { value: 'firewall.state', label: t('حالة جدار الحماية') },
+  { value: 'agent.update', label: t('تحديث الوكيل') },
 ];
 
 const asArray = <T,>(res: unknown): T[] =>

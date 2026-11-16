@@ -274,6 +274,19 @@ export const apiV1 = {
   setupComplete: (body: { username: string; password: string; full_name?: string; license_token?: string }) =>
     post<{ authenticated?: boolean; user_id?: string; username?: string }>('/setup/complete', body),
 
+  // Agent self-update bundle (admin uploads the .exe once; agents pull it)
+  updateBundleStatus: () => request<Record<string, unknown>>('/agents/update-bundle'),
+  uploadUpdateBundle: async (file: File, version: string, sha256: string) => {
+    const res = await fetch('/api/v1/agents/update-bundle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream', 'X-Update-Version': version, 'X-Update-Sha256': sha256 },
+      body: file,
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<Record<string, unknown>>;
+  },
+
   // License & entitlements
   licenseStatus: () => request<Record<string, unknown>>('/license'),
   activateLicense: (token: string) => post<{ ok?: boolean; tier?: string; expires_at?: string }>('/license/activate', { token }),

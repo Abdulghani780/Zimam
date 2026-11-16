@@ -13,7 +13,8 @@ dotnet publish agent\Asaas.WindowsAgent.csproj -c Release -r win-x64 --self-cont
 
 The control plane can dispatch **read-only** jobs (`system.info`, `process.list`,
 `service.list`, `disk.list`, `inventory.collect`, `session.list`, `network.info`,
-`eventlog.tail`, `software.list`, `firewall.state`). Every job carries an Ed25519
+`eventlog.tail`, `software.list`, `firewall.state`) plus the reviewed
+`session.logoff` write job and `agent.update` self-update. Every job carries an Ed25519
 signature over `asaas-job|<id>|<agent_id>|<type>|<canonical-payload-json>`; the
 agent verifies it against `signing_public_key` (returned at enrollment and on
 every poll) before executing, then posts the result to
@@ -44,3 +45,11 @@ $env:ASAAS_AGENT_CERT_PATH = "C:\ProgramData\ASAAS\agent.pfx"   # optional mTLS
 service inherits them at start. To change config later, update that registry
 value (REG_MULTI_SZ) and restart the service. Without the env vars the agent
 logs that `ASAAS_AGENT_ID`/`ASAAS_AGENT_KEY` are required and idles.
+
+`install` also configures SCM restart-on-failure, which the self-update flow
+relies on: an `agent.update` job downloads the published bundle
+(`GET /api/v1/agents/{id}/update`, agent-key auth), verifies its SHA-256 against
+the *signed* job payload, stages it as `<exe>.new`, and the next agent start
+swaps binaries and exits so the service comes back on the new build. Publish a
+bundle from the console host with `POST /api/v1/agents/update-bundle`
+(`X-Update-Version` + `X-Update-Sha256` headers, raw .exe body; admin only).

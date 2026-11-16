@@ -1609,6 +1609,7 @@ export const EN: Record<string, string> = {
   'أحداث سجل النظام': 'System event log tail',
   'البرامج المثبتة': 'Installed software',
   'حالة جدار الحماية': 'Firewall state',
+  'تحديث الوكيل': 'Agent self-update',
   'حدثاً': 'events',
   'النسخ الاحتياطي لطبقة التحكم': 'Control plane backup',
   'إنشاء نسخة احتياطية': 'Create backup',

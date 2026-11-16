@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -115,7 +116,7 @@ class MfaVerifyRequest(BaseModel):
 # Read-only collectors plus one reviewed write job (session.logoff, which
 # requires an explicit session_id payload). Everything else stays behind the
 # legacy ActionEngine until a reviewed allowlist and confirmation flow exist.
-ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "network.info", "eventlog.tail", "software.list", "firewall.state"}
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update"}
 
 
 class JobCreateRequest(BaseModel):
@@ -678,13 +679,110 @@ def heartbeat(agent_id: str, payload: AgentHeartbeat, x_agent_key: str | None = 
 
 # --- Signed agent jobs -----------------------------------------------------
 
+# --- Agent self-update bundles ------------------------------------------------
+#
+# Admins upload a signed-channel update package once; agents pull it through an
+# authenticated endpoint and only apply it when the *signed job payload* sha256
+# matches the bytes they downloaded. The job signature (not the bundle) is the
+# trust root — a tampered bundle fails the hash check agent-side.
+
+
+def _update_bundle_dir() -> Path:
+    db_path = settings.database_url.removeprefix("sqlite:///")
+    if not os.path.isabs(db_path):
+        db_path = os.path.abspath(db_path)
+    return Path(db_path).parent / "agent-updates"
+
+
+def _update_manifest() -> dict | None:
+    manifest_path = _update_bundle_dir() / "manifest.json"
+    if not manifest_path.is_file():
+        return None
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+@router.post("/agents/update-bundle", status_code=201)
+async def upload_update_bundle(request: Request, user: User = Depends(_current_user)) -> dict:
+    """Upload the agent self-update binary (raw body = the .exe bytes).
+
+    Headers: ``X-Update-Version`` (semver string) and ``X-Update-Sha256``
+    (hex digest of the exact bytes — agents verify against it).
+    """
+    _require_admin(user)
+    version = request.headers.get("x-update-version", "").strip()
+    expected_sha = request.headers.get("x-update-sha256", "").strip().lower()
+    if not version or not expected_sha:
+        raise HTTPException(status_code=400, detail="X-Update-Version and X-Update-Sha256 headers are required")
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty bundle body")
+    actual_sha = hashlib.sha256(body).hexdigest()
+    if actual_sha != expected_sha:
+        raise HTTPException(status_code=400, detail=f"sha256 mismatch: body hashes to {actual_sha}")
+
+    bundle_dir = _update_bundle_dir()
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    exe_path = bundle_dir / "Asaas.WindowsAgent.exe"
+    exe_path.write_bytes(body)
+    manifest = {
+        "version": version,
+        "sha256": actual_sha,
+        "size_bytes": len(body),
+        "file": exe_path.name,
+        "uploaded_by": user.username,
+        "uploaded_at": datetime.now(UTC).isoformat(),
+    }
+    (bundle_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    with db_session() as db:
+        append_audit(db, actor_id=user.id, action="agent.update_bundle", target_id=version, payload={"sha256": actual_sha, "size_bytes": len(body)})
+    return manifest
+
+
+@router.get("/agents/update-bundle")
+def update_bundle_status(_: User = Depends(_current_user)) -> dict:
+    manifest = _update_manifest()
+    if not manifest:
+        return {"available": False}
+    return {"available": True, **manifest}
+
+
+@router.get("/agents/{agent_id}/update")
+def download_agent_update(agent_id: str, x_agent_key: str | None = Header(default=None)):
+    """Agent-key-authenticated bundle download used by the agent.update job."""
+    _require_agent(agent_id, x_agent_key)
+    manifest = _update_manifest()
+    exe_path = _update_bundle_dir() / "Asaas.WindowsAgent.exe"
+    if not manifest or not exe_path.is_file():
+        raise HTTPException(status_code=404, detail="No agent update bundle published")
+    return FileResponse(
+        exe_path,
+        media_type="application/octet-stream",
+        filename="Asaas.WindowsAgent.exe",
+        headers={"X-Update-Version": str(manifest.get("version", "")), "X-Update-Sha256": str(manifest.get("sha256", ""))},
+    )
+
+
 @router.post("/jobs", status_code=201)
 def create_job(payload: JobCreateRequest, user: User = Depends(_current_user)) -> dict:
     _require_writer(user)
     if payload.job_type not in ALLOWED_JOB_TYPES:
         raise HTTPException(status_code=400, detail=f"Job type not allowed; supported: {sorted(ALLOWED_JOB_TYPES)}")
+    job_payload = payload.payload or {}
+    if payload.job_type == "agent.update":
+        # The signed payload must pin the exact bundle on the server — an
+        # agent.update job without a matching published bundle cannot succeed.
+        manifest = _update_manifest()
+        if not manifest:
+            raise HTTPException(status_code=409, detail="No agent update bundle published; upload one via POST /agents/update-bundle")
+        if not job_payload:
+            job_payload = {"version": manifest["version"], "sha256": manifest["sha256"]}
+        elif str(job_payload.get("sha256", "")).lower() != str(manifest["sha256"]).lower() or str(job_payload.get("version")) != str(manifest["version"]):
+            raise HTTPException(status_code=400, detail="agent.update payload must match the published bundle version/sha256")
     job_id = uuid.uuid4().hex
-    payload_json = json.dumps(payload.payload or {}, sort_keys=True, separators=(",", ":"))
+    payload_json = json.dumps(job_payload, sort_keys=True, separators=(",", ":"))
     signature = get_job_signer().sign(_job_signature_payload(job_id, payload.agent_id, payload.job_type, payload_json)).hex()
     with db_session() as db:
         if not db.get(Agent, payload.agent_id):
