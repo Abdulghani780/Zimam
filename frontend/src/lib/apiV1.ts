@@ -244,7 +244,7 @@ export const apiV1 = {
   createConnectionToken: (body: {
     asset_id: string;
     account_id: string;
-    protocol: 'rdp' | 'ssh' | 'sftp';
+    protocol: 'rdp' | 'ssh' | 'telnet' | 'vnc';
     actions?: string[];
   }) => post<{ token?: string; [key: string]: unknown }>('/connection-tokens', body),
   consumeConnectionToken: (token: string) =>

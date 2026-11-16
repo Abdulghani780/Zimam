@@ -104,7 +104,7 @@ class PolicyRequest(BaseModel):
 class ConnectionRequest(BaseModel):
     asset_id: str
     account_id: str
-    protocol: str = Field(pattern="^(rdp|ssh|sftp)$")
+    protocol: str = Field(pattern="^(rdp|ssh|telnet|vnc)$")
     actions: list[str] = ["connect"]
 
 
@@ -471,7 +471,11 @@ async def gateway_session(websocket: WebSocket, protocol: str, token: str = "") 
     guacd handshake, then pumps instructions both ways. Requires
     ``ASAAS_GUACD_HOST`` — otherwise the socket closes with 1013.
     """
-    await websocket.accept()
+    # guacamole-common-js always offers the "guacamole" subprotocol; browsers
+    # reject the handshake if the server does not echo one back.
+    offered = websocket.headers.get("sec-websocket-protocol", "")
+    subprotocol = "guacamole" if "guacamole" in offered else None
+    await websocket.accept(subprotocol=subprotocol)
 
     async def _close(code: int, reason: str) -> None:
         try:

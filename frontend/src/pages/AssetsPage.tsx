@@ -85,7 +85,7 @@ export function AssetsPage() {
       const res = await apiV1.accounts();
       const all = Array.isArray(res) ? res : (res as { accounts?: V1Account[] })?.accounts || [];
       const matches = all.filter(
-        (acc) => acc.asset_id === a.id && ['rdp', 'ssh', 'sftp'].includes(String(acc.protocol || '').toLowerCase()),
+        (acc) => acc.asset_id === a.id && ['rdp', 'ssh', 'telnet', 'vnc'].includes(String(acc.protocol || '').toLowerCase()),
       );
       if (matches.length === 0) {
         toast(t('لا توجد حسابات مرتبطة بهذا الأصل — أضف حساباً من صفحة الخزنة أولاً.'), 'error');
@@ -106,7 +106,7 @@ export function AssetsPage() {
       const res = await apiV1.createConnectionToken({
         asset_id: sessionAsset.id,
         account_id: account.id,
-        protocol: protocol as 'rdp' | 'ssh' | 'sftp',
+        protocol: protocol as 'rdp' | 'ssh' | 'telnet' | 'vnc',
         actions: ['connect'],
       });
       const token = res?.token;
