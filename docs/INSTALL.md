@@ -1,4 +1,4 @@
-# ASAAS Server Control — Installation & Operations Guide
+﻿# ASAAS Server Control â€” Installation & Operations Guide
 
 Appliance deployment for Windows Server 2022/2025 (also runs on Windows 10/11 for evaluation).
 
@@ -8,24 +8,24 @@ Appliance deployment for Windows Server 2022/2025 (also runs on Windows 10/11 fo
 
 - Installs to `C:\Program Files\ASAAS Server Control\` (`bin\`, `web\`, `scripts\`)
 - Registers two auto-start scheduled tasks running as SYSTEM:
-  - **ASAAS Backend** — legacy bridge on `127.0.0.1:8765`
-  - **ASAAS Control Plane** — v1 API + SPA on `127.0.0.1:8876`
+  - **ASAAS Backend** â€” legacy bridge on `127.0.0.1:8765`
+  - **ASAAS Control Plane** â€” v1 API + SPA on `127.0.0.1:8876`
 - Registers per-minute watchdog tasks that restart either service if its port stops listening
 - Creates the data directory with restricted ACLs
 - Adds Start Menu shortcuts; optionally opens the console at `http://127.0.0.1:8876/`
 
-No Python, Node.js, or .NET runtime is required on the target — everything is bundled.
+No Python, Node.js, or .NET runtime is required on the target â€” everything is bundled.
 
 ## First boot
 
-1. Open `http://127.0.0.1:8876/` — the **first-run wizard** appears (once only).
+1. Open `http://127.0.0.1:8876/` â€” the **first-run wizard** appears (once only).
 2. Create the administrator account (12+ character password).
 3. Paste a signed license key **or** choose the free 30-day trial.
 4. Sign in. The wizard never appears again.
 
 ## Configuration
 
-Create `control-plane.env` next to `asaas-control.exe` (or one directory up — the `<app>` install root). Real environment variables take precedence. See `control-plane.env.example`:
+Create `control-plane.env` next to `asaas-control.exe` (or one directory up â€” the `<app>` install root). Real environment variables take precedence. See `control-plane.env.example`:
 
 ```ini
 ASAAS_HOST=0.0.0.0
@@ -64,16 +64,28 @@ $env:ASAAS_AGENT_KEY = "<key>"
 
 ## Backups
 
-- Manual: **Settings → Control-plane backup** or `POST /api/v1/system/backup` (admin)
+- Manual: **Settings â†’ Control-plane backup** or `POST /api/v1/system/backup` (admin)
 - Scheduled: every `ASAAS_BACKUP_INTERVAL_HOURS` into `<data>\backups\` with SHA-256 manifests; keeps `ASAAS_BACKUP_KEEP` newest
-- Backups contain credential material — protect `data\backups\` like the database itself
+- Backups contain credential material â€” protect `data\backups\` like the database itself
 
 ## Logs & health
 
 - Health: `GET /api/v1/health` (public)
-- Audit chain: **Audit** page → verify hash chain; `GET /api/v1/audit/verify`
-- Task logs: Task Scheduler → ASAAS tasks; agent logs via `sc.exe` / Event Viewer
+- Audit chain: **Audit** page â†’ verify hash chain; `GET /api/v1/audit/verify`
+- Task logs: Task Scheduler â†’ ASAAS tasks; agent logs via `sc.exe` / Event Viewer
 
+
+## Remote sessions (guacd)
+
+Browser-based RDP/SSH sessions go through the built-in Guacamole gateway. Deploy `guacd` (e.g. `docker run -d -p 4822:4822 guacamole/guacd:1.6.0`) and point the control plane at it in `control-plane.env`:
+
+```
+ASAAS_GUACD_HOST=127.0.0.1
+ASAAS_GUACD_PORT=4822
+ASAAS_GATEWAY_TOKEN=<shared-secret>   # required for /connection-tokens
+```
+
+Then create an asset + vault account (protocol `ssh`/`rdp`), and use **Assets → direct-session button**: the console issues a one-time token, the browser opens `/api/v1/gateway/{protocol}?token=...` and credentials are injected server-side only. Verified live against guacd 1.6.0 + OpenSSH (display, cursor and input all flow).
 ## Uninstall
 
 Run `Uninstall ASAAS Server Control` from Settings. It removes the scheduled tasks; data under the install `data\` directory is preserved unless removed manually.
