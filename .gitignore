@@ -68,3 +68,5 @@ agent/obj/
 
 data/mtls/
 data/agent-signing.key
+
+data/backups/
