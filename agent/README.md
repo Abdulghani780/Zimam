@@ -12,7 +12,8 @@ dotnet publish agent\Asaas.WindowsAgent.csproj -c Release -r win-x64 --self-cont
 ## Signed job channel
 
 The control plane can dispatch **read-only** jobs (`system.info`, `process.list`,
-`service.list`, `disk.list`, `inventory.collect`, `session.list`). Every job carries an Ed25519
+`service.list`, `disk.list`, `inventory.collect`, `session.list`, `network.info`,
+`eventlog.tail`, `software.list`, `firewall.state`). Every job carries an Ed25519
 signature over `asaas-job|<id>|<agent_id>|<type>|<canonical-payload-json>`; the
 agent verifies it against `signing_public_key` (returned at enrollment and on
 every poll) before executing, then posts the result to

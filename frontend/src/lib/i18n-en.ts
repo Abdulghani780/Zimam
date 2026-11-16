@@ -1605,4 +1605,9 @@ export const EN: Record<string, string> = {
   'نواة': 'cores',
   'وحدات التخزين': 'Storage volumes',
   'وضع المعاملات': 'Journal mode',
+  'معلومات الشبكة': 'Network information',
+  'أحداث سجل النظام': 'System event log tail',
+  'البرامج المثبتة': 'Installed software',
+  'حالة جدار الحماية': 'Firewall state',
+  'حدثاً': 'events',
 };

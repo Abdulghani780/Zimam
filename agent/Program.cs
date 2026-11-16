@@ -1,10 +1,13 @@
 using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Win32;
 using NSec.Cryptography;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -39,7 +42,8 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     // the control plane and must never be added here without a reviewed design.
     private static readonly HashSet<string> AllowedJobs = new(StringComparer.Ordinal)
     {
-        "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff"
+        "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff",
+        "network.info", "eventlog.tail", "software.list", "firewall.state"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -170,6 +174,10 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
             .ToArray(),
         "session.list" => SessionProbe.ListSessions(),
         "session.logoff" => SessionProbe.Logoff(payload),
+        "network.info" => NetworkProbe.Collect(),
+        "eventlog.tail" => EventLogProbe.Tail(payload),
+        "software.list" => SoftwareProbe.ListInstalled(),
+        "firewall.state" => FirewallProbe.State(),
         "inventory.collect" => new
         {
             hostname = Environment.MachineName,
@@ -291,5 +299,134 @@ internal static class ServiceProbe
             .Select(l => new { name = l["SERVICE_NAME:".Length..].Trim() })
             .Cast<object>()
             .ToArray();
+    }
+}
+
+internal static class NetworkProbe
+{
+    // Read-only snapshot via System.Net.NetworkInformation — no configuration changes.
+    public static object Collect()
+    {
+        var interfaces = NetworkInterface.GetAllNetworkInterfaces()
+            .Where(n => n.OperationalStatus == OperationalStatus.Up || n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .Select(n =>
+            {
+                var props = n.GetIPProperties();
+                return new
+                {
+                    name = n.Name,
+                    description = n.Description,
+                    type = n.NetworkInterfaceType.ToString(),
+                    status = n.OperationalStatus.ToString(),
+                    speed_mbps = n.Speed > 0 ? Math.Round(n.Speed / 1_000_000.0, 1) : (double?)null,
+                    mac = n.GetPhysicalAddress().ToString(),
+                    ipv4 = props.UnicastAddresses
+                        .Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork)
+                        .Select(a => a.Address.ToString())
+                        .ToArray(),
+                    gateways = props.GatewayAddresses.Select(g => g.Address.ToString()).ToArray(),
+                    dns = props.DnsAddresses.Select(d => d.ToString()).ToArray()
+                };
+            })
+            .Cast<object>()
+            .ToArray();
+        return new
+        {
+            network_available = NetworkInterface.GetIsNetworkAvailable(),
+            interfaces,
+            observed_at = DateTimeOffset.UtcNow
+        };
+    }
+}
+
+internal static class EventLogProbe
+{
+    // Read-only tail of a Windows event log. Payload: { "log": "System"|"Application"|"Security"|"Setup", "count": 1..100 }
+    public static object Tail(JsonElement payload)
+    {
+        var logName = payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("log", out var logEl) && logEl.ValueKind == JsonValueKind.String
+            ? logEl.GetString()!
+            : "System";
+        if (logName.Length > 64 || logName.Any(c => !(char.IsLetterOrDigit(c) || c is '-' or '_')))
+            throw new InvalidOperationException("eventlog.tail requires a valid log name");
+        var count = payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("count", out var countEl) && countEl.TryGetInt32(out var c)
+            ? Math.Clamp(c, 1, 100)
+            : 25;
+
+        using var log = new EventLog(logName);
+        var total = log.Entries.Count;
+        var events = new List<object>();
+        for (var i = total - 1; i >= 0 && events.Count < count; i--)
+        {
+            var e = log.Entries[i];
+            events.Add(new
+            {
+                time = e.TimeGenerated.ToUniversalTime(),
+                id = e.InstanceId,
+                level = e.EntryType.ToString(),
+                source = e.Source,
+                message = e.Message is { Length: > 500 } ? e.Message[..500] : e.Message
+            });
+        }
+        return new { log = logName, count = events.Count, total_entries = total, events, observed_at = DateTimeOffset.UtcNow };
+    }
+}
+
+internal static class SoftwareProbe
+{
+    // Read-only inventory of installed programs from the standard uninstall registry keys.
+    public static object ListInstalled()
+    {
+        var items = new List<object>();
+        var roots = new (RegistryKey hive, string view)[]
+        {
+            (RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64), "machine64"),
+            (RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32), "machine32"),
+            (RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default), "user")
+        };
+        foreach (var (hive, scope) in roots)
+        {
+            using var hiveKey = hive;
+            using var uninstall = hiveKey.OpenSubKey($@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
+            if (uninstall is null) continue;
+            foreach (var subName in uninstall.GetSubKeyNames())
+            {
+                using var sub = uninstall.OpenSubKey(subName);
+                if (sub is null) continue;
+                var name = sub.GetValue("DisplayName") as string;
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                items.Add(new
+                {
+                    name = name.Trim(),
+                    version = sub.GetValue("DisplayVersion") as string ?? "",
+                    publisher = sub.GetValue("Publisher") as string ?? "",
+                    scope
+                });
+                if (items.Count >= 300) break;
+            }
+            if (items.Count >= 300) break;
+        }
+        return new { count = items.Count, items, observed_at = DateTimeOffset.UtcNow };
+    }
+}
+
+internal static class FirewallProbe
+{
+    // Read-only firewall profile state via registry — no netsh parsing (locale-safe).
+    public static object State()
+    {
+        var profiles = new[] { "DomainProfile", "StandardProfile", "PrivateProfile" };
+        var results = new List<object>();
+        using var policy = Registry.LocalMachine.OpenSubKey(
+            @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy");
+        var rulesKey = policy?.OpenSubKey("FirewallRules");
+        var ruleCount = rulesKey?.SubKeyCount ?? 0;
+        foreach (var profile in profiles)
+        {
+            using var key = policy?.OpenSubKey(profile);
+            var enabled = key?.GetValue("EnableFirewall") is int v && v != 0;
+            results.Add(new { profile = profile.Replace("Profile", ""), enabled, rule_count = ruleCount });
+        }
+        return new { profiles = results, observed_at = DateTimeOffset.UtcNow };
     }
 }

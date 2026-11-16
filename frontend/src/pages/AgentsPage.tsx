@@ -11,6 +11,10 @@ const JOB_TYPES = [
   { value: 'disk.list', label: t('الأقراص') },
   { value: 'inventory.collect', label: t('جمع الجرد') },
   { value: 'session.list', label: t('جلسات ويندوز النشطة') },
+  { value: 'network.info', label: t('معلومات الشبكة') },
+  { value: 'eventlog.tail', label: t('أحداث سجل النظام') },
+  { value: 'software.list', label: t('البرامج المثبتة') },
+  { value: 'firewall.state', label: t('حالة جدار الحماية') },
 ];
 
 const asArray = <T,>(res: unknown): T[] =>

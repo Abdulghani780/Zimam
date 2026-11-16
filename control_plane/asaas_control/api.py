@@ -110,7 +110,7 @@ class MfaVerifyRequest(BaseModel):
 # Read-only collectors plus one reviewed write job (session.logoff, which
 # requires an explicit session_id payload). Everything else stays behind the
 # legacy ActionEngine until a reviewed allowlist and confirmation flow exist.
-ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff"}
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "network.info", "eventlog.tail", "software.list", "firewall.state"}
 
 
 class JobCreateRequest(BaseModel):
