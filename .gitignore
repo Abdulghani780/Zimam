@@ -70,3 +70,10 @@ data/mtls/
 data/agent-signing.key
 
 data/backups/
+
+# Packaged release artifacts
+dist-py/
+build-py/
+release/
+agent/publish/
+agent/publish-single/

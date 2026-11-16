@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -31,9 +33,16 @@ app.include_router(legacy_proxy_router)
 # console is served at the origin root with an index.html fallback for
 # client-side routes — registered last so /api/* always wins.
 repo_root = Path(__file__).resolve().parents[2]
-frontend_dist = repo_root / "dist"
+frontend_dist = Path(os.environ["ASAAS_FRONTEND_DIST"]) if os.environ.get("ASAAS_FRONTEND_DIST") else repo_root / "dist"
 if not frontend_dist.exists():
     frontend_dist = repo_root / "frontend" / "dist"
+# Packaged layout: <install>/web or <install>/bin/../web next to the exe.
+if not frontend_dist.exists() and getattr(sys, "frozen", False):
+    exe_dir = Path(sys.executable).resolve().parent
+    for candidate in (exe_dir / "web", exe_dir.parent / "web"):
+        if candidate.is_dir():
+            frontend_dist = candidate
+            break
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
