@@ -244,7 +244,9 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
         # loopback — browsers cannot set the headers (absent from the CORS
         # allow-headers list) and this listener is not exposed remotely.
         # The local app_users row is a projection kept in sync by role.
-        if self.client_address[0] in ('127.0.0.1', '::1'):
+        # NOTE: dual-stack listeners report IPv4 peers as '::ffff:127.0.0.1',
+        # so the mapped form must be listed alongside plain loopback.
+        if self.client_address[0] in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
             proxy_user = (self.headers.get('X-ZIMAM-Proxy-User') or '').strip()
             if proxy_user:
                 proxy_role = (self.headers.get('X-ZIMAM-Proxy-Role') or '').strip()
