@@ -91,3 +91,6 @@ data/tls/
 control-plane.env
 
 installer-out/
+
+data/i18n-*.json
+data/i18n-*.txt

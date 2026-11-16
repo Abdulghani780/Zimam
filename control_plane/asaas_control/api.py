@@ -21,7 +21,7 @@ from .audit import AuditChain
 from .backup import create_backup
 from .config import resolve_database_path, settings
 from .connection_tokens import ConnectionTokenStore
-from .gateway import DEFAULT_PORTS, SUPPORTED_PROTOCOLS, enabled as gateway_enabled, open_session
+from .gateway import DEFAULT_PORTS, SUPPORTED_PROTOCOLS, enabled as gateway_enabled, open_session, parse_instruction
 from .identity import verify_legacy_password
 from .license import LicenseError, activate_license, deactivate_license, get_license_state
 from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, User
@@ -530,9 +530,22 @@ async def gateway_session(websocket: WebSocket, protocol: str, token: str = "") 
 
     async def _recv():
         try:
-            return await websocket.receive_text()
+            message = await websocket.receive_text()
         except WebSocketDisconnect:
             return None
+        # guacamole-common-js tunnels send internal keep-alive pings as
+        # instructions with an empty opcode; echo them back like the official
+        # servlet does instead of forwarding noise to guacd.
+        if isinstance(message, str) and message.endswith(";"):
+            try:
+                opcode, args = parse_instruction(message)
+            except (ValueError, IndexError):
+                opcode, args = "", []
+            if opcode == "":
+                if args and args[0] == "ping":
+                    await websocket.send_text(message)
+                return await _recv()
+        return message
 
     async def _send(text: str) -> None:
         await websocket.send_text(text)

@@ -7,7 +7,8 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, Field, TextInput, Glass, useToast } from '../asaas-ui';
 import { api, type AssetItem } from '../lib/api';
-import { apiV1, type V1Asset } from '../lib/apiV1';
+import { apiV1, type V1Asset, type V1Account } from '../lib/apiV1';
+import { RemoteSession } from '../components/RemoteSession';
 import {
   Server,
   Plus,
@@ -17,6 +18,8 @@ import {
   Zap,
   X,
   RefreshCw,
+  MonitorPlay,
+  KeyRound,
 } from 'lucide-react';
 import { t } from '../lib/i18n';
 
@@ -49,6 +52,12 @@ export function AssetsPage() {
   const [port, setPort] = useState(3389);
   const [submitting, setSubmitting] = useState(false);
 
+  // Direct remote session (guacd gateway) state
+  const [sessionAsset, setSessionAsset] = useState<AssetItem | null>(null);
+  const [sessionAccounts, setSessionAccounts] = useState<V1Account[]>([]);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [sessionProtocol, setSessionProtocol] = useState<string>('rdp');
+
   const fetchAssets = async () => {
     try {
       const res = await apiV1.assets();
@@ -69,6 +78,50 @@ export function AssetsPage() {
     const url = `/api/bastion/connect?host=${encodeURIComponent(a.host)}&port=${encodeURIComponent(String(port))}&name=${encodeURIComponent(a.name)}&username=Administrator&protocol=${encodeURIComponent(protocol)}`;
     window.open(url, '_blank');
     toast(`${t('تم إرسال طلب جلسة ')}${protocol}${t(' للأصل [')}${a.name}${t('] عبر بوابة الحصن.')}`, 'success');
+  };
+
+  const handleDirectSession = async (a: AssetItem) => {
+    try {
+      const res = await apiV1.accounts();
+      const all = Array.isArray(res) ? res : (res as { accounts?: V1Account[] })?.accounts || [];
+      const matches = all.filter(
+        (acc) => acc.asset_id === a.id && ['rdp', 'ssh', 'sftp'].includes(String(acc.protocol || '').toLowerCase()),
+      );
+      if (matches.length === 0) {
+        toast(t('لا توجد حسابات مرتبطة بهذا الأصل — أضف حساباً من صفحة الخزنة أولاً.'), 'error');
+        return;
+      }
+      setSessionAsset(a);
+      setSessionAccounts(matches);
+      setSessionToken(null);
+    } catch {
+      toast(t('تعذّر تحميل الحسابات المرتبطة بالأصل.'), 'error');
+    }
+  };
+
+  const startSession = async (account: V1Account) => {
+    if (!sessionAsset) return;
+    const protocol = String(account.protocol || 'rdp').toLowerCase();
+    try {
+      const res = await apiV1.createConnectionToken({
+        asset_id: sessionAsset.id,
+        account_id: account.id,
+        protocol: protocol as 'rdp' | 'ssh' | 'sftp',
+        actions: ['connect'],
+      });
+      const token = res?.token;
+      if (!token) throw new Error('no token');
+      setSessionProtocol(protocol);
+      setSessionToken(token);
+    } catch (err: any) {
+      toast(err?.message || t('فشل إصدار رمز الجلسة — تحقق من سياسات الوصول والبوابة.'), 'error');
+    }
+  };
+
+  const closeSession = () => {
+    setSessionAsset(null);
+    setSessionAccounts([]);
+    setSessionToken(null);
   };
 
   const handleTrimServer = async (a: AssetItem) => {
@@ -336,6 +389,15 @@ export function AssetsPage() {
               </Button>
               <Button
                 size="sm"
+                variant="glass"
+                onClick={() => handleDirectSession(a)}
+                style={{ padding: '4px 8px', fontSize: 11 }}
+                title={t('جلسة عن بُعد عبر البوابة')}
+              >
+                <MonitorPlay size={12} />
+              </Button>
+              <Button
+                size="sm"
                 variant="ghost"
                 onClick={() => openServerDrawer(a)}
                 style={{ padding: '4px 8px', fontSize: 11 }}
@@ -548,6 +610,88 @@ export function AssetsPage() {
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Direct remote session overlay: account picker → live guacd session */}
+      {sessionAsset && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1200,
+            background: 'var(--surface-ground)',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: 20,
+            gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
+                {t('جلسة عن بُعد —')}{' '}
+                <span style={{ color: 'var(--accent)' }}>{sessionAsset.name}</span>
+              </h2>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }} dir="ltr">
+                {sessionAsset.host}:{sessionAsset.port}
+              </span>
+            </div>
+            <Button size="sm" variant="ghost" onClick={closeSession}>
+              <X size={16} /> {t('إنهاء الجلسة')}
+            </Button>
+          </div>
+
+          {!sessionToken ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Glass thick style={{ padding: 28, maxWidth: 520, width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <KeyRound size={20} style={{ color: 'var(--accent)' }} />
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
+                    {t('اختر الحساب لبدء الجلسة')}
+                  </h3>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                  {t('سيُصدر رمز اتصال لمرة واحدة قصير العمر — بيانات الاعتماد لا تغادر الخادم.')}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {sessionAccounts.map((acc) => (
+                    <button
+                      key={acc.id}
+                      type="button"
+                      onClick={() => startSession(acc)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        padding: '12px 16px',
+                        borderRadius: 12,
+                        border: '1px solid var(--accent-soft)',
+                        background: 'var(--glass-rim-low)',
+                        color: 'var(--text-1)',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textAlign: 'start',
+                      }}
+                    >
+                      <span>{acc.name || acc.username}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)' }} dir="ltr">{acc.protocol}</span>
+                    </button>
+                  ))}
+                </div>
+              </Glass>
+            </div>
+          ) : (
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <RemoteSession
+                protocol={sessionProtocol}
+                token={sessionToken}
+                onClose={closeSession}
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
