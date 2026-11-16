@@ -1747,4 +1747,9 @@ export const EN: Record<string, string> = {
   'منفذ': 'port',
   'منفذ آخر': 'more ports',
   'المنافذ المستمعة': 'Listening ports',
+  'برامج بدء التشغيل': 'Startup programs',
+  'برامج بدء التشغيل (Run keys)': 'Startup programs (Run keys)',
+  'لا مفاتيح Run أو نتيجة غير معروفة.': 'No Run keys or unknown result.',
+  'عنصر': 'item',
+  'عنصر آخر': 'more items',
 };

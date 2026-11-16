@@ -32,6 +32,7 @@ interface FleetSecAgent {
   collector_count: number;
   firewall: ResultEntry | null;
   eventlog: ResultEntry | null;
+  startup: ResultEntry | null;
 }
 
 export function SecurityPage() {
@@ -65,12 +66,14 @@ export function SecurityPage() {
           fleetRes.agents.map(async (ag) => {
             let firewall: ResultEntry | null = null;
             let eventlog: ResultEntry | null = null;
+            let startup: ResultEntry | null = null;
             if (ag.collector_count > 0) {
               const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
               firewall = r?.results?.['firewall.state'] ?? null;
               eventlog = r?.results?.['eventlog.tail'] ?? null;
+              startup = r?.results?.['startup.programs'] ?? null;
             }
-            return { ...ag, firewall, eventlog };
+            return { ...ag, firewall, eventlog, startup };
           }),
         );
         setFleetSec(detailed);
@@ -311,6 +314,50 @@ export function SecurityPage() {
                     </details>
                   );
                 })}
+
+                {/* startup.programs — Run/RunOnce persistence audit */}
+                {(() => {
+                  const entry = ag.startup;
+                  const raw = entry && !entry.error ? entry.result : null;
+                  const src = Array.isArray(raw) ? raw : ((raw as any)?.items ?? (raw as any)?.programs ?? []);
+                  const rows = Array.isArray(src) ? src.filter((x) => x && typeof x === 'object') : [];
+                  return (
+                    <details style={{ border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 10px' }}>
+                      <summary style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span>{t('برامج بدء التشغيل (Run keys)')}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400 }}>
+                          {entry ? (rows.length ? `${rows.length} ${t('عنصر')}` : (entry.completed_at ? new Date(entry.completed_at).toLocaleString('ar-SA') : '—')) : t('لا بيانات')}
+                        </span>
+                      </summary>
+                      {!entry ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>{t('لم يُرسل هذا الجامع بعد — أرسله من صفحة الوكلاء.')}</div>
+                      ) : entry.error ? (
+                        <div className="text-status-danger" style={{ fontSize: 11, marginTop: 6 }}>{entry.error}</div>
+                      ) : rows.length === 0 ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>{t('لا مفاتيح Run أو نتيجة غير معروفة.')}</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, maxHeight: 180, overflowY: 'auto' }}>
+                          {rows.slice(0, 30).map((r: any, i: number) => (
+                            <div key={i} style={{ border: '1px solid var(--hairline)', borderRadius: 6, padding: '6px 8px', background: 'var(--surface-ground)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 2 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
+                                  {String(r.name ?? r.Name ?? '?')}
+                                </span>
+                                <span style={{ fontSize: 9, color: 'var(--text-3)', flexShrink: 0, fontFamily: 'var(--font-telemetry)' }}>
+                                  {String(r.hive ?? '')}{String(r.key ?? '').includes('RunOnce') ? ' · RunOnce' : ''}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 9, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
+                                {String(r.command ?? r.Command ?? '')}
+                              </div>
+                            </div>
+                          ))}
+                          {rows.length > 30 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{rows.length - 30} {t('عنصر آخر')}</div>}
+                        </div>
+                      )}
+                    </details>
+                  );
+                })()}
               </div>
             ))}
           </div>
