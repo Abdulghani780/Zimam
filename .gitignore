@@ -94,3 +94,6 @@ installer-out/
 
 data/i18n-*.json
 data/i18n-*.txt
+
+launcher/bin/
+launcher/obj/

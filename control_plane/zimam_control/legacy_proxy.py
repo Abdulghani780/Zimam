@@ -74,6 +74,10 @@ def _get_client() -> httpx.AsyncClient:
 _HOP_BY_HOP = {
     "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
     "te", "trailers", "transfer-encoding", "upgrade", "host", "content-length",
+    # Browser origin/referer belong to the SPA↔control-plane hop. Forwarding
+    # them to the legacy backend makes its same-origin check reject every
+    # proxied call with «Origin غير مسموح» — the proxy is server-to-server.
+    "origin", "referer",
 }
 
 _PASS_RESPONSE_HEADERS = {

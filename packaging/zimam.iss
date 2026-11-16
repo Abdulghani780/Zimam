@@ -53,9 +53,11 @@ Name: "{app}\data"; Permissions: system-full admins-full
 Name: "{app}\data\backups"; Permissions: system-full admins-full
 
 [Icons]
-Name: "{group}\ZIMAM"; Filename: "http://127.0.0.1:8876/"
-Name: "{group}\Uninstall ZIMAM"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\ZIMAM"; Filename: "http://127.0.0.1:8876/"; Tasks: startconsole
+; Per-user shortcuts only — admin installs must not leak icons into the
+; shared Public desktop / All Users start menu.
+Name: "{userprograms}\ZIMAM"; Filename: "http://127.0.0.1:8876/"
+Name: "{userprograms}\ZIMAM\Uninstall ZIMAM"; Filename: "{uninstallexe}"
+Name: "{userdesktop}\ZIMAM"; Filename: "http://127.0.0.1:8876/"; Tasks: startconsole
 
 [Run]
 ; Register auto-start scheduled tasks (SYSTEM, at startup + watchdogs).
