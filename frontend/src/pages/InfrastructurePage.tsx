@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   Layers,
   Cog,
@@ -19,8 +20,66 @@ import {
   Square,
   RotateCw,
   AlertTriangle,
+  Bot,
+  Network,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { t } from '../lib/i18n';
+
+type ResultEntry = { job_id: string; completed_at: string | null; result: unknown; error: string | null };
+
+interface FleetNetAgent {
+  id: string;
+  name: string;
+  status: string;
+  hostname?: string | null;
+  linked_asset: { id: string; name: string; hostname: string } | null;
+  net: ResultEntry | null;
+}
+
+interface NetIface {
+  label: string;
+  ipv4: string;
+  gateway: string;
+  dns: string;
+  speed: string;
+  mac: string;
+  up: boolean | null;
+}
+
+// Heuristic extraction for network.info payloads — falls back to raw JSON.
+function netIfaces(result: unknown): NetIface[] {
+  const arr = Array.isArray(result)
+    ? result
+    : Array.isArray((result as any)?.interfaces)
+      ? (result as any).interfaces
+      : Array.isArray((result as any)?.adapters)
+        ? (result as any).adapters
+        : null;
+  if (!arr) return [];
+  const pick = (o: any, ...keys: string[]) => {
+    for (const k of keys) {
+      const v = o?.[k];
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+    return '';
+  };
+  return arr
+    .filter((n: unknown) => n && typeof n === 'object')
+    .map((n: any) => {
+      const state = String(pick(n, 'Status', 'MediaConnectState', 'state', 'status')).toLowerCase();
+      const dns = pick(n, 'DnsServers', 'DNS', 'dns');
+      return {
+        label: String(pick(n, 'Name', 'InterfaceDescription', 'Description', 'InterfaceAlias', 'name') || '?'),
+        ipv4: String(pick(n, 'IPv4Address', 'IPv4', 'IpAddress', 'ip') || ''),
+        gateway: String(pick(n, 'DefaultGateway', 'Gateway', 'gateway') || ''),
+        dns: Array.isArray(dns) ? dns.join(', ') : String(dns || ''),
+        speed: String(pick(n, 'LinkSpeed', 'Speed', 'speed') || ''),
+        mac: String(pick(n, 'MacAddress', 'PhysicalAddress', 'MAC', 'mac') || ''),
+        up: state ? /up|connect|enabled/.test(state) : null,
+      };
+    });
+}
 
 export function InfrastructurePage() {
   const toast = useToast();
@@ -50,6 +109,31 @@ export function InfrastructurePage() {
 
   // 5. Certificates State
   const [certs, setCerts] = useState<any[]>([]);
+
+  // 6. ZIMAM agent network telemetry
+  const [fleetNet, setFleetNet] = useState<FleetNetAgent[]>([]);
+
+  const loadFleetNet = async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetNet([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          let net: ResultEntry | null = null;
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          net = r?.results?.['network.info'] ?? null;
+          return { ...ag, net };
+        }),
+      );
+      setFleetNet(detailed);
+    } catch {
+      setFleetNet([]);
+    }
+  };
+
+  useEffect(() => {
+    loadFleetNet();
+  }, []);
 
   const fetchRoles = async (refresh = false) => {
     try {
@@ -199,6 +283,76 @@ export function InfrastructurePage() {
           <span>{t('تحديث')}</span>
         </Button>
       </div>
+
+      {/* ZIMAM agent networks — real network.info collector data */}
+      {fleetNet.length > 0 && (
+        <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Network size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('شبكات وكلاء زِمام')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('network.info حقيقية: IP وDNS والبوابة والسرعة لكل وكيل')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+            {fleetNet.map((ag) => {
+              const ifaces = ag.net && !ag.net.error ? netIfaces(ag.net.result) : [];
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Bot size={15} style={{ color: 'var(--accent)' }} />
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ag.hostname || ag.id.slice(0, 8)}
+                  </div>
+                  {!ag.net ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الشبكة بعد — أرسله من صفحة الوكلاء.')}</div>
+                  ) : ag.net.error ? (
+                    <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.net.error}</div>
+                  ) : ifaces.length === 0 ? (
+                    <details style={{ fontSize: 11 }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-3)' }}>{t('نتيجة غير معروفة — عرض خام')}</summary>
+                      <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                        {JSON.stringify(ag.net.result, null, 2)}
+                      </pre>
+                    </details>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {ifaces.slice(0, 6).map((n, i) => (
+                        <div key={i} style={{ border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 10px', background: 'var(--surface-ground)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>{n.label}</span>
+                            <span style={{ fontSize: 10, color: n.up === false ? 'var(--unpaid)' : 'var(--paid)' }}>
+                              {n.up === true ? t('متصل') : n.up === false ? t('غير متصل') : ''}{n.speed ? ` · ${n.speed}` : ''}
+                            </span>
+                          </div>
+                          {n.ipv4 && <div style={{ fontSize: 10, color: 'var(--text-2)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>IP: {n.ipv4}</div>}
+                          {n.gateway && <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>GW: {n.gateway}</div>}
+                          {n.dns && <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', wordBreak: 'break-all' }}>DNS: {n.dns}</div>}
+                          {n.mac && <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>MAC: {n.mac}</div>}
+                        </div>
+                      ))}
+                      {ifaces.length > 6 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ifaces.length - 6} {t('واجهة أخرى')}</div>}
+                      {ag.net.completed_at && (
+                        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.net.completed_at).toLocaleString('ar-SA')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--glass-rim)', paddingBottom: 8, flexWrap: 'wrap' }}>

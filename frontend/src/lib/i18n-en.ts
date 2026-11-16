@@ -1700,4 +1700,8 @@ export const EN: Record<string, string> = {
   'session.list حقيقية من كل وكيل — عرض فقط': 'Real session.list from every agent — read-only view',
   'لم يُرسل جامع الجلسات بعد — أرسله من صفحة الوكلاء.': 'Session collector not dispatched yet — send it from the Agents page.',
   'جلسة أخرى': 'more sessions',
+  'شبكات وكلاء زِمام': 'ZIMAM agent networks',
+  'network.info حقيقية: IP وDNS والبوابة والسرعة لكل وكيل': 'Real network.info: IP, DNS, gateway and link speed per agent',
+  'لم يُرسل جامع الشبكة بعد — أرسله من صفحة الوكلاء.': 'Network collector not dispatched yet — send it from the Agents page.',
+  'واجهة أخرى': 'more interfaces',
 };
