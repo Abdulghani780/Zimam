@@ -158,7 +158,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     {
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
-        "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list"
+        "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -309,6 +309,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "local.users" => PsProbe.Run("Get-LocalUser | ForEach-Object { [pscustomobject]@{ name=$_.Name; enabled=$_.Enabled; last_logon=($_.LastLogon.ToString('yyyy-MM-dd HH:mm')); password_required=$_.PasswordRequired; source=$_.PrincipalSource } } | ConvertTo-Json -Compress"),
         "shares.list" => PsProbe.Run("Get-SmbShare | ForEach-Object { [pscustomobject]@{ name=$_.Name; path=$_.Path; description=$_.Description; users=$_.CurrentUsers } } | ConvertTo-Json -Compress"),
         "hotfix.list" => PsProbe.Run("Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 50 | ForEach-Object { [pscustomobject]@{ id=$_.HotFixID; description=$_.Description; installed_on=$_.InstalledOn.ToString('yyyy-MM-dd') } } | ConvertTo-Json -Compress"),
+        "ports.list" => PsProbe.Run("$names=@{}; Get-Process | ForEach-Object { $names[[int]$_.Id]=$_.ProcessName }; $tcp=Get-NetTCPConnection -State Listen | ForEach-Object { [pscustomobject]@{ proto='tcp'; local_address=[string]$_.LocalAddress; local_port=[int]$_.LocalPort; pid=[int]$_.OwningProcess; process=$names[[int]$_.OwningProcess] } }; $udp=Get-NetUDPEndpoint | ForEach-Object { [pscustomobject]@{ proto='udp'; local_address=[string]$_.LocalAddress; local_port=[int]$_.LocalPort; pid=[int]$_.OwningProcess; process=$names[[int]$_.OwningProcess] } }; @($tcp)+@($udp) | Sort-Object local_port | ConvertTo-Json -Compress -Depth 4"),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 

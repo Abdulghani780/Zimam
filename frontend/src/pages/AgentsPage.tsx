@@ -21,6 +21,7 @@ const JOB_TYPES = [
   { value: 'local.users', label: t('مستخدمو الجهاز المحلي') },
   { value: 'shares.list', label: t('المشاركات الشبكية') },
   { value: 'hotfix.list', label: t('تحديثات ويندوز') },
+  { value: 'ports.list', label: t('المنافذ المستمعة') },
 ];
 
 // Read-only collector set dispatched by the "collect all" action.
@@ -30,7 +31,7 @@ const COLLECTOR_JOB_TYPES = [
   'inventory.collect', 'session.list', 'network.info',
   'eventlog.tail', 'software.list', 'firewall.state',
   'windows.features', 'scheduled.tasks', 'local.users',
-  'shares.list', 'hotfix.list',
+  'shares.list', 'hotfix.list', 'ports.list',
 ];
 
 const asArray = <T,>(res: unknown): T[] =>

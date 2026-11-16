@@ -1740,4 +1740,11 @@ export const EN: Record<string, string> = {
   'مشاركة': 'share',
   'مشاركة أخرى': 'more shares',
   'مستخدمون': 'users',
+  'منافذ وكلاء زِمام (قراءة فقط)': 'ZIMAM agent ports (read-only)',
+  'ports.list حقيقية: كل المنافذ المستمعة TCP/UDP على كل وكيل': 'Real ports.list: every listening TCP/UDP port per agent',
+  'لم يُرسل جامع المنافذ بعد — أرسله من صفحة الوكلاء.': 'Port collector not dispatched yet — send it from the Agents page.',
+  'لا منافذ مستمعة أو نتيجة غير معروفة.': 'No listening ports or unknown result.',
+  'منفذ': 'port',
+  'منفذ آخر': 'more ports',
+  'المنافذ المستمعة': 'Listening ports',
 };

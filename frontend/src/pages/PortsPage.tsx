@@ -10,6 +10,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useToast } from '../zimam-ui';
 import { api, type ManagedServer, type PortItem } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   AlertCircle,
   AlertTriangle,
@@ -318,6 +319,34 @@ export function PortsPage() {
   const [checking, setChecking] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Remote agent listening ports — read-only ports.list collector results.
+  const [fleetPorts, setFleetPorts] = useState<any[]>([]);
+
+  const fetchFleetPorts = useCallback(async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetPorts([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          const entry = r?.results?.['ports.list'] ?? null;
+          let arr: any[] = [];
+          const raw = entry && !entry.error ? entry.result : null;
+          const src = Array.isArray(raw) ? raw : ((raw as any)?.ports ?? (raw as any)?.items ?? []);
+          if (Array.isArray(src)) arr = src.filter((x) => x && typeof x === 'object');
+          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, ports: arr };
+        }),
+      );
+      setFleetPorts(detailed);
+    } catch {
+      setFleetPorts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchFleetPorts();
+  }, [fetchFleetPorts]);
 
   const fetchPorts = useCallback(
     async (force = false) => {
@@ -1025,6 +1054,74 @@ export function PortsPage() {
           </button>
         </div>
       </div>
+
+      {/* ZIMAM remote agent ports — read-only ports.list collector data */}
+      {fleetPorts.length > 0 && (
+        <section className="panel" style={{ padding: '18px 20px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Waypoints size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('منافذ وكلاء زِمام (قراءة فقط)')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('ports.list حقيقية: كل المنافذ المستمعة TCP/UDP على كل وكيل')}</span>
+            </div>
+            <Link to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </Link>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+            {fleetPorts.map((ag) => {
+              const rows = ag.ports;
+              const tcpCount = rows.filter((p: any) => String(p.proto ?? 'tcp').toLowerCase() === 'tcp').length;
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ag.hostname || ag.id.slice(0, 8)}{rows.length ? ` · ${rows.length} ${t('منفذ')} (${tcpCount} TCP)` : ''}
+                  </div>
+                  {!ag.entry ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع المنافذ بعد — أرسله من صفحة الوكلاء.')}</div>
+                  ) : ag.entry.error ? (
+                    <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.entry.error}</div>
+                  ) : rows.length === 0 ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا منافذ مستمعة أو نتيجة غير معروفة.')}</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 240, overflowY: 'auto' }}>
+                      {rows.slice(0, 60).map((p: any, i: number) => {
+                        const proto = String(p.proto ?? 'tcp').toUpperCase();
+                        const lport = p.local_port ?? p.LocalPort ?? p.port ?? '';
+                        const laddr = String(p.local_address ?? p.LocalAddress ?? '');
+                        const proc = String(p.process ?? p.ProcessName ?? '');
+                        const pid = p.pid ?? p.OwningProcess ?? '';
+                        return (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '4px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                            <span style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0 }}>
+                              <span style={{ fontFamily: 'var(--font-telemetry)', fontWeight: 700, color: proto === 'UDP' ? 'var(--chart-out)' : 'var(--accent)', flexShrink: 0 }}>{proto}:{lport}</span>
+                              <span style={{ color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>{proc || '—'}</span>
+                            </span>
+                            <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                              {laddr && !/^0\.0\.0\.0$|^::$|^\*$/.test(laddr) && <span style={{ fontSize: 9, fontFamily: 'var(--font-telemetry)' }}>{laddr}</span>}
+                              {pid !== '' && <span style={{ fontSize: 9 }}>PID {pid}</span>}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {rows.length > 60 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{rows.length - 60} {t('منفذ آخر')}</div>}
+                      {ag.entry.completed_at && (
+                        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.entry.completed_at).toLocaleString('ar-SA')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="ports-layout">
         <div className="ports-main">
