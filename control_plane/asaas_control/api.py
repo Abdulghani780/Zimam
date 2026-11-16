@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+import logging
 import os
 import secrets
 import sqlite3
@@ -10,7 +12,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -19,6 +21,7 @@ from .audit import AuditChain
 from .backup import create_backup
 from .config import resolve_database_path, settings
 from .connection_tokens import ConnectionTokenStore
+from .gateway import DEFAULT_PORTS, SUPPORTED_PROTOCOLS, enabled as gateway_enabled, open_session
 from .identity import verify_legacy_password
 from .license import LicenseError, activate_license, deactivate_license, get_license_state
 from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, User
@@ -29,6 +32,7 @@ from .storage import append_audit, db_session
 from .vault import EnvelopeVault
 
 router = APIRouter(prefix="/api/v1")
+log = logging.getLogger("asaas_control.api")
 
 _VALID_ROLES = {"admin", "operator", "viewer"}
 
@@ -455,6 +459,99 @@ def consume_connection_token(payload: dict, x_gateway_token: str | None = Header
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     return {"user_id": claims.user_id, "asset_id": claims.asset_id, "account_id": claims.account_id, "protocol": claims.protocol, "actions": sorted(claims.actions), "expires_at": claims.expires_at}
+
+
+@router.websocket("/gateway/{protocol}")
+async def gateway_session(websocket: WebSocket, protocol: str, token: str = "") -> None:
+    """Guacd session tunnel: one-time connection token -> sealed secret -> guacd.
+
+    The browser speaks the Guacamole protocol over this WebSocket (see
+    guacamole-common-js ``WebSocketTunnel``); this endpoint consumes the token,
+    resolves credentials server-side (they never reach the browser), runs the
+    guacd handshake, then pumps instructions both ways. Requires
+    ``ASAAS_GUACD_HOST`` — otherwise the socket closes with 1013.
+    """
+    await websocket.accept()
+
+    async def _close(code: int, reason: str) -> None:
+        try:
+            await websocket.close(code=code, reason=reason)
+        except Exception:
+            pass
+
+    if protocol not in SUPPORTED_PROTOCOLS:
+        await _close(1008, f"Unsupported protocol: {protocol}")
+        return
+    if not gateway_enabled():
+        await _close(1013, "Session gateway is not configured (ASAAS_GUACD_HOST)")
+        return
+    try:
+        claims = _connection_store.consume(token, expected_protocol=protocol)
+    except ValueError as exc:
+        await _close(1008, str(exc))
+        return
+
+    account: Account | None = None
+    asset: Asset | None = None
+    secret = ""
+    with db_session() as db:
+        account = db.get(Account, claims.account_id)
+        asset = db.get(Asset, claims.asset_id)
+        if not account or not asset or account.asset_id != asset.id or account.protocol != protocol:
+            await _close(1008, "Account/asset binding not found")
+            return
+        if not account.secret_blob:
+            await _close(1008, "Account has no stored credential")
+            return
+        try:
+            secret = EnvelopeVault(settings.vault_key()).open(
+                EnvelopeVault.loads(account.secret_blob), account_id=asset.id
+            ).decode("utf-8")
+        except Exception:
+            await _close(1011, "Unable to decrypt stored credential")
+            return
+        append_audit(db, actor_id=claims.user_id, action="gateway.session_open", target_id=asset.id, payload={"account_id": account.id, "protocol": protocol, "account": account.username})
+
+    params = {
+        "hostname": asset.hostname,
+        "port": str(asset.port or DEFAULT_PORTS.get(protocol, "")),
+        "username": account.username,
+        "password": secret,
+        "domain": "",
+    }
+    try:
+        session = await open_session(protocol, params)
+    except Exception as exc:
+        log.warning("guacd connect failed for asset %s: %s", asset.id, exc)
+        with db_session() as db:
+            append_audit(db, actor_id=claims.user_id, action="gateway.session_failed", target_id=asset.id, payload={"protocol": protocol, "error": str(exc)[:200]})
+        await _close(1011, "Upstream gateway connection failed")
+        return
+
+    async def _recv():
+        try:
+            return await websocket.receive_text()
+        except WebSocketDisconnect:
+            return None
+
+    async def _send(text: str) -> None:
+        await websocket.send_text(text)
+
+    try:
+        pump_out = asyncio.create_task(session.pump_to_client(_send))
+        pump_in = asyncio.create_task(session.pump_from_client(_recv))
+        done, pending = await asyncio.wait({pump_out, pump_in}, return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
+        for task in done:
+            exc = task.exception()
+            if exc:
+                log.debug("gateway pump ended: %s", exc)
+    finally:
+        session.close()
+        with db_session() as db:
+            append_audit(db, actor_id=claims.user_id, action="gateway.session_close", target_id=asset.id, payload={"protocol": protocol})
+        await _close(1000, "session ended")
 
 
 @router.get("/sessions")
