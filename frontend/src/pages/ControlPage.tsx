@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTelemetry } from '../lib/useTelemetry';
 import { api, type UserSession } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import { SessionDrawer } from '../components/SessionDrawer';
 import { BroadcastModal } from '../components/BroadcastModal';
 import { useToast } from '../zimam-ui';
 import {
   AlertCircle,
+  Bot,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -26,6 +28,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import {
   formatLoginTimestamp,
   formatSessionDuration,
@@ -44,6 +47,35 @@ const PAGE_SIZES = [10, 25, 50, 100];
 
 function looksLikeAccessDenied(message: string): boolean {
   return /access denied|error 5|مسؤول|صلاحي/i.test(message);
+}
+
+type ResultEntry = { job_id: string; completed_at: string | null; result: unknown; error: string | null };
+
+interface FleetSessionAgent {
+  id: string;
+  name: string;
+  status: string;
+  hostname?: string | null;
+  linked_asset: { id: string; name: string; hostname: string } | null;
+  sessions: ResultEntry | null;
+}
+
+// Heuristic row extraction for session.list payloads — falls back to raw JSON.
+function sessionRows(result: unknown): { user: string; id: string; state: string; logon: string }[] {
+  const arr = Array.isArray(result)
+    ? result
+    : Array.isArray((result as any)?.sessions)
+      ? (result as any).sessions
+      : null;
+  if (!arr) return [];
+  return arr
+    .filter((s: unknown) => s && typeof s === 'object')
+    .map((s: any) => ({
+      user: String(s.user || s.username || s.name || '?'),
+      id: String(s.id ?? s.session_id ?? s.sessionId ?? ''),
+      state: String(s.state || s.status || ''),
+      logon: String(s.logon_time || s.logonTime || s.logontime || s.login_time || ''),
+    }));
 }
 
 export function ControlPage() {
@@ -71,6 +103,31 @@ export function ControlPage() {
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [fleetSessions, setFleetSessions] = useState<FleetSessionAgent[]>([]);
+
+  const loadFleetSessions = async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetSessions([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          let sessionsEntry: ResultEntry | null = null;
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          sessionsEntry = r?.results?.['session.list'] ?? null;
+          return { ...ag, sessions: sessionsEntry };
+        }),
+      );
+      setFleetSessions(detailed);
+    } catch {
+      setFleetSessions([]);
+    }
+  };
+
+  useEffect(() => {
+    loadFleetSessions();
+    const timer = window.setInterval(loadFleetSessions, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -365,6 +422,69 @@ export function ControlPage() {
             <X size={16} />
           </button>
         </div>
+      )}
+
+      {/* ZIMAM remote agent sessions — real session.list collector data */}
+      {fleetSessions.length > 0 && (
+        <section style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Bot size={18} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('جلسات وكلاء زِمام')}</h2>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('session.list حقيقية من كل وكيل — عرض فقط')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+            {fleetSessions.map((ag) => {
+              const rows = ag.sessions && !ag.sessions.error ? sessionRows(ag.sessions.result) : [];
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ag.hostname || ag.id.slice(0, 8)}
+                  </div>
+                  {!ag.sessions ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الجلسات بعد — أرسله من صفحة الوكلاء.')}</div>
+                  ) : ag.sessions.error ? (
+                    <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.sessions.error}</div>
+                  ) : rows.length === 0 ? (
+                    <details style={{ fontSize: 11 }}>
+                      <summary style={{ cursor: 'pointer', color: 'var(--text-3)' }}>{t('نتيجة غير معروفة — عرض خام')}</summary>
+                      <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                        {JSON.stringify(ag.sessions.result, null, 2)}
+                      </pre>
+                    </details>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {rows.slice(0, 8).map((s, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '6px 8px', borderRadius: 8, background: 'var(--surface-ground)' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text)' }} dir="ltr">{s.user}{s.id ? ` · #${s.id}` : ''}</span>
+                          <span style={{ color: s.state.toLowerCase().includes('active') ? 'var(--paid)' : 'var(--text-3)', fontSize: 10 }}>
+                            {s.state || '—'}{s.logon ? ` · ${s.logon}` : ''}
+                          </span>
+                        </div>
+                      ))}
+                      {rows.length > 8 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{rows.length - 8} {t('جلسة أخرى')}</div>}
+                      {ag.sessions.completed_at && (
+                        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.sessions.completed_at).toLocaleString('ar-SA')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       <div className="rdp-layout">

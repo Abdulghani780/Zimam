@@ -1696,4 +1696,8 @@ export const EN: Record<string, string> = {
   'لم يُرسل جامع الأقراص بعد — أرسله من صفحة الوكلاء.': 'Disk collector not dispatched yet — send it from the Agents page.',
   'نتيجة غير معروفة — عرض خام': 'Unrecognized result — raw view',
   'آخر قياس': 'Last reading',
+  'جلسات وكلاء زِمام': 'ZIMAM agent sessions',
+  'session.list حقيقية من كل وكيل — عرض فقط': 'Real session.list from every agent — read-only view',
+  'لم يُرسل جامع الجلسات بعد — أرسله من صفحة الوكلاء.': 'Session collector not dispatched yet — send it from the Agents page.',
+  'جلسة أخرى': 'more sessions',
 };
