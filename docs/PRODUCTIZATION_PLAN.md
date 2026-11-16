@@ -173,10 +173,10 @@ Windows Services:
 10. ✅ نسخ احتياطي مجدول: `backup.py` مشترك + asyncio loop في lifespan — `ASAAS_BACKUP_INTERVAL_HOURS` (24h) + `ASAAS_BACKUP_KEEP` (14) + prune + audit
 11. ✅ `control-plane.env` — ملف config بجانب الـ exe للـ SYSTEM tasks (التي لا ترث env المستخدم) — `serve.py` يحمّله بـ setdefault
 
-### Phase C — نمو الباقات
+### Phase C — نمو الباقات 🟡 جارٍ
 
-12. Agent auto-update عبر قناة المهام الموقعة (job type `agent.update` + hash verify)
-13. License portal (توليد/تجديد عبر موقع)
+12. ✅ Agent auto-update: `agent.update` job موقّع + `POST/GET /agents/update-bundle` + تنزيل موثّق بمفتاح الوكيل + تحقق SHA-256 في الـ payload الموقّع + تبديل ذراتي `<exe>.new` عند إعادة التشغيل (SCM restart-on-failure) — verified end-to-end
+13. License portal (توليد/تجديد عبر موقع) — `tools/sign-license.py` يغطي الإصدار اليدوي؛ البوابة لاحقاً
 14. telemetry opt-in + dashboard "fleet health" عندك كـ vendor
 15. guacd gateway / recordings / AD sync — تُضاف كـ Enterprise features لاحقاً
 
