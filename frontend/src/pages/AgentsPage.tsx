@@ -16,6 +16,11 @@ const JOB_TYPES = [
   { value: 'software.list', label: t('البرامج المثبتة') },
   { value: 'firewall.state', label: t('حالة جدار الحماية') },
   { value: 'agent.update', label: t('تحديث الوكيل') },
+  { value: 'windows.features', label: t('أدوار وميزات ويندوز') },
+  { value: 'scheduled.tasks', label: t('المهام المجدولة') },
+  { value: 'local.users', label: t('مستخدمو الجهاز المحلي') },
+  { value: 'shares.list', label: t('المشاركات الشبكية') },
+  { value: 'hotfix.list', label: t('تحديثات ويندوز') },
 ];
 
 // Read-only collector set dispatched by the "collect all" action.
@@ -24,6 +29,8 @@ const COLLECTOR_JOB_TYPES = [
   'system.info', 'process.list', 'service.list', 'disk.list',
   'inventory.collect', 'session.list', 'network.info',
   'eventlog.tail', 'software.list', 'firewall.state',
+  'windows.features', 'scheduled.tasks', 'local.users',
+  'shares.list', 'hotfix.list',
 ];
 
 const asArray = <T,>(res: unknown): T[] =>

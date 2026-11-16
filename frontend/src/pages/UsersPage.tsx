@@ -43,6 +43,9 @@ export function UsersPage() {
   const [appSubmitting, setAppSubmitting] = useState(false);
   const [appActionUser, setAppActionUser] = useState<string | null>(null);
 
+  // Remote agent local accounts — read-only local.users collector results.
+  const [fleetUsers, setFleetUsers] = useState<any[]>([]);
+
   // Form states
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -94,10 +97,32 @@ export function UsersPage() {
     }
   };
 
+  const fetchFleetUsers = async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetUsers([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          const entry = r?.results?.['local.users'] ?? null;
+          let arr: any[] = [];
+          const raw = entry && !entry.error ? entry.result : null;
+          const src = Array.isArray(raw) ? raw : ((raw as any)?.users ?? (raw as any)?.items ?? []);
+          if (Array.isArray(src)) arr = src.filter((x) => x && typeof x === 'object');
+          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, users: arr };
+        }),
+      );
+      setFleetUsers(detailed);
+    } catch {
+      setFleetUsers([]);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchAppUsers();
     fetchCurrentUser();
+    fetchFleetUsers();
   }, []);
 
   const canManageAppUsers = currentUser?.role === 'admin';
@@ -485,6 +510,65 @@ export function UsersPage() {
           </Table>
         </TableContainer>
       </Card>
+
+      {/* 3b. Remote agent local accounts — read-only local.users collector */}
+      {fleetUsers.length > 0 && (
+        <Card
+          title={t('حسابات وكلاء زِمام (قراءة فقط)')}
+          icon="users"
+          actions={
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              {t('local.users حقيقية: حسابات Windows على كل وكيل')}
+            </span>
+          }
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, padding: '4px 2px' }}>
+            {fleetUsers.map((ag) => (
+              <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                    {ag.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                  {ag.hostname || ag.id.slice(0, 8)}{ag.users.length ? ` · ${ag.users.length} ${t('حساب')}` : ''}
+                </div>
+                {!ag.entry ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الحسابات بعد — أرسله من صفحة الوكلاء.')}</div>
+                ) : ag.entry.error ? (
+                  <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.entry.error}</div>
+                ) : ag.users.length === 0 ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا حسابات مُعادة أو نتيجة غير معروفة.')}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
+                    {ag.users.slice(0, 40).map((u: any, i: number) => {
+                      const uname = String(u.name ?? u.Name ?? u.username ?? '?');
+                      const enabled = u.enabled ?? u.Enabled;
+                      const lastLogon = u.last_logon ?? u.LastLogon ?? '';
+                      const source = u.source ?? u.PrincipalSource ?? '';
+                      return (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={uname}>{uname}</span>
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                            {source && <span style={{ fontSize: 9 }}>{source}</span>}
+                            {lastLogon ? <span style={{ fontSize: 9 }}>{String(lastLogon).slice(0, 10)}</span> : null}
+                            <span style={{ color: enabled === false ? 'var(--unpaid)' : 'var(--paid)' }}>{enabled === false ? t('معطّل') : t('نشط')}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {ag.users.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ag.users.length - 40} {t('حساب آخر')}</div>}
+                    {ag.entry.completed_at && (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.entry.completed_at).toLocaleString('ar-SA')}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* 4. ZIMAM Application Users (operators of the console itself) */}
       <Card

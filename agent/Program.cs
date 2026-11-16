@@ -157,7 +157,8 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     private static readonly HashSet<string> AllowedJobs = new(StringComparer.Ordinal)
     {
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff",
-        "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update"
+        "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
+        "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -303,6 +304,11 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
             observed_at = DateTimeOffset.UtcNow
         },
         "agent.update" => throw new InvalidOperationException("agent.update is handled asynchronously"),
+        "windows.features" => FeatureProbe.ListFeatures(),
+        "scheduled.tasks" => PsProbe.Run("Get-ScheduledTask | Select-Object TaskName,TaskPath,State | ConvertTo-Json -Compress"),
+        "local.users" => PsProbe.Run("Get-LocalUser | ForEach-Object { [pscustomobject]@{ name=$_.Name; enabled=$_.Enabled; last_logon=($_.LastLogon.ToString('yyyy-MM-dd HH:mm')); password_required=$_.PasswordRequired; source=$_.PrincipalSource } } | ConvertTo-Json -Compress"),
+        "shares.list" => PsProbe.Run("Get-SmbShare | ForEach-Object { [pscustomobject]@{ name=$_.Name; path=$_.Path; description=$_.Description; users=$_.CurrentUsers } } | ConvertTo-Json -Compress"),
+        "hotfix.list" => PsProbe.Run("Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 50 | ForEach-Object { [pscustomobject]@{ id=$_.HotFixID; description=$_.Description; installed_on=$_.InstalledOn.ToString('yyyy-MM-dd') } } | ConvertTo-Json -Compress"),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -579,5 +585,87 @@ internal static class FirewallProbe
             results.Add(new { profile = profile.Replace("Profile", ""), enabled, rule_count = ruleCount });
         }
         return new { profiles = results, observed_at = DateTimeOffset.UtcNow };
+    }
+}
+
+internal static class PsProbe
+{
+    // Read-only PowerShell collector: runs a -NoProfile -NonInteractive command
+    // that must emit ConvertTo-Json, and returns the parsed JSON payload.
+    // Non-zero exit codes and timeouts surface as job errors (honest failure).
+    public static JsonElement Run(string command, int timeoutMs = 45000)
+    {
+        var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -NonInteractive -Command \"{command}\"")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = Process.Start(psi)!;
+        // Drain both streams asynchronously before waiting — sequential
+        // ReadToEnd calls can deadlock when the child fills the stderr pipe
+        // buffer while we are still blocked reading stdout.
+        var stdoutTask = proc.StandardOutput.ReadToEndAsync();
+        var stderrTask = proc.StandardError.ReadToEndAsync();
+        if (!proc.WaitForExit(timeoutMs))
+        {
+            try { proc.Kill(true); } catch { }
+            throw new InvalidOperationException("PowerShell collector timed out");
+        }
+        var stdout = stdoutTask.GetAwaiter().GetResult();
+        var stderr = stderrTask.GetAwaiter().GetResult();
+        if (proc.ExitCode != 0)
+        {
+            var msg = stderr.Trim();
+            throw new InvalidOperationException($"powershell exited {proc.ExitCode}: {(msg.Length > 300 ? msg[..300] : msg)}");
+        }
+        if (string.IsNullOrWhiteSpace(stdout))
+            return JsonDocument.Parse("[]").RootElement.Clone();
+        using var doc = JsonDocument.Parse(stdout.Trim());
+        return doc.RootElement.Clone();
+    }
+}
+
+internal static class FeatureProbe
+{
+    // Read-only Windows roles/features via DISM — /english keeps parsing stable
+    // across OS display languages. Requires elevation; failure is reported honestly.
+    public static object ListFeatures()
+    {
+        var psi = new ProcessStartInfo("dism.exe", "/online /get-features /english")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = Process.Start(psi)!;
+        var output = proc.StandardOutput.ReadToEnd();
+        var error = proc.StandardError.ReadToEnd();
+        if (!proc.WaitForExit(120000))
+        {
+            try { proc.Kill(true); } catch { }
+            throw new InvalidOperationException("DISM feature query timed out");
+        }
+        if (proc.ExitCode != 0)
+        {
+            var msg = (error + output).Trim();
+            throw new InvalidOperationException($"dism exited {proc.ExitCode}: {(msg.Length > 300 ? msg[..300] : msg)}");
+        }
+        var items = new List<object>();
+        string? name = null;
+        foreach (var line in output.Split('\n'))
+        {
+            var t = line.Trim();
+            if (t.StartsWith("Feature Name :", StringComparison.OrdinalIgnoreCase))
+                name = t["Feature Name :".Length..].Trim();
+            else if (t.StartsWith("State :", StringComparison.OrdinalIgnoreCase) && name is not null)
+            {
+                items.Add(new { name, state = t["State :".Length..].Trim() });
+                name = null;
+            }
+        }
+        return new { count = items.Count, items, observed_at = DateTimeOffset.UtcNow };
     }
 }

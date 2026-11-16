@@ -59,7 +59,30 @@ interface FleetNetAgent {
   linked_asset: { id: string; name: string; hostname: string } | null;
   net: ResultEntry | null;
   services: ResultEntry | null;
+  features: ResultEntry | null;
+  tasks: ResultEntry | null;
+  hotfixes: ResultEntry | null;
 }
+
+// Generic row extraction for agent collector payloads (array or {items|...}).
+function agentRows(result: unknown, ...keys: string[]): any[] {
+  let arr: unknown = result;
+  if (!Array.isArray(arr) && arr && typeof arr === 'object') {
+    for (const k of keys) {
+      const v = (arr as any)[k];
+      if (Array.isArray(v)) { arr = v; break; }
+    }
+  }
+  return Array.isArray(arr) ? arr.filter((x) => x && typeof x === 'object') : [];
+}
+
+const pickField = (o: any, ...keys: string[]) => {
+  for (const k of keys) {
+    const v = o?.[k];
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+  return '';
+};
 
 interface NetIface {
   label: string;
@@ -145,10 +168,16 @@ export function InfrastructurePage() {
         fleetRes.agents.map(async (ag) => {
           let net: ResultEntry | null = null;
           let services: ResultEntry | null = null;
+          let features: ResultEntry | null = null;
+          let tasks: ResultEntry | null = null;
+          let hotfixes: ResultEntry | null = null;
           const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
           net = r?.results?.['network.info'] ?? null;
           services = r?.results?.['service.list'] ?? null;
-          return { ...ag, net, services };
+          features = r?.results?.['windows.features'] ?? null;
+          tasks = r?.results?.['scheduled.tasks'] ?? null;
+          hotfixes = r?.results?.['hotfix.list'] ?? null;
+          return { ...ag, net, services, features, tasks, hotfixes };
         }),
       );
       setFleetNet(detailed);
@@ -437,6 +466,109 @@ export function InfrastructurePage() {
                       {ag.services.completed_at && (
                         <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.services.completed_at).toLocaleString('ar-SA')}</div>
                       )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* ZIMAM remote agent roles/tasks/hotfixes — real collector data */}
+      {fleetNet.length > 0 && (
+        <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Layers size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('أدوار ومهام مجدولة وتحديثات وكلاء زِمام')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('windows.features + scheduled.tasks + hotfix.list حقيقية لكل وكيل')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+            {fleetNet.map((ag) => {
+              const feats = ag.features && !ag.features.error ? agentRows(ag.features.result, 'items', 'features') : [];
+              const featEnabled = feats.filter((f) => /enable/i.test(String(pickField(f, 'state', 'State'))));
+              const tasks = ag.tasks && !ag.tasks.error ? agentRows(ag.tasks.result, 'tasks', 'items') : [];
+              const fixes = ag.hotfixes && !ag.hotfixes.error ? agentRows(ag.hotfixes.result, 'items', 'hotfixes') : [];
+              const anyData = feats.length + tasks.length + fixes.length;
+              const lastAt = [ag.features?.completed_at, ag.tasks?.completed_at, ag.hotfixes?.completed_at]
+                .filter(Boolean).sort().pop();
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ag.hostname || ag.id.slice(0, 8)}
+                    {anyData > 0 ? ` · ${feats.length} ${t('ميزة')} · ${tasks.length} ${t('مهمة')} · ${fixes.length} ${t('تحديث')}` : ''}
+                  </div>
+                  {anyData === 0 ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                      {!ag.features && !ag.tasks && !ag.hotfixes
+                        ? t('لم تُرسل هذه القياسات بعد — أرسلها من صفحة الوكلاء.')
+                        : t('لا بيانات — راجع أخطاء الجامعين أدناه.')}
+                      {ag.features?.error && <div className="text-status-danger" style={{ marginTop: 4 }}>{t('ميزات:')} {ag.features.error}</div>}
+                      {ag.tasks?.error && <div className="text-status-danger" style={{ marginTop: 4 }}>{t('مهام:')} {ag.tasks.error}</div>}
+                      {ag.hotfixes?.error && <div className="text-status-danger" style={{ marginTop: 4 }}>{t('تحديثات:')} {ag.hotfixes.error}</div>}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {feats.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', marginBottom: 4 }}>
+                            {t('الأدوار والميزات المفعّلة')} ({featEnabled.length}/{feats.length})
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 90, overflowY: 'auto' }}>
+                            {feats.filter((f) => /enable/i.test(String(pickField(f, 'state', 'State')))).slice(0, 12).map((f, i) => (
+                              <div key={i} style={{ fontSize: 10, color: 'var(--text-2)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {pickField(f, 'name', 'Name', 'FeatureName')}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {tasks.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', marginBottom: 4 }}>
+                            {t('المهام المجدولة')} ({tasks.length})
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 90, overflowY: 'auto' }}>
+                            {tasks.slice(0, 12).map((tk, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, padding: '3px 6px', borderRadius: 5, background: 'var(--surface-ground)' }}>
+                                <span style={{ color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
+                                  {pickField(tk, 'TaskName', 'name', 'taskName')}
+                                </span>
+                                <span style={{ color: 'var(--text-3)', flexShrink: 0 }}>{pickField(tk, 'State', 'state')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {fixes.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', marginBottom: 4 }}>
+                            {t('آخر التحديثات المثبتة')}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {fixes.slice(0, 8).map((f, i) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, padding: '3px 6px', borderRadius: 5, background: 'var(--surface-ground)' }}>
+                                <span style={{ color: 'var(--text-2)', fontFamily: 'var(--font-telemetry)', direction: 'ltr' }}>
+                                  {pickField(f, 'id', 'HotFixID', 'hotfix_id')}
+                                </span>
+                                <span style={{ color: 'var(--text-3)' }}>{pickField(f, 'installed_on', 'InstalledOn', 'installedOn')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {lastAt && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(lastAt).toLocaleString('ar-SA')}</div>}
                     </div>
                   )}
                 </div>

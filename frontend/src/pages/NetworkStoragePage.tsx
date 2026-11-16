@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   HardDrive,
   Network,
@@ -23,6 +24,7 @@ import {
   Radio,
   Wifi,
 } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 import { t } from '../lib/i18n';
 
 export function NetworkStoragePage() {
@@ -64,6 +66,34 @@ export function NetworkStoragePage() {
   const [tcpPort, setTcpPort] = useState(8765);
   const [tcpResult, setTcpResult] = useState<any>(null);
   const [testingTcp, setTestingTcp] = useState(false);
+
+  // Remote agent SMB shares — read-only shares.list collector results.
+  const [fleetShares, setFleetShares] = useState<any[]>([]);
+
+  const fetchFleetShares = async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetShares([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          const entry = r?.results?.['shares.list'] ?? null;
+          let arr: any[] = [];
+          const raw = entry && !entry.error ? entry.result : null;
+          const src = Array.isArray(raw) ? raw : ((raw as any)?.shares ?? (raw as any)?.items ?? []);
+          if (Array.isArray(src)) arr = src.filter((x) => x && typeof x === 'object');
+          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, shares: arr };
+        }),
+      );
+      setFleetShares(detailed);
+    } catch {
+      setFleetShares([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchFleetShares();
+  }, []);
 
   const fetchDisks = async () => {
     try {
@@ -253,6 +283,68 @@ export function NetworkStoragePage() {
           <span>{t('تحديث')}</span>
         </Button>
       </div>
+
+      {/* ZIMAM remote agent shares — read-only shares.list collector data */}
+      {fleetShares.length > 0 && (
+        <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Share2 size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('مشاركات وكلاء زِمام (قراءة فقط)')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('shares.list حقيقية: مشاركات SMB على كل وكيل')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+            {fleetShares.map((ag) => (
+              <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                    {ag.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                  {ag.hostname || ag.id.slice(0, 8)}{ag.shares.length ? ` · ${ag.shares.length} ${t('مشاركة')}` : ''}
+                </div>
+                {!ag.entry ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع المشاركات بعد — أرسله من صفحة الوكلاء.')}</div>
+                ) : ag.entry.error ? (
+                  <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.entry.error}</div>
+                ) : ag.shares.length === 0 ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا مشاركات SMB أو نتيجة غير معروفة.')}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
+                    {ag.shares.slice(0, 40).map((s: any, i: number) => {
+                      const sname = String(s.name ?? s.Name ?? '?');
+                      const spath = String(s.path ?? s.Path ?? '');
+                      const sdesc = String(s.description ?? s.Description ?? '');
+                      const users = s.users ?? s.CurrentUsers ?? '';
+                      return (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={`${sname} → ${spath}`}>
+                            \\{ag.hostname || ag.name}\{sname}
+                          </span>
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                            {users !== '' && users !== null && <span style={{ fontSize: 9 }}>{t('مستخدمون')}: {users}</span>}
+                            {sdesc && <span style={{ fontSize: 9 }}>{sdesc}</span>}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {ag.shares.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ag.shares.length - 40} {t('مشاركة أخرى')}</div>}
+                    {ag.entry.completed_at && (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.entry.completed_at).toLocaleString('ar-SA')}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--glass-rim)', paddingBottom: 8, flexWrap: 'wrap' }}>
