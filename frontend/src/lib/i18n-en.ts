@@ -1673,4 +1673,10 @@ export const EN: Record<string, string> = {
   'جارٍ تحميل قياسات الوكيل...': 'Loading agent telemetry…',
   'لا يوجد وكيل ASAAS مطابق لاسم المضيف — ثبّت وكيلاً على هذا الخادم لتظهر القياسات الحقيقية هنا.': 'No ASAAS agent matches this hostname — install an agent on this server to see real telemetry here.',
   'الوكيل مرتبط لكن لا توجد نتائج مهام بعد — أرسل مهام جمع من صفحة الوكلاء.': 'Agent linked but no job results yet — dispatch collection jobs from the Agents page.',
+  'الأصل المرتبط': 'Linked asset',
+  'قياسات': 'Collect',
+  'تشغيل كل مهام الجمع دفعة واحدة': 'Dispatch all collector jobs at once',
+  'تم إرسال كل مهام الجمع — ستظهر النتائج خلال ~30 ثانية في زر «نتائج».': 'All collection jobs dispatched — results appear under "Results" in ~30s.',
+  'أُرسلت': 'Dispatched',
+  'مهمة — بعضها فشل': 'jobs — some failed',
 };

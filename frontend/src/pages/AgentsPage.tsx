@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Button, Modal, Field, Select, TextInput, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
-import { apiV1, type V1Agent, type V1AgentJob } from '../lib/apiV1';
-import { Bot, ClipboardList, DownloadCloud, Play, RefreshCw, Terminal } from 'lucide-react';
+import { apiV1, type V1Agent, type V1AgentJob, type V1Asset } from '../lib/apiV1';
+import { Bot, ClipboardList, DownloadCloud, Play, Radar, RefreshCw, Terminal } from 'lucide-react';
 import { t } from '../lib/i18n';
 
 const JOB_TYPES = [
@@ -18,17 +18,30 @@ const JOB_TYPES = [
   { value: 'agent.update', label: t('تحديث الوكيل') },
 ];
 
+// Read-only collector set dispatched by the "collect all" action.
+// session.logoff and agent.update are intentionally excluded (not collectors).
+const COLLECTOR_JOB_TYPES = [
+  'system.info', 'process.list', 'service.list', 'disk.list',
+  'inventory.collect', 'session.list', 'network.info',
+  'eventlog.tail', 'software.list', 'firewall.state',
+];
+
 const asArray = <T,>(res: unknown): T[] =>
-  Array.isArray(res) ? (res as T[]) : Array.isArray((res as { agents?: T[]; jobs?: T[] })?.agents)
-    ? (res as { agents: T[] }).agents
-    : Array.isArray((res as { jobs?: T[] })?.jobs)
-      ? (res as { jobs: T[] }).jobs
-      : [];
+  Array.isArray(res) ? (res as T[])
+    : Array.isArray((res as { agents?: T[]; jobs?: T[]; assets?: T[] })?.agents)
+      ? (res as { agents: T[] }).agents
+      : Array.isArray((res as { jobs?: T[]; assets?: T[] })?.jobs)
+        ? (res as { jobs: T[] }).jobs
+        : Array.isArray((res as { assets?: T[] })?.assets)
+          ? (res as { assets: T[] }).assets
+          : [];
 
 export function AgentsPage() {
   const toast = useToast();
   const [agents, setAgents] = useState<V1Agent[]>([]);
+  const [assets, setAssets] = useState<V1Asset[]>([]);
   const [jobs, setJobs] = useState<V1AgentJob[]>([]);
+  const [collectingId, setCollectingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [jobModalAgent, setJobModalAgent] = useState<V1Agent | null>(null);
   const [jobType, setJobType] = useState('system.info');
@@ -87,8 +100,12 @@ export function AgentsPage() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [a, j, b] = await Promise.all([apiV1.agents(), apiV1.jobs(), apiV1.updateBundleStatus().catch(() => null)]);
+      const [a, j, b, ast] = await Promise.all([
+        apiV1.agents(), apiV1.jobs(), apiV1.updateBundleStatus().catch(() => null),
+        apiV1.assets().catch(() => []),
+      ]);
       setAgents(asArray<V1Agent>(a));
+      setAssets(asArray<V1Asset>(ast));
       setJobs(asArray<V1AgentJob>(j));
       setBundle(b as Record<string, unknown> | null);
     } catch (err: any) {
@@ -99,6 +116,38 @@ export function AgentsPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  const agentHostname = (a: V1Agent): string => {
+    const inv = (a.inventory || {}) as Record<string, unknown>;
+    return String(inv.hostname || '').toLowerCase();
+  };
+
+  const linkedAsset = (a: V1Agent): V1Asset | null => {
+    const hn = agentHostname(a);
+    if (!hn) return null;
+    return assets.find((ast) => {
+      const ah = String(ast.hostname || '').toLowerCase();
+      return ah && (ah === hn || ah.includes(hn) || hn.includes(ah));
+    }) || null;
+  };
+
+  const collectAll = async (agent: V1Agent) => {
+    setCollectingId(agent.id);
+    try {
+      const results = await Promise.allSettled(
+        COLLECTOR_JOB_TYPES.map((job_type) => apiV1.createJob({ agent_id: agent.id, job_type, payload: {} })),
+      );
+      const ok = results.filter((r) => r.status === 'fulfilled').length;
+      if (ok === COLLECTOR_JOB_TYPES.length) {
+        toast(t('تم إرسال كل مهام الجمع — ستظهر النتائج خلال ~30 ثانية في زر «نتائج».'), 'success');
+      } else {
+        toast(`${t('أُرسلت')} ${ok}/${COLLECTOR_JOB_TYPES.length} ${t('مهمة — بعضها فشل')}`, 'error');
+      }
+      setTimeout(fetchAll, 30000);
+    } finally {
+      setCollectingId(null);
+    }
+  };
 
   const dispatchJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,12 +190,13 @@ export function AgentsPage() {
                 <TableHead>{t('الحالة')}</TableHead>
                 <TableHead>{t('آخر ظهور')}</TableHead>
                 <TableHead>{t('الجرد')}</TableHead>
+                <TableHead>{t('الأصل المرتبط')}</TableHead>
                 <TableHead style={{ textAlign: 'end' }}>{t('إجراء')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {agents.length === 0 ? (
-                <TableEmpty colSpan={5} message={loading ? t('جارٍ التحميل...') : t('لا يوجد وكلاء مسجلون. سجّل وكيلاً عبر POST /api/v1/agents/enroll.')} />
+                <TableEmpty colSpan={6} message={loading ? t('جارٍ التحميل...') : t('لا يوجد وكلاء مسجلون. سجّل وكيلاً عبر POST /api/v1/agents/enroll.')} />
               ) : agents.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-bold text-title">
@@ -163,8 +213,21 @@ export function AgentsPage() {
                   <TableCell className="text-xs text-muted font-telemetry">
                     {a.inventory?.hostname ? String(a.inventory.hostname) : '—'}
                   </TableCell>
+                  <TableCell className="text-xs">
+                    {(() => {
+                      const ast = linkedAsset(a);
+                      return ast ? (
+                        <span className="text-title font-bold">{ast.name}<span className="text-muted font-telemetry" dir="ltr"> · {ast.hostname}</span></span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell style={{ textAlign: 'end' }}>
                     <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <Button size="sm" variant="glass" onClick={() => collectAll(a)} loading={collectingId === a.id} title={t('تشغيل كل مهام الجمع دفعة واحدة')} style={{ fontSize: 11, padding: '3px 8px' }}>
+                        <Radar size={11} style={{ marginInlineEnd: 4 }} />{t('قياسات')}
+                      </Button>
                       <Button size="sm" variant="glass" onClick={() => openResults(a)} style={{ fontSize: 11, padding: '3px 8px' }}>
                         <ClipboardList size={11} style={{ marginInlineEnd: 4 }} />{t('نتائج')}
                       </Button>
