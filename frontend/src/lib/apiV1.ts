@@ -287,6 +287,10 @@ export const apiV1 = {
     post<{ id?: string; status?: string }>('/jobs', body),
   listJobs: (agentId?: string) =>
     request<unknown>(`/jobs${agentId ? `?agent_id=${encodeURIComponent(agentId)}` : ''}`),
+  agentLatestResults: (agentId: string) =>
+    request<{ agent_id: string; results: Record<string, { job_id: string; completed_at: string | null; result: unknown; error: string | null }> }>(
+      `/agents/${encodeURIComponent(agentId)}/results/latest`,
+    ),
   agentHeartbeat: (agentId: string, agentKey: string, inventory: Record<string, unknown>) =>
     request<unknown>(`/agents/${agentId}/heartbeat`, {
       method: 'POST',

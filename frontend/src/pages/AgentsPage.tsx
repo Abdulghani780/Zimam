@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Button, Modal, Field, Select, TextInput, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { apiV1, type V1Agent, type V1AgentJob } from '../lib/apiV1';
-import { Bot, DownloadCloud, Play, RefreshCw, Terminal } from 'lucide-react';
+import { Bot, ClipboardList, DownloadCloud, Play, RefreshCw, Terminal } from 'lucide-react';
 import { t } from '../lib/i18n';
 
 const JOB_TYPES = [
@@ -38,6 +38,24 @@ export function AgentsPage() {
   const [bundleVersion, setBundleVersion] = useState('');
   const [bundleSha, setBundleSha] = useState('');
   const [bundleBusy, setBundleBusy] = useState(false);
+  const [resultsAgent, setResultsAgent] = useState<V1Agent | null>(null);
+  const [latestResults, setLatestResults] = useState<Record<string, { job_id: string; completed_at: string | null; result: unknown; error: string | null }>>({});
+  const [resultsLoading, setResultsLoading] = useState(false);
+
+  const openResults = async (agent: V1Agent) => {
+    setResultsAgent(agent);
+    setLatestResults({});
+    setResultsLoading(true);
+    try {
+      const res = await apiV1.agentLatestResults(agent.id);
+      setLatestResults(res.results || {});
+    } catch (err: any) {
+      toast(err.message || t('فشل جلب نتائج الوكيل'), 'error');
+      setResultsAgent(null);
+    } finally {
+      setResultsLoading(false);
+    }
+  };
 
   const sha256Hex = async (file: File) => {
     const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
@@ -146,9 +164,14 @@ export function AgentsPage() {
                     {a.inventory?.hostname ? String(a.inventory.hostname) : '—'}
                   </TableCell>
                   <TableCell style={{ textAlign: 'end' }}>
-                    <Button size="sm" variant="glass" onClick={() => setJobModalAgent(a)} style={{ fontSize: 11, padding: '3px 8px' }}>
-                      <Play size={11} style={{ marginInlineEnd: 4 }} />{t('مهمة')}
-                    </Button>
+                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <Button size="sm" variant="glass" onClick={() => openResults(a)} style={{ fontSize: 11, padding: '3px 8px' }}>
+                        <ClipboardList size={11} style={{ marginInlineEnd: 4 }} />{t('نتائج')}
+                      </Button>
+                      <Button size="sm" variant="glass" onClick={() => setJobModalAgent(a)} style={{ fontSize: 11, padding: '3px 8px' }}>
+                        <Play size={11} style={{ marginInlineEnd: 4 }} />{t('مهمة')}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -239,6 +262,51 @@ export function AgentsPage() {
           </Table>
         </TableContainer>
       </Card>
+
+      {resultsAgent && (
+        <Modal open onClose={() => setResultsAgent(null)} title={`${t('آخر نتائج مجمّعة — ')}${resultsAgent.name || resultsAgent.id}`} wide>
+          {resultsLoading ? (
+            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>{t('جارٍ التحميل...')}</p>
+          ) : Object.keys(latestResults).length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--text-3)' }}>{t('لا توجد نتائج ناجحة بعد — أرسل مهمة قراءة من زر «مهمة».')}</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxHeight: '65vh', overflowY: 'auto' }}>
+              {Object.entries(latestResults).map(([jobType, entry]) => (
+                <div key={jobType} style={{ border: '1px solid var(--accent-soft)', borderRadius: 12, padding: '12px 14px', background: 'var(--glass-rim-low)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)', fontFamily: 'var(--font-telemetry)' }} dir="ltr">{jobType}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-3)' }}>
+                      {entry.completed_at ? new Date(entry.completed_at).toLocaleString('ar-SA') : '—'}
+                    </span>
+                  </div>
+                  {entry.error ? (
+                    <span className="text-status-danger" style={{ fontSize: 12 }}>{entry.error}</span>
+                  ) : (
+                    <pre
+                      dir="ltr"
+                      style={{
+                        margin: 0,
+                        fontSize: 11,
+                        fontFamily: 'var(--font-telemetry)',
+                        color: 'var(--text-2)',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        maxHeight: 220,
+                        overflowY: 'auto',
+                        background: 'var(--surface-ground)',
+                        borderRadius: 8,
+                        padding: 10,
+                      }}
+                    >
+                      {JSON.stringify(entry.result, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Modal>
+      )}
 
       {jobModalAgent && (
         <Modal open onClose={() => setJobModalAgent(null)} title={`${t('إرسال مهمة موقعة إلى ')}${jobModalAgent.name || jobModalAgent.id}`}>

@@ -1010,6 +1010,41 @@ def download_agent_update(agent_id: str, x_agent_key: str | None = Header(defaul
     )
 
 
+@router.get("/agents/{agent_id}/results/latest")
+def agent_latest_results(agent_id: str, _: User = Depends(_current_user)) -> dict:
+    """Latest succeeded result per collector job type for one agent.
+
+    Agent job results already persist in ``agent_jobs.result_json``; this
+    read-model dedupes to the most recent success per ``job_type`` so the UI
+    can render real collector output (system.info, service.list, network.info…)
+    without replaying job history.
+    """
+    with db_session() as db:
+        agent = db.get(Agent, agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        rows = list(db.scalars(
+            select(AgentJob)
+            .where(AgentJob.agent_id == agent_id, AgentJob.status == "succeeded", AgentJob.result_json.is_not(None))
+            .order_by(AgentJob.completed_at.desc())
+        ))
+    latest: dict[str, dict] = {}
+    for job in rows:
+        if job.job_type in latest:
+            continue
+        try:
+            payload = json.loads(job.result_json)
+        except (TypeError, ValueError):
+            continue
+        latest[job.job_type] = {
+            "job_id": job.id,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            "result": payload.get("result") if isinstance(payload, dict) else payload,
+            "error": payload.get("error") if isinstance(payload, dict) else None,
+        }
+    return {"agent_id": agent_id, "results": latest}
+
+
 @router.post("/jobs", status_code=201)
 def create_job(payload: JobCreateRequest, user: User = Depends(_current_user)) -> dict:
     _require_writer(user)

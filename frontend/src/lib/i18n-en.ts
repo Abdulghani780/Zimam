@@ -1665,4 +1665,8 @@ export const EN: Record<string, string> = {
   'انقطع الاتصال بالجلسة عن بُعد.': 'Remote session connection lost.',
   'تعذّر فتح نفق الجلسة.': 'Could not open the session tunnel.',
   'إغلاق': 'Close',
+  'نتائج': 'Results',
+  'آخر نتائج مجمّعة — ': 'Latest aggregated results — ',
+  'لا توجد نتائج ناجحة بعد — أرسل مهمة قراءة من زر «مهمة».': 'No successful results yet — send a read job via the "Job" button.',
+  'فشل جلب نتائج الوكيل': 'Failed to fetch agent results',
 };
