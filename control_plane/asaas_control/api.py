@@ -183,6 +183,51 @@ def health() -> dict:
     return {"status": "ok", "service": "asaas-control-plane", "authenticated": False}
 
 
+# --- First-run setup wizard (appliance) ---------------------------------------
+# Public endpoints that exist only until the first administrator is created.
+# After that they return 409 forever — no token required because the appliance
+# binds localhost and whoever reaches the console first owns the box anyway.
+
+
+class SetupCompleteRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=12, max_length=256)
+    full_name: str = Field(default="", max_length=128)
+    license_token: str | None = Field(default=None, max_length=8192)
+
+
+@router.get("/setup/status")
+def setup_status() -> dict:
+    with db_session() as db:
+        total = db.scalar(select(func.count()).select_from(User)) or 0
+    state = get_license_state()
+    return {"needs_setup": total == 0, "user_count": total, "license": state.to_dict()}
+
+
+@router.post("/setup/complete", status_code=201)
+def setup_complete(payload: SetupCompleteRequest, response: Response) -> dict:
+    username = payload.username.strip()
+    with db_session() as db:
+        if db.scalar(select(User.id).limit(1)):
+            raise HTTPException(status_code=409, detail="Setup already completed")
+        user = User(id=uuid.uuid4().hex, username=username, password_hash=hash_password(payload.password), is_admin=True, role="admin", full_name=payload.full_name or username, created_at=datetime.now(UTC))
+        db.add(user)
+        db.flush()
+        append_audit(db, actor_id=user.id, action="setup.complete", payload={"username": username})
+        user_id = user.id
+
+    if payload.license_token:
+        try:
+            lic = activate_license(payload.license_token)
+        except LicenseError as exc:
+            raise HTTPException(status_code=400, detail=f"Administrator created, but the license was rejected: {exc}") from exc
+        with db_session() as db:
+            append_audit(db, actor_id=user_id, action="license.activate", target_id=lic.license_id, payload={"tier": lic.tier, "source": "setup"})
+
+    _set_session(response, user_id)
+    return {"authenticated": True, "user_id": user_id, "username": username}
+
+
 @router.post("/auth/bootstrap", status_code=201)
 def bootstrap(payload: BootstrapRequest, x_bootstrap_token: str | None = Header(default=None)) -> dict:
     _bootstrap_token(x_bootstrap_token)

@@ -1,7 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { RequireAuth } from './components/RequireAuth';
+import { apiV1 } from './lib/apiV1';
 
 const lazyPage = <T extends Record<string, React.ComponentType>>(loader: () => Promise<T>, name: keyof T) =>
   lazy(() => loader().then((m) => ({ default: m[name] as React.ComponentType })));
@@ -29,6 +30,7 @@ const BastionPage = lazyPage(() => import('./pages/BastionPage'), 'BastionPage')
 const AgentsPage = lazyPage(() => import('./pages/AgentsPage'), 'AgentsPage');
 const ZeroTrustLoginPage = lazyPage(() => import('./pages/ZeroTrustLoginPage'), 'ZeroTrustLoginPage');
 const PerimeterLockoutPage = lazyPage(() => import('./pages/PerimeterLockoutPage'), 'PerimeterLockoutPage');
+const SetupWizardPage = lazyPage(() => import('./pages/SetupWizardPage'), 'SetupWizardPage');
 
 const PageFallback = () => (
   <div style={{ display: 'grid', placeItems: 'center', minHeight: '40vh', color: 'var(--text-3)' }}>
@@ -37,6 +39,27 @@ const PageFallback = () => (
 );
 
 export default function App() {
+  // First-run gate: while the appliance has zero users, the setup wizard
+  // replaces the whole console. /api/v1/setup/status seals itself after the
+  // first admin exists, so this check is cheap and one-shot per boot.
+  const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
+  useEffect(() => {
+    apiV1.setupStatus()
+      .then((s) => setNeedsSetup(Boolean(s?.needs_setup)))
+      .catch(() => setNeedsSetup(false)); // API unreachable — let RequireAuth handle it
+  }, []);
+
+  if (needsSetup === null) {
+    return <PageFallback />;
+  }
+  if (needsSetup) {
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <SetupWizardPage />
+      </Suspense>
+    );
+  }
+
   return (
     <Suspense fallback={<PageFallback />}>
     <Routes>

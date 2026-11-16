@@ -34,6 +34,7 @@ FEATURE_RULES: list[tuple[re.Pattern, str]] = [
 # Mutating paths that stay writable even when the license is expired.
 EXPIRED_WRITE_WHITELIST = [
     re.compile(r"^/api/v1/auth/"),
+    re.compile(r"^/api/v1/setup"),  # first-run wizard must always be reachable
     re.compile(r"^/api/v1/license"),
     re.compile(r"^/api/v1/bootstrap"),
     re.compile(r"^/api/v1/health"),

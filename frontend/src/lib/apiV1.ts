@@ -268,6 +268,17 @@ export const apiV1 = {
       body: JSON.stringify({ inventory }),
     }),
 
+  // First-run setup wizard (public until first admin exists)
+  setupStatus: () =>
+    request<{ needs_setup?: boolean; user_count?: number; license?: Record<string, unknown> }>('/setup/status'),
+  setupComplete: (body: { username: string; password: string; full_name?: string; license_token?: string }) =>
+    post<{ authenticated?: boolean; user_id?: string; username?: string }>('/setup/complete', body),
+
+  // License & entitlements
+  licenseStatus: () => request<Record<string, unknown>>('/license'),
+  activateLicense: (token: string) => post<{ ok?: boolean; tier?: string; expires_at?: string }>('/license/activate', { token }),
+  deactivateLicense: () => post<unknown>('/license/deactivate'),
+
   // Audit & ops
   auditEvents: (params?: { limit?: number; offset?: number }) => {
     const q = new URLSearchParams();
