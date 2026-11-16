@@ -21,3 +21,26 @@ every poll) before executing, then posts the result to
 
 The signing seed persists at `ASAAS_JOB_SIGNING_KEY_FILE` (default
 `data/agent-signing.key`) or `ASAAS_JOB_SIGNING_KEY` (hex). All other write/destructive actions are intentionally not in the allowlist. `session.logoff` is the single reviewed write job: it requires `{"session_id": <positive int>}` in the signed payload and refuses invalid ids.
+
+## Service installation
+
+The published `Asaas.WindowsAgent.exe` is self-contained — no .NET runtime needed
+on the target. Manage it as a Windows service from an **elevated** prompt:
+
+```powershell
+# Set connection config first (persisted into the service registry Environment)
+$env:ASAAS_CONTROL_PLANE_URL = "http://<console-host>:8876"
+$env:ASAAS_AGENT_ID = "<id from enrollment>"
+$env:ASAAS_AGENT_KEY = "<key from enrollment>"
+$env:ASAAS_AGENT_CERT_PATH = "C:\ProgramData\ASAAS\agent.pfx"   # optional mTLS
+
+.\Asaas.WindowsAgent.exe install     # creates auto-start service "ASAAS Windows Agent"
+.\Asaas.WindowsAgent.exe status      # sc.exe query
+.\Asaas.WindowsAgent.exe uninstall   # stop + delete
+```
+
+`install` persists every `ASAAS_*` env var into
+`HKLM\SYSTEM\CurrentControlSet\Services\ASAAS Windows Agent\Environment`, so the
+service inherits them at start. To change config later, update that registry
+value (REG_MULTI_SZ) and restart the service. Without the env vars the agent
+logs that `ASAAS_AGENT_ID`/`ASAAS_AGENT_KEY` are required and idles.

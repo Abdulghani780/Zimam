@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 import sys
 from contextlib import asynccontextmanager
@@ -10,16 +12,44 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .api import router
+from .backup import create_backup, prune_backups
 from .config import settings
 from .entitlements import license_guard
 from .legacy_proxy import router as legacy_proxy_router
 from .storage import init_db
 
+log = logging.getLogger("asaas_control.backup")
+
+_BACKUP_INTERVAL_HOURS = float(os.getenv("ASAAS_BACKUP_INTERVAL_HOURS", "24"))
+_BACKUP_KEEP = int(os.getenv("ASAAS_BACKUP_KEEP", "14"))
+
+
+async def _backup_loop() -> None:
+    """Periodic online SQLite backup + retention prune.
+
+    Interval/retention are env-tunable; ``ASAAS_BACKUP_INTERVAL_HOURS=0``
+    disables the scheduler entirely (manual ``POST /system/backup`` still works).
+    """
+    if _BACKUP_INTERVAL_HOURS <= 0:
+        return
+    while True:
+        await asyncio.sleep(_BACKUP_INTERVAL_HOURS * 3600)
+        try:
+            result = create_backup()
+            removed = prune_backups(_BACKUP_KEEP)
+            log.info("scheduled backup %s (%d bytes), pruned %d", result["file"], result["size_bytes"], removed)
+        except Exception:
+            log.exception("scheduled backup failed")
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    yield
+    task = asyncio.create_task(_backup_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
 
 
 app = FastAPI(title="ASAAS Control Plane", version="1.0.0", lifespan=lifespan)

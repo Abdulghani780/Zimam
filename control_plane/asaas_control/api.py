@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from .audit import AuditChain
+from .backup import create_backup
 from .config import settings
 from .connection_tokens import ConnectionTokenStore
 from .identity import verify_legacy_password
@@ -575,48 +576,15 @@ def system_backup(user: User = Depends(_current_user)) -> dict:
     """Online backup of the control-plane SQLite database into data/backups/.
 
     Uses the SQLite backup API so the copy is consistent while the server is
-    running. Contains credential material — admin only. Off-box replication
-    and MinIO retention remain deployment concerns.
+    running. Contains credential material — admin only. The same routine backs
+    the scheduled loop in ``app.py``; off-box replication remains a deployment
+    concern.
     """
     _require_admin(user)
-    db_path = settings.database_url.removeprefix("sqlite:///")
-    if not os.path.isabs(db_path):
-        db_path = os.path.abspath(db_path)
-    if not os.path.exists(db_path):
-        raise HTTPException(status_code=503, detail="Control-plane database file not found")
-    backup_dir = Path(db_path).parent / "backups"
-    backup_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    target = backup_dir / f"control_plane_{stamp}.db"
-
-    counts: dict[str, int] = {}
-    src = sqlite3.connect(db_path)
-    dst = sqlite3.connect(target)
     try:
-        src.backup(dst)
-        for (table,) in dst.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        ):
-            counts[table] = dst.execute(f"SELECT COUNT(*) FROM \"{table}\"").fetchone()[0]
-    finally:
-        dst.close()
-        src.close()
-
-    digest = hashlib.sha256(target.read_bytes()).hexdigest()
-    manifest = {
-        "created_at": datetime.now(UTC).isoformat(),
-        "source": os.path.basename(db_path),
-        "file": target.name,
-        "sha256": digest,
-        "size_bytes": target.stat().st_size,
-        "row_counts": counts,
-        "created_by": user.username,
-    }
-    (backup_dir / f"control_plane_{stamp}.manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-
-    with db_session() as db:
-        append_audit(db, actor_id=user.id, action="system.backup", target_id=target.name, payload={"sha256": digest, "size_bytes": manifest["size_bytes"]})
-    return {"file": target.name, "path": str(target), "size_bytes": manifest["size_bytes"], "sha256": digest, "row_counts": counts}
+        return create_backup(created_by=user.username, actor_id=user.id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="Control-plane database file not found") from None
 
 
 # --- License & entitlements ---------------------------------------------------

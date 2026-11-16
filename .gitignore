@@ -82,5 +82,10 @@ data/license-signing.key
 data/license.json
 data/license-pubkey.hex
 data/.first_boot
+# Any key/cert material dropped under data/ stays out of source control.
+data/*.key
+data/*.pem
+data/*.pfx
+data/*.p12
 
 installer-out/

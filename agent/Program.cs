@@ -10,6 +10,74 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Win32;
 using NSec.Cryptography;
 
+// --- CLI management commands -------------------------------------------------
+// `Asaas.WindowsAgent.exe install|uninstall|status` manages the Windows service
+// without needing sc.exe by hand. `install` must run elevated; it registers the
+// service for auto-start and persists ASAAS_* environment variables into the
+// service's registry Environment value so the agent can reach the control plane.
+const string ServiceName = "ASAAS Windows Agent";
+
+static int Sc(params string[] scArgs)
+{
+    var psi = new ProcessStartInfo("sc.exe", string.Join(' ', scArgs.Select(a => a.Contains(' ') ? $"\"{a}\"" : a)))
+    {
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true,
+    };
+    using var p = Process.Start(psi)!;
+    var output = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
+    p.WaitForExit();
+    Console.WriteLine(output.Trim());
+    return p.ExitCode;
+}
+
+static int InstallService()
+{
+    var exe = Environment.ProcessPath;
+    if (exe is null) { Console.Error.WriteLine("Cannot resolve executable path."); return 1; }
+    var binPath = $"\"{exe}\"";
+    if (Sc("create", ServiceName, $"binPath= {binPath}", "start= auto", $"DisplayName= {ServiceName}") != 0) return 1;
+    Sc("description", ServiceName, "ASAAS Server Control outbound agent - polls for signed jobs and reports inventory.");
+
+    var envVars = Environment.GetEnvironmentVariables()
+        .Cast<System.Collections.DictionaryEntry>()
+        .Where(e => e.Key.ToString()?.StartsWith("ASAAS_", StringComparison.OrdinalIgnoreCase) == true)
+        .Select(e => $"{e.Key}={e.Value}")
+        .ToArray();
+    if (envVars.Length > 0)
+    {
+        using var key = Registry.LocalMachine.CreateSubKey($@"SYSTEM\CurrentControlSet\Services\{ServiceName}");
+        key?.SetValue("Environment", envVars, RegistryValueKind.MultiString);
+        Console.WriteLine($"Persisted {envVars.Length} ASAAS_* environment variable(s) for the service.");
+    }
+    else
+    {
+        Console.WriteLine("No ASAAS_* env vars found - set ASAAS_CONTROL_PLANE_URL / ASAAS_AGENT_ID / ASAAS_AGENT_KEY before install, or via registry Environment afterwards.");
+    }
+    Console.WriteLine($"Service '{ServiceName}' installed (auto-start). Start it with: sc.exe start \"{ServiceName}\"");
+    return 0;
+}
+
+static int UninstallService()
+{
+    Sc("stop", ServiceName);
+    return Sc("delete", ServiceName);
+}
+
+var cli = args.FirstOrDefault()?.ToLowerInvariant();
+if (cli is "install" or "uninstall" or "status")
+{
+    var code = cli switch
+    {
+        "install" => InstallService(),
+        "uninstall" => UninstallService(),
+        _ => Sc("query", ServiceName),
+    };
+    Environment.Exit(code);
+}
+
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options => options.ServiceName = "ASAAS Windows Agent");
 builder.Services.AddHttpClient("control-plane", client =>
