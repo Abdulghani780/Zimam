@@ -81,8 +81,14 @@ export function UsersPage() {
 
   const fetchCurrentUser = async () => {
     try {
-      const res = await api.getCurrentUser();
-      if (res?.ok && res.user) setCurrentUser(res.user);
+      const res = await apiV1.me();
+      if (res?.username) {
+        setCurrentUser({
+          username: res.username,
+          role: res.is_admin ? 'admin' : (res.role || 'viewer'),
+          full_name: res.full_name || '',
+        } as AppUser);
+      }
     } catch {
       // ignore; role-based controls remain hidden until identity resolves
     }
