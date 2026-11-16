@@ -87,5 +87,7 @@ data/*.key
 data/*.pem
 data/*.pfx
 data/*.p12
+data/tls/
+control-plane.env
 
 installer-out/

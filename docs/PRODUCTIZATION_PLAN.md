@@ -154,36 +154,37 @@ Windows Services:
 
 ## 5. خارطة الطريق — المراحل
 
-### Phase A — أساس المنتج (الأولوية القصوى)
+### Phase A — أساس المنتج (الأولوية القصوى) ✅ مكتملة
 
-1. `tools/build-release.ps1` — يبني frontend + PyInstaller للبايثونين + agent publish + يتحقق من المخرجات
-2. `packaging/asaas.iss` — Inno Setup script كامل (services + firewall + start menu + data ACLs)
-3. `asaas_control/license.py` — نموذج License + تحقق Ed25519 + `GET /api/v1/license` + `POST /api/v1/license/activate`
-4. `asaas_control/entitlements.py` — middleware يفرض max_agents/max_users/features + read-only expiry mode
-5. First-run `/setup` wizard في الواجهة (شروط: DB فارغة + لا license)
-6. `tools/sign-license.py` — أداة لك (البائع) لتوقيع licenses
+1. ✅ `tools/build-release.ps1` — يبني frontend + PyInstaller للبايثونين + agent publish + يتحقق من المخرجات
+2. ✅ `packaging/asaas.iss` — Inno Setup script كامل (services + firewall + start menu + data ACLs)
+3. ✅ `asaas_control/license.py` — نموذج License + تحقق Ed25519 + `GET /api/v1/license` + `POST /api/v1/license/activate`
+4. ✅ `asaas_control/entitlements.py` — middleware يفرض max_agents/max_users/features + read-only expiry mode
+5. ✅ First-run `/setup` wizard في الواجهة — `SetupWizardPage` + `/api/v1/setup/status|complete` (تُقفل بعد أول أدمن)
+6. ✅ `tools/sign-license.py` — أداة لك (البائع) لتوقيع licenses
 
-**معيار الخروج**: MSI يُثبَّت على جهاز Windows نظيف → خدمات تعمل → `/setup` → license trial → agents تُسجَّل → كل شيء بدون Python/Node/.NET
+**معيار الخروج**: MSI يُثبَّت على جهاز Windows نظيف → خدمات تعمل → `/setup` → license trial → agents تُسجَّل → كل شيء بدون Python/Node/.NET — *متبقي: اختبار التثبيت على جهاز نظيف فعلياً*
 
-### Phase B — صلابة الإنتاج
+### Phase B — صلابة الإنتاج 🟡 جارٍ
 
-7. TLS: شهادة داخلية تلقائية (self-signed CA محلي) أو توثيق Let's Encrypt reverse proxy — يُقرَّر حسب نموذج الشبكة
-8. Agent installer UX: `Asaas.Agent.Setup.exe` (Inno بسيط) أو `agent.exe install` subcommand — يسجّل service + يطبّق cert
-9. Secrets hygiene: vault key + DB ACLs + عدم كتابة secrets في logs (مراجعة)
-10. نسخ احتياطي مجدول (موجود backup endpoint — نضيف scheduler بسيط)
+7. 🟡 TLS: `ASAAS_TLS_CERT`/`ASAAS_TLS_KEY` في serve.py + `tools/gen-server-cert.py` (self-signed بـ SANs) — متحقق حياً على :8898؛ production CA/reverse proxy لاحقاً
+8. ✅ Agent installer UX: `Asaas.WindowsAgent.exe install|uninstall|status` — يسجّل خدمة auto-start + يثبّت ASAAS_* env في الريجستري (يتطلب elevation)
+9. ✅ Secrets hygiene: مراجعة logs (لا secrets تُطبع) + `.gitignore` يغطي `data/*.key|pem|pfx|p12` + `data/tls/` + `control-plane.env`
+10. ✅ نسخ احتياطي مجدول: `backup.py` مشترك + asyncio loop في lifespan — `ASAAS_BACKUP_INTERVAL_HOURS` (24h) + `ASAAS_BACKUP_KEEP` (14) + prune + audit
+11. ✅ `control-plane.env` — ملف config بجانب الـ exe للـ SYSTEM tasks (التي لا ترث env المستخدم) — `serve.py` يحمّله بـ setdefault
 
 ### Phase C — نمو الباقات
 
-11. Agent auto-update عبر قناة المهام الموقعة (job type `agent.update` + hash verify)
-12. License portal (توليد/تجديد عبر موقع)
-13. telemetry opt-in + dashboard "fleet health" عندك كـ vendor
-14. guacd gateway / recordings / AD sync — تُضاف كـ Enterprise features لاحقاً
+12. Agent auto-update عبر قناة المهام الموقعة (job type `agent.update` + hash verify)
+13. License portal (توليد/تجديد عبر موقع)
+14. telemetry opt-in + dashboard "fleet health" عندك كـ vendor
+15. guacd gateway / recordings / AD sync — تُضاف كـ Enterprise features لاحقاً
 
 ### Phase D — جودة إطلاق
 
-15. e2e CI على الـ MSI المثبَّت (VM نظيف)
-16. security review خارجي قبل أول بيع
-17. EULA + privacy policy + SLA docs
+16. e2e CI على الـ MSI المثبَّت (VM نظيف)
+17. security review خارجي قبل أول بيع
+18. EULA + privacy policy + SLA docs
 
 ---
 
