@@ -1,4 +1,4 @@
-"""ZIMAM v2.5 - Active Directory & Windows Domain Discovery Service.
+"""ASAAS v2.5 - Active Directory & Windows Domain Discovery Service.
 
 Detects Windows Server Domain role (Domain Controller vs Domain Member vs Standalone Server),
 enumerates domain users/groups when joined, distinguishes local vs domain accounts visually,
@@ -12,7 +12,7 @@ import logging
 import subprocess
 from typing import Dict, Any, List
 
-logger = logging.getLogger('zimam.domain')
+logger = logging.getLogger('asaas.domain')
 
 # Domain role mapping from Win32_ComputerSystem
 DOMAIN_ROLE_NAMES = {

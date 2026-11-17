@@ -14,10 +14,10 @@ $port = 8765
 $envFile = Join-Path $root '.env'
 if (Test-Path $envFile) {
   foreach ($line in Get-Content -Path $envFile) {
-    if ($line -match '^\s*ZIMAM_HOST\s*=\s*(.+?)\s*$') {
+    if ($line -match '^\s*ASAAS_HOST\s*=\s*(.+?)\s*$') {
       $hostAddr = $Matches[1].Trim().Trim('"').Trim("'")
     }
-    elseif ($line -match '^\s*ZIMAM_PORT\s*=\s*(\d+)\s*$') {
+    elseif ($line -match '^\s*ASAAS_PORT\s*=\s*(\d+)\s*$') {
       $port = [int]$Matches[1]
     }
   }
@@ -43,9 +43,9 @@ $cpPort = 8876
 $cpUrl = ''
 if (-not (Test-ListeningPort $cpPort)) {
   $env:PYTHONPATH = Join-Path $root 'control_plane'
-  $env:ZIMAM_LEGACY_API_URL = "http://127.0.0.1:$port"
+  $env:ASAAS_LEGACY_API_URL = "http://127.0.0.1:$port"
   Start-Process -FilePath $python -WorkingDirectory $root -WindowStyle Hidden `
-    -ArgumentList @('-m', 'uvicorn', 'zimam_control.app:app', '--host', '127.0.0.1', '--port', "$cpPort") `
+    -ArgumentList @('-m', 'uvicorn', 'asaas_control.app:app', '--host', '127.0.0.1', '--port', "$cpPort") `
     -RedirectStandardOutput (Join-Path $data 'control-plane.log') `
     -RedirectStandardError (Join-Path $data 'control-plane-error.log')
 }
@@ -59,7 +59,7 @@ try {
 $openUrl = if ($cpUrl) { $cpUrl } else { "http://${browserHost}:${port}" }
 Start-Process $openUrl
 Write-Host '=================================================='
-Write-Host ' ZIMAM Enterprise v3.0 Master Console Active'
+Write-Host ' ASAAS Enterprise v3.0 Master Console Active'
 if ($cpUrl) {
   Write-Host " URL: $cpUrl  (control plane + legacy proxy)"
 } else {

@@ -1,4 +1,4 @@
-"""ZIMAM Enterprise v3.0 - Multi-User Developer Workspace & Smart Port Orchestrator.
+"""ASAAS Enterprise v3.0 - Multi-User Developer Workspace & Smart Port Orchestrator.
 
 Provides:
 - Multi-User Development Workspace Manager: per-user isolated projects & runtimes.
@@ -36,7 +36,7 @@ from ..infrastructure.db import (
 )
 from ..infrastructure.silent_subprocess import run_silent, popen_silent, CREATE_NO_WINDOW
 
-logger = logging.getLogger('zimam.dev_workspace')
+logger = logging.getLogger('asaas.dev_workspace')
 
 WORKSPACE_ROOT = DATA_DIR / 'workspaces'
 WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -204,10 +204,10 @@ class DeveloperWorkspaceManager:
         if not any(proj_dir.iterdir()):
             if 'Node' in actual_runtime or 'React' in actual_runtime:
                 with open(proj_dir / 'index.js', 'w', encoding='utf-8') as f:
-                    f.write(f"const http = require('http');\nconst port = process.env.PORT || {port};\nhttp.createServer((req, res) => res.end('Hello from ZIMAM Enterprise Project: {clean_name}')).listen(port, () => console.log(`Server on port ${{port}}`));\n")
+                    f.write(f"const http = require('http');\nconst port = process.env.PORT || {port};\nhttp.createServer((req, res) => res.end('Hello from ASAAS Enterprise Project: {clean_name}')).listen(port, () => console.log(`Server on port ${{port}}`));\n")
             elif 'Python' in actual_runtime:
                 with open(proj_dir / 'main.py', 'w', encoding='utf-8') as f:
-                    f.write(f"import os\nfrom http.server import HTTPServer, SimpleHTTPRequestHandler\nport = int(os.environ.get('PORT', {port}))\nserver = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)\nprint(f'ZIMAM Python App running on port {{port}}')\nserver.serve_forever()\n")
+                    f.write(f"import os\nfrom http.server import HTTPServer, SimpleHTTPRequestHandler\nport = int(os.environ.get('PORT', {port}))\nserver = HTTPServer(('0.0.0.0', port), SimpleHTTPRequestHandler)\nprint(f'ASAAS Python App running on port {{port}}')\nserver.serve_forever()\n")
 
         # Save to database
         res = db_create_developer_project(clean_name, owner, actual_runtime, str(proj_dir), port, {'PORT': str(port)})
@@ -251,7 +251,7 @@ class DeveloperWorkspaceManager:
             elif 'node' in runtime or 'react' in runtime or 'vite' in runtime:
                 cmd = ['node', 'index.js'] if (src_path / 'index.js').exists() else ['npm', 'start']
             elif 'compose' in runtime:
-                cmd = ['docker', 'compose', '-p', f"zimam_{owner}_{target['name']}", 'up', '-d']
+                cmd = ['docker', 'compose', '-p', f"asaas_{owner}_{target['name']}", 'up', '-d']
             else:
                 cmd = [sys.executable, '-m', 'http.server', str(port)]
 

@@ -1,14 +1,14 @@
-# End User License Agreement — ZIMAM
+# End User License Agreement — ASAAS
 
 *Last updated: November 2026. This is a template pending legal review — have counsel adapt it before commercial release.*
 
 ## 1. License grant
 
-Subject to a valid signed license key (trial or paid tier), ZIMAM grants you a non-exclusive, non-transferable right to install and use ZIMAM on systems you own or control, for the number of agents, users, and features your tier permits.
+Subject to a valid signed license key (trial or paid tier), ASAAS grants you a non-exclusive, non-transferable right to install and use ASAAS on systems you own or control, for the number of agents, users, and features your tier permits.
 
 ## 2. Ownership
 
-ZIMAM, its source code, binaries, documentation, and branding are proprietary to ZIMAM and protected by applicable intellectual-property laws. No rights are granted except those expressly stated here.
+ASAAS, its source code, binaries, documentation, and branding are proprietary to ASAAS and protected by applicable intellectual-property laws. No rights are granted except those expressly stated here.
 
 ## 3. Restrictions
 
@@ -20,15 +20,15 @@ The 30-day trial grants full features of the top tier for evaluation. When it ex
 
 ## 5. Data & privacy
 
-The appliance is designed to run fully on your infrastructure. Account passwords are Argon2-hashed; account secrets use AES-256-GCM envelopes; agent traffic is authenticated by per-agent keys and signed jobs. Telemetry to ZIMAM is **opt-in only** and, where enabled, is limited to license-health signals — see `PRIVACY.md`.
+The appliance is designed to run fully on your infrastructure. Account passwords are Argon2-hashed; account secrets use AES-256-GCM envelopes; agent traffic is authenticated by per-agent keys and signed jobs. Telemetry to ASAAS is **opt-in only** and, where enabled, is limited to license-health signals — see `PRIVACY.md`.
 
 ## 6. Warranty disclaimer
 
-THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND. TO THE MAXIMUM EXTENT PERMITTED BY LAW, ZIMAM DISCLAIMS ALL WARRANTIES INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND. TO THE MAXIMUM EXTENT PERMITTED BY LAW, ASAAS DISCLAIMS ALL WARRANTIES INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
 
 ## 7. Limitation of liability
 
-IN NO EVENT SHALL ZIMAM BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES, OR LOST PROFITS, DATA, OR GOODWILL, ARISING FROM USE OF THE SOFTWARE.
+IN NO EVENT SHALL ASAAS BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES, OR LOST PROFITS, DATA, OR GOODWILL, ARISING FROM USE OF THE SOFTWARE.
 
 ## 8. Termination
 

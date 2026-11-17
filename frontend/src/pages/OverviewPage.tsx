@@ -302,7 +302,7 @@ export function OverviewPage() {
           </div>
           {fleet.agents.length === 0 ? (
             <div style={{ border: '1px dashed var(--accent-soft)', borderRadius: 14, padding: '18px 20px', color: 'var(--text-3)', fontSize: 13 }}>
-              {t('لا يوجد وكلاء مسجلون بعد — ثبّت ASAAS.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.')}
+              {t('لا يوجد وكلاء مسجلون بعد — ثبّت Asaas.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.')}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>

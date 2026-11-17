@@ -12,11 +12,11 @@ using Microsoft.Win32;
 using NSec.Cryptography;
 
 // --- CLI management commands -------------------------------------------------
-// `Zimam.Agent.exe install|uninstall|status` manages the Windows service
+// `Asaas.Agent.exe install|uninstall|status` manages the Windows service
 // without needing sc.exe by hand. `install` must run elevated; it registers the
-// service for auto-start and persists ZIMAM_* environment variables into the
+// service for auto-start and persists ASAAS_* environment variables into the
 // service's registry Environment value so the agent can reach the control plane.
-const string ServiceName = "ZIMAM Windows Agent";
+const string ServiceName = "ASAAS Windows Agent";
 
 static int Sc(params string[] scArgs)
 {
@@ -40,25 +40,25 @@ static int InstallService()
     if (exe is null) { Console.Error.WriteLine("Cannot resolve executable path."); return 1; }
     var binPath = $"\"{exe}\"";
     if (Sc("create", ServiceName, $"binPath= {binPath}", "start= auto", $"DisplayName= {ServiceName}") != 0) return 1;
-    Sc("description", ServiceName, "ZIMAM outbound agent - polls for signed jobs and reports inventory.");
+    Sc("description", ServiceName, "ASAAS outbound agent - polls for signed jobs and reports inventory.");
     // Restart-on-failure covers the self-update handoff: the agent exits after
     // swapping binaries and SCM brings the new version back automatically.
     Sc("failure", ServiceName, "reset= 86400", "actions= restart/5000/restart/10000/restart/30000");
 
     var envVars = Environment.GetEnvironmentVariables()
         .Cast<System.Collections.DictionaryEntry>()
-        .Where(e => e.Key.ToString()?.StartsWith("ZIMAM_", StringComparison.OrdinalIgnoreCase) == true)
+        .Where(e => e.Key.ToString()?.StartsWith("ASAAS_", StringComparison.OrdinalIgnoreCase) == true)
         .Select(e => $"{e.Key}={e.Value}")
         .ToArray();
     if (envVars.Length > 0)
     {
         using var key = Registry.LocalMachine.CreateSubKey($@"SYSTEM\CurrentControlSet\Services\{ServiceName}");
         key?.SetValue("Environment", envVars, RegistryValueKind.MultiString);
-        Console.WriteLine($"Persisted {envVars.Length} ZIMAM_* environment variable(s) for the service.");
+        Console.WriteLine($"Persisted {envVars.Length} ASAAS_* environment variable(s) for the service.");
     }
     else
     {
-        Console.WriteLine("No ZIMAM_* env vars found - set ZIMAM_CONTROL_PLANE_URL / ZIMAM_AGENT_ID / ZIMAM_AGENT_KEY before install, or via registry Environment afterwards.");
+        Console.WriteLine("No ASAAS_* env vars found - set ASAAS_CONTROL_PLANE_URL / ASAAS_AGENT_ID / ASAAS_AGENT_KEY before install, or via registry Environment afterwards.");
     }
     Console.WriteLine($"Service '{ServiceName}' installed (auto-start). Start it with: sc.exe start \"{ServiceName}\"");
     return 0;
@@ -125,16 +125,16 @@ if (cli is "install" or "uninstall" or "status")
 ApplyPendingUpdate();
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddWindowsService(options => options.ServiceName = "ZIMAM Windows Agent");
+builder.Services.AddWindowsService(options => options.ServiceName = "ASAAS Windows Agent");
 builder.Services.AddHttpClient("control-plane", client =>
 {
-    client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("ZIMAM_CONTROL_PLANE_URL") ?? "https://127.0.0.1:8876");
+    client.BaseAddress = new Uri(Environment.GetEnvironmentVariable("ASAAS_CONTROL_PLANE_URL") ?? "https://127.0.0.1:8876");
     client.Timeout = TimeSpan.FromSeconds(15);
 }).ConfigurePrimaryHttpMessageHandler(() =>
 {
     var handler = new HttpClientHandler();
-    var certPath = Environment.GetEnvironmentVariable("ZIMAM_AGENT_CERT_PATH");
-    var certPassword = Environment.GetEnvironmentVariable("ZIMAM_AGENT_CERT_PASSWORD");
+    var certPath = Environment.GetEnvironmentVariable("ASAAS_AGENT_CERT_PATH");
+    var certPassword = Environment.GetEnvironmentVariable("ASAAS_AGENT_CERT_PASSWORD");
     if (!string.IsNullOrWhiteSpace(certPath))
         handler.ClientCertificates.Add(X509CertificateLoader.LoadPkcs12FromFile(certPath, certPassword));
     return handler;
@@ -163,11 +163,11 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var agentId = Environment.GetEnvironmentVariable("ZIMAM_AGENT_ID");
-        var agentKey = Environment.GetEnvironmentVariable("ZIMAM_AGENT_KEY");
+        var agentId = Environment.GetEnvironmentVariable("ASAAS_AGENT_ID");
+        var agentKey = Environment.GetEnvironmentVariable("ASAAS_AGENT_KEY");
         if (string.IsNullOrWhiteSpace(agentId) || string.IsNullOrWhiteSpace(agentKey))
         {
-            logger.LogError("ZIMAM_AGENT_ID and ZIMAM_AGENT_KEY are required; agent will not start");
+            logger.LogError("ASAAS_AGENT_ID and ASAAS_AGENT_KEY are required; agent will not start");
             return;
         }
 
@@ -229,7 +229,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         // Verify the Ed25519 signature over the canonical payload string
         // exactly as the control plane signed it — never a re-serialization.
         var canonicalPayload = string.IsNullOrEmpty(job.PayloadCanonical) ? job.Payload.GetRawText() : job.PayloadCanonical;
-        var canonical = $"zimam-job|{job.Id}|{agentId}|{job.Type}|{canonicalPayload}";
+        var canonical = $"asaas-job|{job.Id}|{agentId}|{job.Type}|{canonicalPayload}";
         if (!VerifySignature(job.Signature, job.SigningPublicKey, canonical))
         {
             logger.LogWarning("Job {JobId} signature verification failed; refusing execution", job.Id);

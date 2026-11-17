@@ -94,7 +94,7 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     ca_key = _key()
-    ca_name = _name("ZIMAM Local Root CA")
+    ca_name = _name("ASAAS Local Root CA")
     ca_cert = _cert(
         subject=ca_name, issuer=ca_name, public_key=ca_key.public_key(), sign_key=ca_key,
         serial=1, days=args.days * 3, is_ca=True,
@@ -104,7 +104,7 @@ def main() -> None:
     server_key = _key()
     dns = [s.strip() for s in args.server_dns.split(",") if s.strip()]
     server_cert = _cert(
-        subject=_name("zimam-control-plane"), issuer=ca_name,
+        subject=_name("asaas-control-plane"), issuer=ca_name,
         public_key=server_key.public_key(), sign_key=ca_key, serial=2, days=args.days,
         is_ca=False,
         san_dns=[d for d in dns if not d.replace(".", "").isdigit()],
@@ -115,7 +115,7 @@ def main() -> None:
 
     agent_key = _key()
     agent_cert = _cert(
-        subject=_name("zimam-windows-agent"), issuer=ca_name,
+        subject=_name("asaas-windows-agent"), issuer=ca_name,
         public_key=agent_key.public_key(), sign_key=ca_key, serial=3, days=args.days,
         is_ca=False, eku=[x509.oid.ExtendedKeyUsageOID.CLIENT_AUTH],
     )
@@ -123,7 +123,7 @@ def main() -> None:
 
     print(f"mTLS material written to {out.resolve()}")
     print("  server: uvicorn --ssl-keyfile server.key --ssl-certfile server.crt")
-    print("  agent : ZIMAM_AGENT_CERT_PATH=agent.crt  (concatenate agent.crt+ca.crt if the server requires the chain)")
+    print("  agent : ASAAS_AGENT_CERT_PATH=agent.crt  (concatenate agent.crt+ca.crt if the server requires the chain)")
 
 
 if __name__ == "__main__":

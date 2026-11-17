@@ -1,7 +1,7 @@
-# سجل العمل — ZIMAM / ASAAS-Server-Control-v2
+# سجل العمل — ASAAS / ASAAS-Server-Control-v2
 
 > توثيق كامل لكل ما تم إنجازه في هذه المحادثة، من البداية حتى تاريخه.
-> المشروع: `Z:\My projects\ASAAS-Server-Control-v2` — لوحة تحكم سيرفرات Windows باسم **زِمام / ZIMAM**.
+> المشروع: `Z:\My projects\ASAAS-Server-Control-v2` — لوحة تحكم سيرفرات Windows باسم **أساس / ASAAS**.
 
 ---
 
@@ -9,7 +9,7 @@
 
 تحويل المشروع إلى منتج Windows سيرفر-كنترول نظيف واحترافي:
 
-- هوية موحّدة **ZIMAM / زِمام** (بديل ASAAS)
+- هوية موحّدة **ASAAS / أساس** (بديل ASAAS)
 - واجهة أمامية عربية RTL احترافية + إنجليزية LTR
 - ثيم فاتح/داكن
 - بيانات حقيقية فقط — بدون أرقام وهمية أو أزرار ميتة
@@ -29,7 +29,7 @@
 
 ### المرحلة 2 — إعادة تسمية الهوية وتوحيدها
 
-- تحويل الاسم المعروض من ASAAS إلى **ZIMAM / زِمام** في كل الواجهات والنصوص
+- تحويل الاسم المعروض من ASAAS إلى **ASAAS / أساس** في كل الواجهات والنصوص
 - توحيد الهوية في v1 (control plane)
 - إعادة تسمية كاملة للمنتج
 
@@ -38,7 +38,7 @@
 #### 3.1 تطبيق هوية `skills/frontend` حرفياً
 
 - مصدر الهوية: `skills/frontend/asaas-ui/template`
-- نُسخت الهوية كاملة إلى `frontend/src/zimam-ui`:
+- نُسخت الهوية كاملة إلى `frontend/src/asaas-ui`:
   - `styles/tokens.css` — متغيرات الألوان/الخطوط
   - `styles/components.css` — مكونات UI
   - `styles/glass.css` — تأثيرات زجاجية
@@ -46,7 +46,7 @@
 - ثيمات: فاتح (افتراضي) وداكن دافئ — ألوان حبر/ذهب `#ba9555`/رملي/كريمي
 - خطوط: Thmanyah Sans / Thmanyah Serif Display / Thmanyah Serif Text
 - أزرار كبسولة `border-radius:999px`
-- مفاتيح التخزين: `zimam-theme`، `zimam-lang`
+- مفاتيح التخزين: `asaas-theme`، `asaas-lang`
 - ملف تهيئة الثيم: `frontend/public/theme-init.js`
 
 #### 3.2 إصلاح التعارضات في CSS
@@ -89,7 +89,7 @@
 
 - **المشكلة**: الـ backend كان يستمع على `0.0.0.0:8765` + `[::]:8765` — أي جهاز على الشبكة يقدر يوصل له
 - **الإصلاح**:
-  - `backend/app/core/config.py`: الافتراضي صار `127.0.0.1` (مع `ZIMAM_HOST` للتجاوز المتعمد)
+  - `backend/app/core/config.py`: الافتراضي صار `127.0.0.1` (مع `ASAAS_HOST` للتجاوز المتعمد)
   - `launcher/Program.cs`: يمرر `--host 127.0.0.1` صراحة
   - الـ control plane يبقى الواجهة العامة على `127.0.0.1:8876`
 - **التحقق**: `netstat` يظهر `127.0.0.1:8765` و`127.0.0.1:8876` فقط — صفر استماع شبكي
@@ -102,7 +102,7 @@
 
 #### 4.3 إصلاح جسر الهوية عبر الـ proxy
 
-- **المشكلة**: الـ backend يستقبل `::ffff:127.0.0.1` (IPv4-mapped IPv6) لكن فحص loopback كان يدور `127.0.0.1` و`::1` فقط → جسر `X-ZIMAM-Proxy-*` ما يشتغل → كل طلب legacy يرجع 401
+- **المشكلة**: الـ backend يستقبل `::ffff:127.0.0.1` (IPv4-mapped IPv6) لكن فحص loopback كان يدور `127.0.0.1` و`::1` فقط → جسر `X-ASAAS-Proxy-*` ما يشتغل → كل طلب legacy يرجع 401
 - **الإصلاح**: إضافة `::ffff:127.0.0.1` للقائمة المسموحة
 - **التحقق**: login v1 → 200، ثم `/api/auth/me` عبر الـ proxy → 200 (`admin`, role `admin`)
 
@@ -110,7 +110,7 @@
 
 - **المشكلة**: الاختصارات كانت تُنشأ في Public Desktop + All Users Start Menu → تظهر لكل المستخدمين
 - **الإصلاح**:
-  - `zimam.iss`: `{autodesktop}`/`{group}` → `{userdesktop}`/`{userprograms}`
+  - `asaas.iss`: `{autodesktop}`/`{group}` → `{userdesktop}`/`{userprograms}`
   - حذف الاختصارات القديمة من Public Desktop وStart Menu المشترك عبر أمر elevated
 - **النتيجة**: الاختصارات تظهر فقط لحساب المستخدم الذي نصّب البرنامج
 
@@ -127,12 +127,12 @@
 #### 5.1 جلسات RDP الحقيقية
 
 - جدول الجلسات الرئيسي كان يعرض بيانات RDP الحقيقية أصلاً
-- المشكلة كانت في قسم "جلسات وكلاء زِمام" — كان فارغاً لأن الوكلاء غير شغالين
+- المشكلة كانت في قسم "جلسات وكلاء أساس" — كان فارغاً لأن الوكلاء غير شغالين
 
 #### 5.2 الوكيل المحلي `local-live`
 
 - تسجيل وكيل جديد مباشرة في `control_plane.db` (نفس منطق enroll)
-- تشغيل `Zimam.Agent.exe` — heartbeat يرد 200
+- تشغيل `Asaas.Agent.exe` — heartbeat يرد 200
 - jobs مُرسلة ونتائج حقيقية:
   - `session.list` → 8 جلسات
   - `process.list` → 50 عملية
@@ -158,7 +158,7 @@
 
 #### 6.2 البناء
 
-- `launcher/ZimamLauncher.exe` مبني بـ net8.0-windows
+- `launcher/AsaasLauncher.exe` مبني بـ net8.0-windows
 - framework-dependent (يحتاج .NET 8 runtime — موجود على الجهاز)
 
 ---
@@ -221,8 +221,8 @@ agent/          وكيل Windows C# (19 collector)
 backend/        Legacy admin API :8765 (loopback)
 control_plane/  v1 API + proxy + SPA host :8876
 frontend/       React SPA (هوية kit مطبّقة)
-launcher/       ZimamLauncher.exe
-packaging/      zimam.iss + install scripts
+launcher/       AsaasLauncher.exe
+packaging/      asaas.iss + install scripts
 tools/          build-release.ps1, gen-cert, sign-license
 tests/ docs/ skills/   اختبارات + توثيق + مصدر الهوية
 data/           runtime فقط (DBs حية + مفاتيح + tls)
@@ -236,10 +236,10 @@ dist/ release/ installer-out/   مخرجات البناء
 ### المرحلة 9 — إعادة بناء الـ Release
 
 - Frontend build (Vite) ✅
-- PyInstaller: `zimam-backend.exe` (14.3MB) + `zimam-control.exe` (29MB) ✅
-- Agent: `Zimam.Agent.exe` (36.7MB) — من الثنائي الموجود (لا .NET SDK متاح للبناء الجديد)
+- PyInstaller: `asaas-backend.exe` (14.3MB) + `asaas-control.exe` (29MB) ✅
+- Agent: `Asaas.Agent.exe` (36.7MB) — من الثنائي الموجود (لا .NET SDK متاح للبناء الجديد)
 - `release/web/` فيها الواجهة الجديدة بهوية kit
-- **Inno Setup غير مثبت** — لم يُبنَ `ZIMAM-Setup-1.0.0.exe` جديد؛ `release/` جاهز ومحدّث
+- **Inno Setup غير مثبت** — لم يُبنَ `ASAAS-Setup-1.0.0.exe` جديد؛ `release/` جاهز ومحدّث
 
 ---
 
@@ -278,7 +278,7 @@ dist/ release/ installer-out/   مخرجات البناء
 1. **التحقق النهائي من Shadowing**: إصلاح RemoteFX طُبق — يحتاج جلسة Active أخرى (logoff/logon) للاختبار النهائي. Shadow لا يعمل على الجلسة الحالية أو Disconnected.
 2. **تحسين `/api/sessions/shadow`**: إرجاع `ok:true` حتى لو فشل `mstsc` — يحتاج preflight validation + error detection.
 3. **Governor/Development pages → v1**: ما زالت على `/api/*` legacy — ترحيل مستقل كبير.
-4. **Inno Setup**: تثبيته لبناء `ZIMAM-Setup` جديد بالواجهة المحدّثة.
+4. **Inno Setup**: تثبيته لبناء `ASAAS-Setup` جديد بالواجهة المحدّثة.
 5. **Agent كخدمة Windows**: `local-live` يعمل كعملية عادية — لا ينجو من إعادة التشغيل (`install-service` متاح).
 6. **اختبار الـ installer**: على VM/جهاز نظيف — يدوياً.
 
@@ -301,6 +301,6 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 
 *آخر تحديث: بعد commit `a318bd8` + إصلاحات Shadowing/RemoteFX.*
 *المشروع: Z:\My projects\ASAAS-Server-Control-v2*
-*الاسم التجاري: زِمام / ZIMAM*
+*الاسم التجاري: أساس / ASAAS*
 *الهوية البصرية: skills/frontend/asaas-ui/template*
 *بدون Docker — بناء أصلي Windows.*

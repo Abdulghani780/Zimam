@@ -1,4 +1,4 @@
-"""ZIMAM v2.5 - Domain Models & DTOs
+"""ASAAS v2.5 - Domain Models & DTOs
 Strict, strongly-typed domain representations guaranteeing 100% contract alignment
 between the Windows Server backend and the React frontend.
 """

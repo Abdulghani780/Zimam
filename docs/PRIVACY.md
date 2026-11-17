@@ -1,4 +1,4 @@
-# Privacy Policy — ZIMAM
+# Privacy Policy — ASAAS
 
 *Template pending legal review.*
 
@@ -12,7 +12,7 @@
 
 All of the above stays on machines you control. The console is designed for **air-gapped / on-prem** operation.
 
-## What ZIMAM (the vendor) may receive — opt-in only
+## What ASAAS (the vendor) may receive — opt-in only
 
 - **License activation/renewal**: if you use the license portal, the customer ID and tier are transmitted to issue your key. No telemetry is bundled.
 - **Optional fleet telemetry** (when enabled in a future release): license-health pings only — version, tier, agent count. No hostnames, IPs, usernames, or job content.

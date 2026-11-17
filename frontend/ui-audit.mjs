@@ -24,8 +24,8 @@ const browser = await chromium.launch();
 for (const vp of viewports) {
   const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
   const page = await ctx.newPage();
-  const user = process.env.ZIMAM_USER || 'Abdulghani';
-  const pass = process.env.ZIMAM_PASS || '';
+  const user = process.env.ASAAS_USER || 'Abdulghani';
+  const pass = process.env.ASAAS_PASS || '';
   const res = await ctx.request.post(`${base}/api/v1/auth/login`, { data: { username: user, password: pass } });
   console.log(`[${vp.name}] login:`, res.status());
   if (!res.ok()) { await ctx.close(); continue; }

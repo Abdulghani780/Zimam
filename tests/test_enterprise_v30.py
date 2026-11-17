@@ -1,4 +1,4 @@
-"""ZIMAM Enterprise v3.0 - Sovereign Windows Server Management Test Suite.
+"""ASAAS Enterprise v3.0 - Sovereign Windows Server Management Test Suite.
 
 Verifies all v3.0 core domains:
 1. Windows Server 2025 Host & Local Specs
@@ -57,7 +57,7 @@ class EnterpriseV30Tests(unittest.TestCase):
             return e.code, body
 
     def setUp(self):
-        _, res = self._post('/api/auth/login', {'username': 'admin', 'password': 'admin@zimam2026'})
+        _, res = self._post('/api/auth/login', {'username': 'admin', 'password': 'admin@asaas2026'})
         self.admin_token = res.get('token')
 
     # Domain 1 & 2: Local Server & Specs

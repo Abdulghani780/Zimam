@@ -1,4 +1,4 @@
-# ZIMAM Legacy → Control Plane Migration Plan
+# ASAAS Legacy → Control Plane Migration Plan
 
 **Decision (2026-11-15): gradual migration.** The legacy v2 router
 (`backend/app/api/router.py`, ~100 endpoints) remains the compatibility layer for the
@@ -31,10 +31,10 @@ implemented **and** the consuming page has been switched over.
 The two identity stores are separate (control-plane Postgres/SQLite `users` vs
 legacy `app_users`), so a single cookie cannot serve both. The bridge:
 
-- v1 sessions use cookie **`zimam_v1_session`** (legacy keeps `zimam_session`).
+- v1 sessions use cookie **`asaas_v1_session`** (legacy keeps `asaas_session`).
 - `legacy_proxy.py` validates the v1 cookie against the control-plane DB and
-  injects `X-ZIMAM-Proxy-User: <username>` on forwarded `/api/*` calls;
-  client-supplied `X-ZIMAM-Proxy-*` headers are always stripped.
+  injects `X-ASAAS-Proxy-User: <username>` on forwarded `/api/*` calls;
+  client-supplied `X-ASAAS-Proxy-*` headers are always stripped.
 - The legacy `_authenticate()` accepts that header **only from loopback** and
   resolves the username in `app_users` — the user must exist locally (same
   username). Browsers cannot forge it (not in CORS allow-headers); a local
@@ -48,11 +48,11 @@ legacy `app_users`), so a single cookie cannot serve both. The bridge:
 - `users` gained `role` (admin/operator/viewer), `full_name`, and
   `legacy_password` columns (idempotent `ALTER TABLE` in `init_db`).
 - At startup `sync_legacy_identities()` imports `app_users` rows from
-  `data/zimam_v2.db` (override path via `ZIMAM_LEGACY_DB`), keeping their
+  `data/asaas_v2.db` (override path via `ASAAS_LEGACY_DB`), keeping their
   PBKDF2 credential in `legacy_password`.
 - `/auth/login` verifies Argon2 first, then the legacy PBKDF2 credential;
   a successful legacy login re-hashes to Argon2 and clears `legacy_password`.
-- The proxy forwards `X-ZIMAM-Proxy-Role`; the legacy `_authenticate()`
+- The proxy forwards `X-ASAAS-Proxy-Role`; the legacy `_authenticate()`
   upserts `app_users` as a **projection** (`db_sync_proxied_user`) with an
   unusable random password — credentials never leave the control plane.
 - v1 user-admin endpoints: `POST /users`, `/users/{u}/role`,

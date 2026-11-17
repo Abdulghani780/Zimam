@@ -1,4 +1,4 @@
-"""ZIMAM v2.5 - Enterprise Emergency Alerting Service.
+"""ASAAS v2.5 - Enterprise Emergency Alerting Service.
 
 Monitors CPU/RAM thresholds, critical system services, and brute-force events,
 dispatching alerts via Telegram Bot with intelligent cooldown to prevent alert flooding.
@@ -21,7 +21,7 @@ from ..infrastructure.db import (
     db_set_system_metadata,
 )
 
-logger = logging.getLogger('zimam.alerts')
+logger = logging.getLogger('asaas.alerts')
 
 _ALERT_CONFIG_METADATA_KEY = 'alert_service_config'
 
@@ -44,7 +44,7 @@ def mask_secret(secret: str) -> str:
 
 
 class AlertService:
-    """Centralized enterprise alerting engine for ZIMAM."""
+    """Centralized enterprise alerting engine for ASAAS."""
 
     _config: Dict[str, Any] = {
         'telegram_enabled': False,
@@ -153,10 +153,10 @@ class AlertService:
         def _async_send():
             try:
                 url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                headers = {'User-Agent': 'ZIMAM/2.5'}
+                headers = {'User-Agent': 'ASAAS/2.5'}
                 payload = {
                     'chat_id': chat_id,
-                    'text': f"🚨 [ZIMAM v2.5 Alert]\n\n{message}\n\n🕒 {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                    'text': f"🚨 [ASAAS v2.5 Alert]\n\n{message}\n\n🕒 {time.strftime('%Y-%m-%d %H:%M:%S')}",
                     'parse_mode': 'HTML',
                 }
                 data = json.dumps(payload).encode('utf-8')

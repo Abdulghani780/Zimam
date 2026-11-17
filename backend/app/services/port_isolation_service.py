@@ -1,4 +1,4 @@
-"""ZIMAM v2.5 - AI Port Isolation Guard Service.
+"""ASAAS v2.5 - AI Port Isolation Guard Service.
 
 Guarantees zero port collision between concurrent users, automatically binding
 ports to specific user sessions and suggesting alternate free ports.
@@ -22,7 +22,7 @@ import psutil
 from ..domain.models import PortClaim
 from ..infrastructure.win32_wts import Win32WtsService
 
-logger = logging.getLogger('zimam.ports')
+logger = logging.getLogger('asaas.ports')
 
 # Well-known enterprise & Windows server service port directory
 KNOWN_PORT_SERVICES: Dict[int, str] = {
@@ -66,7 +66,7 @@ KNOWN_PORT_SERVICES: Dict[int, str] = {
     6379: 'Redis In-Memory Cache',
     8080: 'HTTP Alternate / Web Proxy',
     8443: 'HTTPS Alternate',
-    8765: 'ZIMAM Hub',
+    8765: 'ASAAS Hub',
     9000: 'SonarQube / Web Console',
     9090: 'Prometheus / Cockpit',
     27017: 'MongoDB Database',
@@ -449,7 +449,7 @@ class PortIsolationService:
         if clean_ip in ('127.0.0.1', '::1', '0.0.0.0', '::'):
             return {'ok': False, 'error': 'لا يمكن حظر العناوين المحلية المحمية.'}
 
-        rule_name = f"ZIMAM_Block_{clean_ip.replace(':', '_')}"
+        rule_name = f"ASAAS_Block_{clean_ip.replace(':', '_')}"
         cmd = [
             'netsh', 'advfirewall', 'firewall', 'add', 'rule',
             f'name={rule_name}', 'dir=in', 'action=block', f'remoteip={clean_ip}'

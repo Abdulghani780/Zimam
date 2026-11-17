@@ -1,4 +1,4 @@
-# Service Level Agreement — ZIMAM (template)
+# Service Level Agreement — ASAAS (template)
 
 *Template pending commercial/legal review. Adjust tiers and credits to your support model.*
 
@@ -22,10 +22,10 @@
 
 ## Availability
 
-The software runs on your infrastructure; ZIMAM does not host the console for you, so console availability is your responsibility. Vendor-side commitments apply to license services and update distribution only.
+The software runs on your infrastructure; ASAAS does not host the console for you, so console availability is your responsibility. Vendor-side commitments apply to license services and update distribution only.
 
 ## Remedies
 
-For verified defects unresolved within 30 days of report, ZIMAM may provide a fix in the next release or, at its discretion for Enterprise customers, a service credit.
+For verified defects unresolved within 30 days of report, ASAAS may provide a fix in the next release or, at its discretion for Enterprise customers, a service credit.
 
 *Jurisdiction, liability caps, and payment terms: to be completed.*

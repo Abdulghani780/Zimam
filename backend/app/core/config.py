@@ -1,4 +1,4 @@
-"""ZIMAM v2 - Application Configuration & Environment Settings.
+"""ASAAS v2 - Application Configuration & Environment Settings.
 
 Centralized configuration adhering to Clean Architecture.
 """
@@ -56,10 +56,10 @@ _load_dotenv(PROJECT_ROOT / '.env')
 
 # Server network settings. The legacy backend binds localhost only — the
 # control plane on :8876 proxies every call, so no other machine on the
-# network can see or reach this port. Set ZIMAM_HOST explicitly (e.g. via
+# network can see or reach this port. Set ASAAS_HOST explicitly (e.g. via
 # .env) only if you deliberately need LAN exposure.
-SERVER_HOST: str = os.getenv('ZIMAM_HOST', '127.0.0.1')
-SERVER_PORT: int = int(os.getenv('ZIMAM_PORT', '8765'))
+SERVER_HOST: str = os.getenv('ASAAS_HOST') or os.getenv('ZIMAM_HOST', '127.0.0.1')
+SERVER_PORT: int = int(os.getenv('ASAAS_PORT') or os.getenv('ZIMAM_PORT', '8765'))
 
 # Security settings
 TOKEN_FILE = DATA_DIR / '.session_token'
@@ -81,4 +81,11 @@ def get_or_create_session_token() -> str:
     return token
 
 SESSION_TOKEN: str = get_or_create_session_token()
-DB_PATH = DATA_DIR / 'zimam_v2.db'
+DB_PATH = DATA_DIR / 'asaas_v2.db'
+# One-time migration: adopt the legacy zimam_v2.db if the new name is absent.
+_LEGACY_DB_PATH = DATA_DIR / 'zimam_v2.db'
+if not DB_PATH.exists() and _LEGACY_DB_PATH.exists():
+    try:
+        _LEGACY_DB_PATH.replace(DB_PATH)
+    except OSError:
+        DB_PATH = _LEGACY_DB_PATH

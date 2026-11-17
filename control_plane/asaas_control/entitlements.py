@@ -50,7 +50,7 @@ def check_feature(state: LicenseState, feature: str, detail: str | None = None) 
     if not state.has_feature(feature):
         raise HTTPException(
             status_code=403,
-            detail=detail or f"This feature requires the '{feature}' entitlement. Upgrade your ZIMAM license.",
+            detail=detail or f"This feature requires the '{feature}' entitlement. Upgrade your ASAAS license.",
         )
 
 
@@ -66,7 +66,7 @@ async def license_guard(request: Request, call_next) -> Response:
         return JSONResponse(
             status_code=403,
             content={
-                "detail": "License expired — the console is in read-only mode. Renew your ZIMAM license to re-enable changes.",
+                "detail": "License expired — the console is in read-only mode. Renew your ASAAS license to re-enable changes.",
                 "code": "license_expired",
             },
         )

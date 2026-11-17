@@ -18,16 +18,16 @@ from .entitlements import license_guard
 from .legacy_proxy import router as legacy_proxy_router
 from .storage import init_db
 
-log = logging.getLogger("zimam_control.backup")
+log = logging.getLogger("asaas_control.backup")
 
-_BACKUP_INTERVAL_HOURS = float(os.getenv("ZIMAM_BACKUP_INTERVAL_HOURS", "24"))
-_BACKUP_KEEP = int(os.getenv("ZIMAM_BACKUP_KEEP", "14"))
+_BACKUP_INTERVAL_HOURS = float(os.getenv("ASAAS_BACKUP_INTERVAL_HOURS", "24"))
+_BACKUP_KEEP = int(os.getenv("ASAAS_BACKUP_KEEP", "14"))
 
 
 async def _backup_loop() -> None:
     """Periodic online SQLite backup + retention prune.
 
-    Interval/retention are env-tunable; ``ZIMAM_BACKUP_INTERVAL_HOURS=0``
+    Interval/retention are env-tunable; ``ASAAS_BACKUP_INTERVAL_HOURS=0``
     disables the scheduler entirely (manual ``POST /system/backup`` still works).
     """
     if _BACKUP_INTERVAL_HOURS <= 0:
@@ -52,7 +52,7 @@ async def lifespan(_: FastAPI):
         task.cancel()
 
 
-app = FastAPI(title="ZIMAM Control Plane", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="ASAAS Control Plane", version="1.0.0", lifespan=lifespan)
 if settings.allowed_origins:
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.allowed_origins), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.middleware("http")(license_guard)
@@ -65,7 +65,7 @@ app.include_router(legacy_proxy_router)
 # console is served at the origin root with an index.html fallback for
 # client-side routes — registered last so /api/* always wins.
 repo_root = Path(__file__).resolve().parents[2]
-frontend_dist = Path(os.environ["ZIMAM_FRONTEND_DIST"]) if os.environ.get("ZIMAM_FRONTEND_DIST") else repo_root / "dist"
+frontend_dist = Path(os.environ["ASAAS_FRONTEND_DIST"]) if os.environ.get("ASAAS_FRONTEND_DIST") else repo_root / "dist"
 if not frontend_dist.exists():
     frontend_dist = repo_root / "frontend" / "dist"
 # Packaged layout: <install>/web or <install>/bin/../web next to the exe.

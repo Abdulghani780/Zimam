@@ -1,5 +1,5 @@
 """
-ZIMAM Enterprise v3.0 - Sovereign Database Management Service
+ASAAS Enterprise v3.0 - Sovereign Database Management Service
 Real Windows SQL Server / PostgreSQL / MySQL Engine Discovery & SQLite Studio
 """
 
@@ -30,7 +30,7 @@ class DatabaseService:
         # 1. Native Sovereign Embedded SQLite
         sqlite_size = DB_PATH.stat().st_size if DB_PATH.exists() else 0
         engines.append({
-            'name': 'ZIMAM SQLite Sovereign Warehouse',
+            'name': 'ASAAS SQLite Sovereign Warehouse',
             'type': 'SQLite',
             'version': sqlite3.sqlite_version,
             'status': 'Online',
@@ -85,7 +85,7 @@ class DatabaseService:
 
     @classmethod
     def get_system_database_stats(cls) -> Dict[str, Any]:
-        """Returns deep telemetry and health metrics for the sovereign ZIMAM database."""
+        """Returns deep telemetry and health metrics for the sovereign ASAAS database."""
         if not DB_PATH.exists():
             return {'ok': False, 'error': 'قاعدة البيانات غير موجودة'}
 
@@ -267,7 +267,7 @@ class DatabaseService:
     def create_backup(cls, description: str = 'Manual Snapshot') -> Dict[str, Any]:
         """Creates an authenticated, timestamped physical backup of the sovereign database."""
         timestamp = time.strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"zimam_v2_backup_{timestamp}.db"
+        backup_filename = f"asaas_v2_backup_{timestamp}.db"
         dest_path = BACKUPS_DIR / backup_filename
 
         try:

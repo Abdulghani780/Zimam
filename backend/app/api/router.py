@@ -1,4 +1,4 @@
-"""ZIMAM v2.5 - Modular HTTP Request Router & Static File Handler.
+"""ASAAS v2.5 - Modular HTTP Request Router & Static File Handler.
 
 Dispatches REST API endpoints directly to OOP Domain Services with zero legacy baggage.
 Includes SPA static file serving with automatic index.html fallback for client routing,
@@ -99,7 +99,7 @@ from ..services.telemetry_service import TelemetryService
 from ..services.user_service import UserService
 from ..services.database_service import DatabaseService
 
-logger = logging.getLogger('zimam.router')
+logger = logging.getLogger('asaas.router')
 
 # Initialize database on startup
 init_db()
@@ -131,10 +131,10 @@ def _extract_blocked_ips(events: List[Dict[str, Any]]) -> List[str]:
     return blocked
 
 
-class ZimamApiHandler(SimpleHTTPRequestHandler):
-    """Clean HTTP Request Handler for ZIMAM v2.5 with Multi-User RBAC."""
+class AsaasApiHandler(SimpleHTTPRequestHandler):
+    """Clean HTTP Request Handler for ASAAS v2.5 with Multi-User RBAC."""
 
-    server_version = "ZIMAM-Control/3.0"
+    server_version = "ASAAS-Control/3.0"
 
     def log_message(self, format: str, *args: Any) -> None:
         """Safe request logging resilient to pythonw (where sys.stderr is None)."""
@@ -154,7 +154,7 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
         same_origin = {f'http://{host}', f'https://{host}'}
         configured = {
             item.strip().rstrip('/')
-            for item in os.getenv('ZIMAM_ALLOWED_ORIGINS', '').split(',')
+            for item in os.getenv('ASAAS_ALLOWED_ORIGINS', '').split(',')
             if item.strip()
         }
         return origin in same_origin or origin in configured
@@ -162,10 +162,10 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
     def _session_cookie(self, token: str, *, clear: bool = False) -> str:
         # Local development uses HTTP; production deployments should set this
         # explicitly to 1 behind the TLS reverse proxy.
-        secure = os.getenv('ZIMAM_COOKIE_SECURE', '0').lower() not in {'0', 'false', 'no'}
+        secure = os.getenv('ASAAS_COOKIE_SECURE', '0').lower() not in {'0', 'false', 'no'}
         value = '' if clear else token
         max_age = 0 if clear else 86400
-        cookie = f'zimam_session={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}'
+        cookie = f'asaas_session={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}'
         if secure:
             cookie += '; Secure'
         return cookie
@@ -209,14 +209,14 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Credentials', 'true')
             self.send_header('Vary', 'Origin')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Zimam-Token')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Asaas-Token')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'SAMEORIGIN')
         self.end_headers()
 
     def _extract_token(self) -> str:
         """Extract a server session from HttpOnly cookie or explicit API header."""
-        token = self.headers.get('X-Session-Token') or self.headers.get('X-Zimam-Token') or ''
+        token = self.headers.get('X-Session-Token') or self.headers.get('X-Asaas-Token') or ''
         if not token:
             auth_h = self.headers.get('Authorization', '')
             if auth_h.startswith('Bearer '):
@@ -225,7 +225,7 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
             cookie = SimpleCookie()
             try:
                 cookie.load(self.headers.get('Cookie', ''))
-                morsel = cookie.get('zimam_session')
+                morsel = cookie.get('asaas_session')
                 token = morsel.value if morsel else ''
             except Exception:
                 token = ''
@@ -240,16 +240,16 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
                 return True, sess
 
         # Control-plane bridge: the :8876 proxy validates an /api/v1 session
-        # and forwards username + role as X-ZIMAM-Proxy-*. Trusted only from
+        # and forwards username + role as X-ASAAS-Proxy-*. Trusted only from
         # loopback — browsers cannot set the headers (absent from the CORS
         # allow-headers list) and this listener is not exposed remotely.
         # The local app_users row is a projection kept in sync by role.
         # NOTE: dual-stack listeners report IPv4 peers as '::ffff:127.0.0.1',
         # so the mapped form must be listed alongside plain loopback.
         if self.client_address[0] in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
-            proxy_user = (self.headers.get('X-ZIMAM-Proxy-User') or '').strip()
+            proxy_user = (self.headers.get('X-ASAAS-Proxy-User') or '').strip()
             if proxy_user:
-                proxy_role = (self.headers.get('X-ZIMAM-Proxy-Role') or '').strip()
+                proxy_role = (self.headers.get('X-ASAAS-Proxy-Role') or '').strip()
                 profile = db_sync_proxied_user(proxy_user, proxy_role)
                 if profile:
                     return True, {
@@ -309,7 +309,7 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
             self.end_headers()
 
             try:
-                self.wfile.write(b": zimam-v2.5 sse stream initialized\n\n")
+                self.wfile.write(b": asaas-v2.5 sse stream initialized\n\n")
                 self.wfile.flush()
 
                 while not getattr(self.server, '_BaseServer__shutdown_request', False):
@@ -550,7 +550,7 @@ class ZimamApiHandler(SimpleHTTPRequestHandler):
                 protocol_label = 'SFTP' if scheme == 'sftp' else 'SSH'
                 page = f"""<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8">
-<title>ZIMAM {protocol_label} Session</title>
+<title>ASAAS {protocol_label} Session</title>
 <style>
 body{{font-family:system-ui,sans-serif;background:#141111;color:#f6f0e5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}}
 .card{{max-width:560px;padding:32px;border:1px solid rgba(216,179,111,.35);border-radius:16px;background:rgba(255,246,230,.05)}}
@@ -566,8 +566,8 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.send_header('Content-Length', str(len(page)))
-                self.send_header('X-ZIMAM-Protocol', protocol_label)
-                self.send_header('X-ZIMAM-Session-URI', protocol_uri)
+                self.send_header('X-ASAAS-Protocol', protocol_label)
+                self.send_header('X-ASAAS-Session-URI', protocol_uri)
                 self.send_header('X-Content-Type-Options', 'nosniff')
                 self.end_headers()
                 self.wfile.write(page)
@@ -597,9 +597,9 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/x-rdp')
-            self.send_header('Content-Disposition', f'attachment; filename="zimam-{safe_name}.rdp"')
+            self.send_header('Content-Disposition', f'attachment; filename="asaas-{safe_name}.rdp"')
             self.send_header('Content-Length', str(len(rdp_content)))
-            self.send_header('X-ZIMAM-Protocol', 'RDP')
+            self.send_header('X-ASAAS-Protocol', 'RDP')
             self.end_headers()
             self.wfile.write(rdp_content)
             return
@@ -677,7 +677,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
                     'user': 'Administrator',
                     'role': 'SecOps Admin',
                     'action': e.get('event_type', 'AUDIT_RECORD'),
-                    'target': 'ZIMAM Server Node',
+                    'target': 'ASAAS Server Node',
                     'ip': e.get('ip', '127.0.0.1'),
                     'status': 'SUCCESS' if e.get('severity') != 'CRITICAL' else 'BLOCKED',
                     'details': {'info': e.get('details', ''), 'severity': e.get('severity', 'INFO')}
@@ -710,7 +710,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
                 exp_body = ('\ufeff' + output.getvalue()).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/csv; charset=utf-8')
-                self.send_header('Content-Disposition', 'attachment; filename="zimam-audit-trail.csv"')
+                self.send_header('Content-Disposition', 'attachment; filename="asaas-audit-trail.csv"')
                 self.send_header('Content-Length', str(len(exp_body)))
                 self.end_headers()
                 self.wfile.write(exp_body)
@@ -719,7 +719,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
                 exp_body = json.dumps({'ok': True, 'exported_at': time.strftime('%Y-%m-%d %H:%M:%S'), 'events': [dict(x) for x in events]}, indent=2, ensure_ascii=False).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Content-Disposition', 'attachment; filename="zimam-audit-trail.json"')
+                self.send_header('Content-Disposition', 'attachment; filename="asaas-audit-trail.json"')
                 self.send_header('Content-Length', str(len(exp_body)))
                 self.end_headers()
                 self.wfile.write(exp_body)
@@ -772,7 +772,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             })
 
         # =====================================================================
-        # ZIMAM Enterprise v3.0: Core Infrastructure & Windows Server Endpoints
+        # ASAAS Enterprise v3.0: Core Infrastructure & Windows Server Endpoints
         # =====================================================================
         if path == '/api/servers/check':
             db_refresh_server_health(force=True)
@@ -900,7 +900,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
         if path.startswith('/api/'):
             return self.respond_json(404, {
                 'ok': False,
-                'error': f'المسار {path} قيد التطوير أو غير موجود على سيرفر ZIMAM.'
+                'error': f'المسار {path} قيد التطوير أو غير موجود على سيرفر ASAAS.'
             })
 
         # --- Static SPA File Serving ---
@@ -1083,7 +1083,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
         # --- Session Actions (Message, Disconnect, Logoff, Shadow) ---
         if path in ('/api/sessions/message', '/api/messages/send'):
             sid = body.get('session_id')
-            title = body.get('title', 'تنبيه إداري من سيرفر ZIMAM')
+            title = body.get('title', 'تنبيه إداري من سيرفر ASAAS')
             msg = body.get('message', '')
             timeout = int(body.get('timeout', 15))
 
@@ -1172,7 +1172,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
 
         if path == '/api/security/unblock':
             ip = str(body.get('ip', ''))
-            rule_name = f"ZIMAM_Block_{ip.replace(':', '_')}"
+            rule_name = f"ASAAS_Block_{ip.replace(':', '_')}"
             cmd = ['netsh', 'advfirewall', 'firewall', 'delete', 'rule', f'name={rule_name}']
             try:
                 subprocess.run(cmd, shell=False, creationflags=0x08000000, capture_output=True, timeout=5)
@@ -1263,7 +1263,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             return self.respond_json(200, {'ok': True, 'config': updated})
 
         if path == '/api/alerts/test':
-            msg = body.get('message', 'اختبار تنبيه تجريبي مباشر من زِمام ZIMAM v2.5')
+            msg = body.get('message', 'اختبار تنبيه تجريبي مباشر من أساس ASAAS v2.5')
             res = AlertService.send_telegram_alert(msg, 'test_alert', force=True)
             return self.respond_json(200, res)
 
@@ -1389,7 +1389,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             return self.respond_json(200 if res.get('ok') else 400, res)
 
         # =====================================================================
-        # ZIMAM Enterprise v3.0: Mutating Operations via Unified Action Engine
+        # ASAAS Enterprise v3.0: Mutating Operations via Unified Action Engine
         # =====================================================================
         if path == '/api/servers':
             s_name = body.get('name', 'Server')
@@ -1421,7 +1421,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             confirmed = bool(body.get('confirmed', False))
             res = ActionEngine.execute(
                 'SYSTEM_RESTART', username, user_role, 'srv-local',
-                {'reason': body.get('reason', 'ZIMAM UI Restart'), 'timeout_sec': int(body.get('timeout', 30))},
+                {'reason': body.get('reason', 'ASAAS UI Restart'), 'timeout_sec': int(body.get('timeout', 30))},
                 SystemProvider.restart_server,
                 confirmed=confirmed
             )
@@ -1431,7 +1431,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             confirmed = bool(body.get('confirmed', False))
             res = ActionEngine.execute(
                 'SYSTEM_SHUTDOWN', username, user_role, 'srv-local',
-                {'reason': body.get('reason', 'ZIMAM UI Shutdown'), 'timeout_sec': int(body.get('timeout', 30))},
+                {'reason': body.get('reason', 'ASAAS UI Shutdown'), 'timeout_sec': int(body.get('timeout', 30))},
                 SystemProvider.shutdown_server,
                 confirmed=confirmed
             )
@@ -1576,7 +1576,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
         if path.startswith('/api/'):
             return self.respond_json(404, {
                 'ok': False,
-                'error': f'المسار {path} قيد التطوير أو غير موجود على سيرفر ZIMAM.'
+                'error': f'المسار {path} قيد التطوير أو غير موجود على سيرفر ASAAS.'
             })
 
         self.send_error(405, "Method Not Allowed")

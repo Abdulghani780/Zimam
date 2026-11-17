@@ -22,15 +22,15 @@ from .storage import db_session
 
 router = APIRouter()
 
-LEGACY_BASE_URL = os.getenv("ZIMAM_LEGACY_API_URL", "http://127.0.0.1:8765").rstrip("/")
+LEGACY_BASE_URL = os.getenv("ASAAS_LEGACY_API_URL", "http://127.0.0.1:8765").rstrip("/")
 
 # Header used to carry an authenticated /api/v1 identity to the legacy
 # backend. The proxy strips any client-supplied value before injecting its
 # own, so browsers can never forge it (it is also absent from the legacy
 # CORS allow-headers list).
-PROXY_USER_HEADER = "x-zimam-proxy-user"
-PROXY_ROLE_HEADER = "x-zimam-proxy-role"
-V1_SESSION_COOKIE = "zimam_v1_session"
+PROXY_USER_HEADER = "x-asaas-proxy-user"
+PROXY_ROLE_HEADER = "x-asaas-proxy-role"
+V1_SESSION_COOKIE = "asaas_v1_session"
 
 
 def _v1_session_identity(raw: str | None) -> tuple[str, str] | None:
@@ -99,7 +99,7 @@ async def proxy_legacy(path: str, request: Request):
 
     headers = {
         k: v for k, v in request.headers.items()
-        if k.lower() not in _HOP_BY_HOP and not k.lower().startswith("x-zimam-proxy-")
+        if k.lower() not in _HOP_BY_HOP and not k.lower().startswith("x-asaas-proxy-")
     }
     identity = await asyncio.to_thread(_v1_session_identity, request.cookies.get(V1_SESSION_COOKIE))
     if identity:
@@ -115,7 +115,7 @@ async def proxy_legacy(path: str, request: Request):
             status_code=502,
             content={
                 "ok": False,
-                "error": "خدمة ZIMAM المحلية غير متاحة. شغّل الخادم على المنفذ 8765.",
+                "error": "خدمة ASAAS المحلية غير متاحة. شغّل الخادم على المنفذ 8765.",
             },
         )
 

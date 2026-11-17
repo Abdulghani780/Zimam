@@ -1,4 +1,4 @@
-"""ZIMAM v2.5 - Dynamic Resource Governor Service.
+"""ASAAS v2.5 - Dynamic Resource Governor Service.
 Trims working set memory of idle RDP sessions and background apps to free RAM,
 backed by persistent SQLite configuration.
 """

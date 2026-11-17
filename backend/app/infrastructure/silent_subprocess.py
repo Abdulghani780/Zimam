@@ -1,4 +1,4 @@
-"""ZIMAM v2.5 - Silent Subprocess Execution.
+"""ASAAS v2.5 - Silent Subprocess Execution.
 Guarantees 100% invisible CLI execution on Windows without creating any
 flashing CMD / console / conhost windows.
 """

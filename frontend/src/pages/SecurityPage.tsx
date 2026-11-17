@@ -266,7 +266,7 @@ export function SecurityPage() {
                   {t('درع أساس عن بُعد (Remote Agent Shield)')}
                 </h2>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  {t('حالة جدار الحماية وأحدث أحداث السجل من وكلاء ASAAS.Agent — بيانات حقيقية مجمعة')}
+                  {t('حالة جدار الحماية وأحدث أحداث السجل من وكلاء Asaas.Agent — بيانات حقيقية مجمعة')}
                 </span>
               </div>
             </div>

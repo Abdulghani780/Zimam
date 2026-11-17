@@ -1,7 +1,7 @@
-# ZIMAM Console — خطة إعادة التصميم الشاملة (Signature Edition)
+# ASAAS Console — خطة إعادة التصميم الشاملة (Signature Edition)
 
 > الهدف: واجهة feels like a physical luxury instrument — not a dashboard template.
-> المرجعيات: هوية ZIMAM الرسمية (brand.md) + Apple Design Principles + Pinterest-grade art direction.
+> المرجعيات: هوية ASAAS الرسمية (brand.md) + Apple Design Principles + Pinterest-grade art direction.
 
 > **الحالة: مكتملة ✅** — نُفذت المراحل 0–5 (Foundation → Shell → Pages → Polish → Verification).
 > التحقق: 76 screenshot (20 صفحة × ديسكتوب/موبايل × ثيمين)، 8/8 smoke، صفر أخطاء، صفر overflow،
@@ -145,7 +145,7 @@
 ```
 ┌─────────────────────────────────────────────────────┐
 │  ╭─ gradient gold hairline ─╮                      │
-│  │  ZIMAM CONTROL            │   [status pill]    │
+│  │  ASAAS CONTROL            │   [status pill]    │
 │  │  لوحة القيادة السيادية     │                    │
 │  │  "مســاء الخير"             │   [4 stat chips]  │
 │  │                            │                    │
@@ -193,7 +193,7 @@
 
 ```
 ┌──────────────────────────────────────┐
-│         [logo] ZIMAM                 │
+│         [logo] ASAAS                 │
 │                                      │
 │      «مســاء الخير»                   │  ← Stretch on greeting
 │      لوحة القيادة السيادية           │  ← Serif Display

@@ -256,7 +256,7 @@ export function AgentsPage() {
       <Card title={t('حزمة التحديث الذاتي')} icon="vault">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, lineHeight: 1.7 }}>
-            {t('ارفع ملف ASAAS.Agent.exe الجديد مرة واحدة، ثم أرسل مهمة agent.update موقعة — الوكيل يتحقق من البصمة SHA-256 ويطبّقها عند إعادة التشغيل.')}
+            {t('ارفع ملف Asaas.Agent.exe الجديد مرة واحدة، ثم أرسل مهمة agent.update موقعة — الوكيل يتحقق من البصمة SHA-256 ويطبّقها عند إعادة التشغيل.')}
           </p>
           {bundle?.available ? (
             <div style={{ fontSize: 12, color: 'var(--text-2)', background: 'var(--surface-glass-tint)', borderRadius: 10, padding: '10px 14px', fontFamily: 'var(--font-telemetry)' }}>

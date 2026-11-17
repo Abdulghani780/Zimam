@@ -11,7 +11,7 @@ from app.infrastructure.db import db_bootstrap_admin, init_db
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Create or rotate the local ZIMAM break-glass administrator."
+        description="Create or rotate the local ASAAS break-glass administrator."
     )
     parser.add_argument("--username", default="breakglass-admin")
     parser.add_argument("--full-name", default="Local Break-glass Administrator")

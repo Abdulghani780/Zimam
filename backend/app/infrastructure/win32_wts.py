@@ -1,4 +1,4 @@
-"""ZIMAM v2 - Win32 Terminal Services Adapter.
+"""ASAAS v2 - Win32 Terminal Services Adapter.
 
 High-performance direct ctypes binding to wtsapi32.dll, kernel32.dll, and shell32.dll.
 Provides native session enumeration, interactive alerts, and session control with zero subprocesses.

@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('ZIMAM - Dashboard & Live Telemetry Journeys', () => {
+test.describe('ASAAS - Dashboard & Live Telemetry Journeys', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
   });
 
   test('TC-01: Page title and Live SSE connection status', async ({ page }) => {
-    await expect(page).toHaveTitle(/زِمام/);
+    await expect(page).toHaveTitle(/أساس/);
 
     // Live status badge in header
     const liveBadge = page.getByText(/متصل مباشر/i);

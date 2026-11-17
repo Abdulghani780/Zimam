@@ -958,7 +958,7 @@ export function DatabasesPage() {
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <p style={{ fontSize: 12, color: 'var(--text-2)' }}>
-              {t('سيتم إنشاء لقطة فيزيائية مشفرة لقاعدة البيانات')} <code>zimam_v2.db</code> {t('وحفظها في المجلد السيادي مع حساب الهاش SHA-256.')}
+              {t('سيتم إنشاء لقطة فيزيائية مشفرة لقاعدة البيانات')} <code>asaas_v2.db</code> {t('وحفظها في المجلد السيادي مع حساب الهاش SHA-256.')}
             </p>
             <div>
               <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-3)', display: 'block', marginBottom: 4 }}>

@@ -9,10 +9,10 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from zimam_control.config import settings
-from zimam_control.models import AppSession, User
-from zimam_control.security import hash_password
-from zimam_control.storage import append_audit, db_session, init_db
+from asaas_control.config import settings
+from asaas_control.models import AppSession, User
+from asaas_control.security import hash_password
+from asaas_control.storage import append_audit, db_session, init_db
 from sqlalchemy import select
 
 

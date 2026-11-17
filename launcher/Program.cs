@@ -6,9 +6,9 @@ using System.Net;
 using System.Text;
 using System.Threading;
 
-namespace ZimamLauncher
+namespace AsaasLauncher
 {
-    // ZIMAM dev launcher: kills stale project listeners, starts the current
+    // ASAAS dev launcher: kills stale project listeners, starts the current
     // backend (:8765) + control plane (:8876) from this repo, opens the UI in
     // an app window, and shuts the servers down when that window closes.
     static class Program
@@ -31,7 +31,7 @@ namespace ZimamLauncher
                 Directory.CreateDirectory(browserProfile);
 
                 // Always start from the CURRENT tree: free the project ports so
-                // an old installed ASAAS/ZIMAM build can never answer instead.
+                // an old installed ASAAS/ASAAS build can never answer instead.
                 KillPortListeners(BackendPort);
                 KillPortListeners(ControlPlanePort);
                 Thread.Sleep(400);
@@ -50,7 +50,7 @@ namespace ZimamLauncher
                     UseShellExecute = false,
                     CreateNoWindow = true,
                 };
-                bePsi.EnvironmentVariables["ZIMAM_HOST"] = "127.0.0.1";
+                bePsi.EnvironmentVariables["ASAAS_HOST"] = "127.0.0.1";
                 started.Add(Process.Start(bePsi)!);
 
                 // Control plane + built SPA on :8876 (proxies legacy /api).

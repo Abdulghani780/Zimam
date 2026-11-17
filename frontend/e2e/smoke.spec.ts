@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 const USER = process.env.E2E_USER || 'e2e-admin';
 const PASS = process.env.E2E_PASS || '';
 
-test.describe('ZIMAM smoke', () => {
+test.describe('ASAAS smoke', () => {
   test.skip(!PASS, 'E2E_PASS not set — skipping authenticated smoke tests');
 
   test('SMK-01: login and reach the dashboard', async ({ page }) => {
