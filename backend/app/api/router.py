@@ -1109,6 +1109,24 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
         if path == '/api/sessions/shadow':
             sid = int(body.get('session_id', -1))
             mode = body.get('mode', 'view')
+
+            # Preflight: only Active sessions can be shadowed — never the
+            # caller's own session, Disconnected/Listen/Console states fail.
+            try:
+                sessions = Win32WtsService.list_active_sessions()
+                target = next((s for s in sessions if int(getattr(s, 'id', -1) or -1) == sid), None)
+            except Exception:
+                target = None
+            if target is None:
+                db_add_security_event('SESSION_SHADOW', client_ip, f'محاولة مشاركة جلسة غير موجودة {sid}', 'WARNING')
+                return self.respond_json(400, {'ok': False, 'error': f'الجلسة {sid} غير موجودة أو غير نشطة — لا يمكن مشاركتها.'})
+            state = str(getattr(target, 'state', '') or '').lower()
+            if state != 'active':
+                return self.respond_json(400, {'ok': False, 'error': f'لا يمكن مشاركة جلسة بحالة {state} — يجب أن تكون Active.'})
+            caller_sessions = [s for s in sessions if str(getattr(s, 'username', '')).lower() == str(username).lower() and int(getattr(s, 'id', -1) or -1) == sid]
+            if caller_sessions:
+                return self.respond_json(400, {'ok': False, 'error': 'لا يمكنك مشاركة جلستك الخاصة.'})
+
             db_add_security_event('SESSION_SHADOW', client_ip, f'مشاركة شاشة الجلسة {sid} بنمط {mode} بواسطة {username}', 'INFO')
             try:
                 cmd = ['mstsc.exe', f'/shadow:{sid}']
@@ -1118,6 +1136,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
                 subprocess.Popen(cmd)
             except Exception as e:
                 logger.error(f"Failed to launch mstsc shadow: {e}")
+                return self.respond_json(500, {'ok': False, 'error': f'فشل إطلاق أداة المشاركة: {e}'})
             return self.respond_json(200, {
                 'ok': True,
                 'session_id': sid,
