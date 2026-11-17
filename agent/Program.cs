@@ -5,6 +5,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Hosting;
@@ -291,6 +292,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
             .ToArray(),
         "session.list" => SessionProbe.ListSessions(),
         "session.logoff" => SessionProbe.Logoff(payload),
+        "session.disconnect" => SessionProbe.Disconnect(payload),
         "network.info" => NetworkProbe.Collect(),
         "eventlog.tail" => EventLogProbe.Tail(payload),
         "software.list" => SoftwareProbe.ListInstalled(),
@@ -437,6 +439,26 @@ internal static class SessionProbe
             observed_at = DateTimeOffset.UtcNow
         };
     }
+
+    // Signed write job: disconnects one session (keeps it alive, drops the
+    // connection) via WTSDisconnectSession — requires elevation on the host.
+    public static object Disconnect(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("session_id", out var idEl) || !idEl.TryGetInt32(out var sessionId) || sessionId <= 0)
+            throw new InvalidOperationException("session.disconnect requires a positive integer payload.session_id");
+
+        var rc = WTSDisconnectSession(IntPtr.Zero, sessionId, false);
+        return new
+        {
+            session_id = sessionId,
+            ok = rc,
+            win32_error = Marshal.GetLastWin32Error(),
+            observed_at = DateTimeOffset.UtcNow
+        };
+    }
+
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    private static extern bool WTSDisconnectSession(IntPtr hServer, int sessionId, bool bWait);
 }
 
 internal static class ServiceProbe

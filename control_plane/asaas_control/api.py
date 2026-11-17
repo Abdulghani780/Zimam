@@ -120,7 +120,7 @@ class MfaVerifyRequest(BaseModel):
 # Read-only collectors plus one reviewed write job (session.logoff, which
 # requires an explicit session_id payload). Everything else stays behind the
 # legacy ActionEngine until a reviewed allowlist and confirmation flow exist.
-ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update", "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms"}
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect", "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update", "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms"}
 
 
 class JobCreateRequest(BaseModel):
@@ -620,6 +620,21 @@ class SessionTerminateRequest(BaseModel):
     session_id: int = Field(gt=0)
 
 
+def _queue_session_job(user: User, agent_id: str, session_id: int, job_type: str) -> dict:
+    _require_writer(user)
+    with db_session() as db:
+        if db.get(Agent, agent_id) is None:
+            raise HTTPException(status_code=404, detail="Agent not found")
+    job_payload = json.dumps({"session_id": session_id}, sort_keys=True, separators=(",", ":"))
+    job_id = uuid.uuid4().hex
+    signature = get_job_signer().sign(_job_signature_payload(job_id, agent_id, job_type, job_payload)).hex()
+    with db_session() as db:
+        job = AgentJob(id=job_id, agent_id=agent_id, job_type=job_type, payload_json=job_payload, signature=signature, created_by=user.username, created_at=datetime.now(UTC))
+        db.add(job)
+        append_audit(db, actor_id=user.id, action=f"session.{job_type.split('.', 1)[1]}", target_id=job_id, payload={"agent_id": agent_id, "session_id": session_id})
+    return {"job_id": job_id, "status": "queued", "agent_id": agent_id, "session_id": session_id, "job_type": job_type}
+
+
 @router.post("/sessions/terminate", status_code=202)
 def terminate_session(payload: SessionTerminateRequest, user: User = Depends(_current_user)) -> dict:
     """Queue a signed ``session.logoff`` job for the agent hosting the session.
@@ -627,19 +642,13 @@ def terminate_session(payload: SessionTerminateRequest, user: User = Depends(_cu
     Termination is asynchronous: the agent picks the job up on its next
     poll, verifies the Ed25519 signature, and runs ``logoff <id>`` locally.
     """
-    _require_writer(user)
-    with db_session() as db:
-        agent = db.get(Agent, payload.agent_id)
-        if agent is None:
-            raise HTTPException(status_code=404, detail="Agent not found")
-    job_payload = json.dumps({"session_id": payload.session_id}, sort_keys=True, separators=(",", ":"))
-    job_id = uuid.uuid4().hex
-    signature = get_job_signer().sign(_job_signature_payload(job_id, payload.agent_id, "session.logoff", job_payload)).hex()
-    with db_session() as db:
-        job = AgentJob(id=job_id, agent_id=payload.agent_id, job_type="session.logoff", payload_json=job_payload, signature=signature, created_by=user.username, created_at=datetime.now(UTC))
-        db.add(job)
-        append_audit(db, actor_id=user.id, action="session.terminate", target_id=job_id, payload={"agent_id": payload.agent_id, "session_id": payload.session_id})
-    return {"job_id": job_id, "status": "queued", "agent_id": payload.agent_id, "session_id": payload.session_id}
+    return _queue_session_job(user, payload.agent_id, payload.session_id, "session.logoff")
+
+
+@router.post("/sessions/disconnect", status_code=202)
+def disconnect_session(payload: SessionTerminateRequest, user: User = Depends(_current_user)) -> dict:
+    """Queue a signed ``session.disconnect`` job (WTSDisconnectSession)."""
+    return _queue_session_job(user, payload.agent_id, payload.session_id, "session.disconnect")
 
 
 @router.post("/sessions/{session_id}/terminate")

@@ -275,6 +275,8 @@ export const apiV1 = {
   sessions: () => request<{ items?: V1Session[]; sessions?: V1Session[]; count?: number }>('/sessions'),
   terminateSession: (agentId: string, sessionId: number) =>
     post<{ job_id: string; status: string }>('/sessions/terminate', { agent_id: agentId, session_id: sessionId }),
+  disconnectSession: (agentId: string, sessionId: number) =>
+    post<{ job_id: string; status: string }>('/sessions/disconnect', { agent_id: agentId, session_id: sessionId }),
   recordings: () => request<unknown>('/recordings'),
 
   // Connection tokens (gateway consumption)
