@@ -1,0 +1,233 @@
+# خريطة المشروع الكاملة — ASAAS Server Control
+
+> **آخر تحديث:** 2026-11-17 — بعد اكتمال المرحلة 0 (الهوية) والمرحلة 1 (البيانات الوهمية).
+> هذا الملف هو المرجع الوحيد "أنت هنا / وش باقي" — حدّثه مع كل مرحلة.
+
+---
+
+## 1. وش المشروع؟
+
+**ASAAS Server Control** = جهاز/برنامج Windows لإدارة ومراقبة الخوادم — بديل محلي عن JumpServer/ PAM:
+
+- لوحة تحكم ويب (SPA) عربية RTL + إنجليزية
+- agents على كل خادم يجمعون قياسات حقيقية (موقّعة Ed25519)
+- جلسات RDP/SSH/VNC عبر Guacamole gateway
+- صلاحيات مؤقتة JIT + vault credentials + audit chain مشفّر
+- هوية بصرية رسمية من `AI-ASAAS/skills` (`asaas-ui` kit)
+
+---
+
+## 2. البنية (الطبقات)
+
+```
+┌─ frontend/        React SPA → dist → يُقدَّم من control_plane
+├─ control_plane/   asaas_control — API v1 + proxy + auth/MFA + vault + license
+│                   (FastAPI, :8876 loopback)
+├─ backend/         Legacy admin API (~100 endpoints) :8765 loopback
+│                   └─ جسر الهوية: X-ASAAS-Proxy-* headers من الـ proxy فقط
+├─ agent/           Asaas.Agent.exe — C# Windows service، 19+ collector، jobs موقّعة
+├─ launcher/        AsaasLauncher — يشغّل backend+control_plane ويفتح المتصفح
+├─ packaging/       asaas.iss → ASAAS-Setup-x.y.z.exe (Inno Setup)
+├─ tools/           build-release.ps1, gen-server-cert.py, sign-license.py
+└─ data/            DBs حية + مفاتيح + tls (runtime فقط)
+```
+
+---
+
+## 3. الحالة الفعلية لكل طبقة
+
+| الطبقة | الحالة | الدليل |
+|---|---|---|
+| Frontend | ✅ هوية ASAAS رسمية + 0 أخطاء build | commit `feat(ui): restore official ASAAS identity` |
+| Control plane v1 | ✅ auth+MFA, agents/jobs, audit chain, vault, license, fleet | `CONTROL_PLANE.md` |
+| Guacamole gateway | ✅ RDP/SSH/telnet/vnc e2e مُختبر (guacd 1.6.0) | CONTROL_PLANE.md |
+| Agent | ✅ collectors موقّعة Ed25519، e2e verified | agent/Program.cs |
+| الأمان | ✅ loopback-only, origin fix, proxy bridge, per-user shortcuts | commits `61371e0`…`5e6014c` |
+| البيانات الحية | ✅ وكيل `local-live` online ببيانات حقيقية | WORK_LOG §5 |
+| الاختبارات | ✅ 15 unit + 10 control_plane | `python -m unittest` |
+| Installer | ❌ Inno Setup غير مثبت — `release/` جاهز لكن لا Setup exe | WORK_LOG §9 |
+| البيانات الوهمية | ✅ مُسحت (مرحلة 1) | commit `d84b7cd` |
+
+---
+
+## 4. خارطة الطريق — وين أنت بالضبط
+
+> مرجع التنفيذ المفصّل: `C:\Users\AbdulghaniAli\.devin\plans\plan-d6156b03eaac8513.md`
+
+### ✅ المرحلة 0 — الهوية الرسمية ASAAS (مكتملة)
+- [x] مزامنة `skills/frontend/asaas-ui` مع GitHub = HEAD
+- [x] استبدال `zimam-ui` → `asaas-ui` الرسمي + نقل `Table.tsx` + امتدادات API
+- [x] عكس zimam→asaas في **كل** المشروع: frontend(51 ملف), `asaas_control`, `Asaas.Agent`, `AsaasLauncher`, `asaas.iss`, CI, tests, docs
+- [x] `asaas_v2.db` + ترحيل تلقائي من `zimam_v2.db`
+- [x] theme-init رسمي (فاتح افتراضي) + design-tokens مستعادة
+- [ ] **متبقٍ:** 0.6 تنقل موبايل ≤900px تحقق + 0.7 screenshots Playwright (375/768/1280 × فاتح/داكن)
+
+### ✅ المرحلة 1 — البيانات الوهمية (مكتملة)
+- [x] `score||95`, Docker version, threat `LOW`, `SRV-LOCAL`, JIT `ACTIVE`,
+      disk `Healthy/GPT/NTFS`, `1Gbps`, freePercent `50` → كلها `—`/UNKNOWN
+
+### 🔄 المرحلة 2 — التحصينات الأمنية (جارية)
+- [x] Rate limiting `/api/v1/auth/login` — **موجود أصلاً** (8 محاولات/5د)
+- [x] docker-compose — **محذوف** من المشروع أصلاً
+- [x] `net user` password → NetUserAdd/NetUserSetInfo (موجود)
+- [ ] **password complexity ≥8 + 3/4 فئات** — `user_service.py` (نصّ editing)
+- [ ] README/TESTS تحديث نهائي
+
+### ⬜ المرحلة 3 — استقرار التشغيل
+- [ ] `scripts/restart-elevated.ps1` (إغلاق النسخة القديمة المرتفعة)
+- [ ] Playwright e2e في CI (job منفصل)
+- [ ] حذف `stitch_*.zip` من التتبع إن وُجد
+
+### ⬜ المرحلة 4 — الترحيل لـ /api/v1 (أكبر شغل متبقٍ)
+حسب `docs/MIGRATION_PLAN.md` — الترتيب:
+1. auth ✅ (منجزة — login يفضّل v1 + bridge)
+2. assets/accounts/policies → tokens → sessions → governor/telemetry
+3. كل شريحة: endpoint حي + صفحة محوّلة + حذف legacy بنفس الـ commit
+4. 🔴 blocked: agent job channel للـ ~15 legacy domain (services/firewall/network/storage/tasks/certs/hyperv/docker/roles/processes)
+
+### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
+موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:
+- SSH/SFTP proxy data path
+- Redis-backed token consumption (multi-worker)
+- live session terminate
+- screen/terminal recording + replay
+- AD/LDAP sync
+- off-box backup replication
+- production mTLS issuance
+
+### ⬜ المرحلة 6 — نواقص تشغيلية (من WORK_LOG)
+- [ ] Shadowing: تحقق نهائي (RemoteFX fix مطبّق) + preflight validation
+- [ ] Agent كخدمة Windows (`install-service`) — حالياً عملية عادية
+- [ ] Inno Setup install + بناء `ASAAS-Setup` + اختبار على جهاز نظيف
+- [ ] إعادة بناء `release/` بالثنائيات الجديدة (asaas-*)
+
+---
+
+## 5. Definition of Done (لو-product)
+
+- [ ] كل الصفحات على `/api/v1` (legacy فقط للـ local console tools)
+- [ ] كل الـ release gates في المرحلة 5 مغلقة
+- [ ] `ASAAS-Setup.exe` مبني ومُختبر على VM نظيف
+- [ ] Agent يعمل كخدمة Windows وينجو من إعادة التشغيل
+- [ ] CI أخضر: unit + e2e + build + installer
+- [ ] صفر أرقام وهمية / أزرار ميتة / mock handlers (anti-mock-audit)
+
+---
+
+## 6. أنت هنا الآن
+
+```
+[===========>            ] ~35%
+Phase 0 ✅ | Phase 1 ✅ | Phase 2 🔄 | 3 ⬜ | 4 ⬜ | 5 ⬜ | 6 ⬜
+```
+
+**أقرب خطوة منطقية:** إنهاء المرحلة 2 (دقائق) → المرحلة 3 → ثم المرحلة 4 هي الشغل الكبير الحقيقي.
+الخطة التنفيذية التفصيلية: `~/.devin/plans/plan-d6156b03eaac8513.md`
+سجل العمل: `docs/WORK_LOG.md`
+خطة الترحيل: `docs/MIGRATION_PLAN.md`
+بوابات الإصدار: `CONTROL_PLANE.md`
+```
+
+---
+
+### ملاحظة عن المنهج
+
+الشغل السابق كان "عشوائي" لأن كل جلسة أعطت أولوية مختلفة. القاعدة من الآن:
+**اختر دائماً أول بند ⬜ في أعلى مرحلة لم تكتمل** — المرحلة 2 الآن، ثم 3، ثم 4 بالترتيب المكتوب في MIGRATION_PLAN.
+```
+
+---
+
+## 7. قرارات معمارية مهمة (لا تُعكس)
+
+| القرار | السبب |
+|---|---|
+| بدون Docker | طلب صريح — بناء أصلي Windows |
+| backend+control_plane على loopback فقط | لا شيء مكشوف على الشبكة؛ الـ proxy هو الواجهة |
+| legacy `/api/*` يبقى للـ console المحلي | ~100 endpoints شغالة — الترحيل تدريجي لا big-bang |
+| v1 هو المرجع للهوية | users في control-plane DB هو السلطة؛ legacy يُزامَن |
+| agent jobs موقّعة Ed25519 read-only | الـ allowlist يمنع أي job كتابة عدا `session.logoff` الموقّع |
+| البيانات الحية فقط | لا أرقام وهمية — `—`/empty state عند الفشل |
+| الهوية = `AI-ASAAS/skills` الرسمي | لا نسخ معدّلة — أي انحراف يوثَّق في SKILL.md |
+
+---
+
+## 8. Risks / نقاط حساسة
+
+- **النسخة الشغالة على :8765/:8876 قديمة (ZIMAM)** — لازم restart قبل أي اختبار UI جديد
+- `enterprise_v25/v30` tests تحتاج `admin@asaas2026` + خادم شغال — تتخطى في CI العادي
+- `graphify-out/` و`build-py/` مجلدات محلية غير متتبعة — تُحذف عند التنظيف
+- Inno Setup غير مثبت على الجهاز — blocker وحيد للـ installer
+- `release/` binaries لسا بأسماء zimam — تُعاد بناؤها في build-release.ps1
+- Swarm skill مُثبّتة في `.venv` لكن تحتاج `OPENAI_API_KEY` للاستخدام الفعلي
+```
+
+*حدّث هذا الملف في نهاية كل مرحلة.*
+```
+
+---
+
+## 9. سريعة — الأوامر
+
+```bash
+# بناء الواجهة
+npm --prefix frontend run build
+
+# اختبارات
+.venv/Scripts/python.exe -m unittest discover -s tests          # unit
+cd control_plane && ../.venv/Scripts/python.exe -m unittest discover -s tests
+
+# تشغيل dev
+run_asaas.ps1            # backend :8765
+python control_plane/serve.py   # control plane :8876
+
+# release
+powershell tools/build-release.ps1   # binaries → release/
+# ثم Inno Setup: ISCC.exe packaging\asaas.iss
+```
+
+---
+
+## 10. مرجع الملفات
+
+| الملف | المحتوى |
+|---|---|
+| `docs/PROJECT_MAP.md` | **هذا الملف — الخريطة الكاملة** |
+| `docs/WORK_LOG.md` | سجل كل جلسة عمل بالتفصيل |
+| `docs/MIGRATION_PLAN.md` | خطة ترحيل legacy → v1endpoint-by-endpoint |
+| `CONTROL_PLANE.md` | معمارية v1 + release gates الموثقة 501/503 |
+| `TESTS.md` | دليل الاختبارات |
+| `skills/frontend/asaas-ui/` | مصدر هوية الواجهة الرسمي (نسخة GitHub) |
+| `~/.devin/plans/plan-d6156b03eaac8513.md` | خطة المراحل 0–6 التنفيذية |
+| `~/.agents/skills/` | كل الـ skills المسجلة (شاملة swarm) |
+```
+
+---
+
+## ملخص تنفيذي (30 ثانية)
+
+**المنتج:** لوحة تحكم سيرفرات Windows — frontend + control plane + agents + installer.
+**خلص:** الهوية الرسمية ASAAS، الأمان الأساسي، بيانات حقيقية، البنية كاملة شغالة محلياً.
+**الباقي بالترتيب:** إنهاء تحصينات (صغيرة) → استقرار تشغيل → **ترحيل v1 (الشغل الكبير)** → بوابات الإصدار → installer.
+**أنت هنا:** نهاية المرحلة 1 — ~35% من الطريق لمنتج قابل للبيع.
+```
+
+*آخر تحديث: 2026-11-17 — 0+1 *
+```
+
+---
+
+## 9. git commits
+
+| Commit | Description |
+|---|---|
+| `9b0fc3c`–`a318bd8` | Previous sessions: cleanup, loopback security, kit identity, UI fixes |
+| `feat(ui): restore official ASAAS identity` | Phase 0: official kit + strings |
+| `refactor: rename ZIMAM→ASAAS` | Phase 0: backend/agent/launcher/packaging |
+| `docs: log ASAAS identity restoration` | WORK_LOG update |
+| `fix(ui): fabricated fallbacks` | Phase 1: fake-data removal |
+| (next) | `docs: PROJECT_MAP.md` — this map |
+
+---
+
+*Rule from now on: always work on the first ⬜ item in the highest incomplete phase — 0→6 in order.*
