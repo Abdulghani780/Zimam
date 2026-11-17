@@ -1765,4 +1765,6 @@ export const EN: Record<string, string> = {
   'عملية DB': 'DB process',
   'لم تُرسل قياسات الخدمات/العمليات بعد — أرسلها من صفحة الوكلاء.': 'Service/process measurements not dispatched yet — send them from the Agents page.',
   'لا خدمات أو عمليات قواعد بيانات مكتشفة على هذا الوكيل.': 'No database services or processes detected on this agent.',
+  'غير معروفة UNKNOWN': 'Unknown',
+  'غير متاح (—)': 'Unavailable (—)',
 };

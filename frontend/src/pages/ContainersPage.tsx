@@ -160,7 +160,7 @@ export function ContainersPage() {
                     </span>
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2, fontFamily: 'monospace' }}>
-                    {dockerData?.version || 'Docker version 29.9.2 (Windows)'}
+                    {dockerData?.version || '—'}
                   </div>
                 </div>
               </div>

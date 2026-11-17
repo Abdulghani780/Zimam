@@ -60,15 +60,15 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
                 )}
                 <div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: data.score >= 80 ? 'var(--paid)' : 'var(--partial)' }}>
-                    مستوى كفاءة واستقرار السيرفر: {data.status || t('ممتاز')}
+                    مستوى كفاءة واستقرار السيرفر: {data.status || '—'}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-                    {data.summary || t('تم إجراء فحص شامل للذاكرة والأنوية والأقراص وعمليات الـ RDP.')}
+                    {data.summary || '—'}
                   </div>
                 </div>
               </div>
               <div style={{ fontSize: 34, fontWeight: 800, color: data.score >= 80 ? 'var(--paid)' : 'var(--partial)', fontVariantNumeric: 'tabular-nums' }}>
-                {data.score || 95}%
+                {data.score != null ? `${data.score}%` : '—'}
               </div>
             </div>
 
@@ -83,7 +83,7 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
                     <Cpu size={15} color="var(--accent)" /> {t('المعالج والأنوية')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginTop: 6, color: 'var(--text)' }}>
-                    {data.cpu_health || t('استقرار تام')}
+                    {data.cpu_health || '—'}
                   </div>
                 </div>
                 <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-tint-strong)', border: '1px solid var(--glass-rim-low)' }}>
@@ -91,7 +91,7 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
                     <Database size={15} color="var(--accent)" /> {t('حاكم الذاكرة')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginTop: 6, color: 'var(--text)' }}>
-                    {data.ram_health || t('محمي من التسريب')}
+                    {data.ram_health || '—'}
                   </div>
                 </div>
                 <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-tint-strong)', border: '1px solid var(--glass-rim-low)' }}>
@@ -99,7 +99,7 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
                     <HardDrive size={15} color="var(--accent)" /> {t('الأقراص والتخزين')}
                   </div>
                   <div style={{ fontSize: 14, fontWeight: 700, marginTop: 6, color: 'var(--text)' }}>
-                    {data.disk_health || t('مساحة كافية')}
+                    {data.disk_health || '—'}
                   </div>
                 </div>
               </div>

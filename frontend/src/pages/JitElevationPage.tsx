@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { t, isRtl } from '../lib/i18n';
 
-type JitStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'PENDING' | 'REJECTED';
+type JitStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'PENDING' | 'REJECTED' | 'UNKNOWN';
 
 interface JitGrant {
   id: string;
@@ -43,6 +43,8 @@ const statusLabel = (status: JitStatus): string => {
       return t('مرفوضة REJECTED');
     case 'REVOKED':
       return t('مسحوبة REVOKED');
+    case 'UNKNOWN':
+      return t('غير معروفة UNKNOWN');
     default:
       return t('منتهية EXPIRED');
   }
@@ -88,7 +90,7 @@ export function JitElevationPage() {
           ticket: g.reason || g.ticket || '—',
           duration_mins: g.duration_mins ?? 0,
           remaining_sec: g.status === 'PENDING' ? 0 : (g.remaining_sec ?? 0),
-          status: (g.status || 'ACTIVE') as JitStatus,
+          status: (g.status || 'UNKNOWN') as JitStatus,
           approver: g.approver || '',
           created_at: g.created_at || '',
         })));

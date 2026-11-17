@@ -521,20 +521,20 @@ export function NetworkStoragePage() {
                       Disk {d.number ?? d.Number ?? i}
                     </td>
                     <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
-                      {d.model || d.FriendlyName || 'Physical Drive'}
+                      {d.model || d.FriendlyName || '—'}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)' }}>
                       {d.size_gb ? `${d.size_gb} GB` : t('غير محدد')}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
-                      {d.bus_type || d.BusType || 'NVMe/SATA'}
+                      {d.bus_type || d.BusType || '—'}
                     </td>
                     <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
-                      {d.partition_style || d.PartitionStyle || 'GPT'}
+                      {d.partition_style || d.PartitionStyle || '—'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span className="badge badge--success" style={{ fontSize: 11 }}>
-                        {d.health_status || d.HealthStatus || 'Healthy'}
+                      <span className={`badge ${/healthy|ok/i.test(String(d.health_status || d.HealthStatus || '')) ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
+                        {d.health_status || d.HealthStatus || '—'}
                       </span>
                     </td>
                   </tr>
@@ -565,17 +565,17 @@ export function NetworkStoragePage() {
               </thead>
               <tbody>
                 {volumes.map((v, i) => {
-                  const freePercent = v.percent_free ?? (v.size_gb ? Math.round((v.free_gb / v.size_gb) * 100) : 50);
+                  const freePercent = v.percent_free ?? (v.size_gb && v.free_gb != null ? Math.round((v.free_gb / v.size_gb) * 100) : null);
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
                       <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 800, fontSize: 14, color: 'var(--accent)' }}>
                         {v.drive_letter ? `${v.drive_letter}:` : 'Volume'}
                       </td>
                       <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
-                        {v.label || 'System / OS'}
+                        {v.label || '—'}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
-                        {v.file_system || 'NTFS'}
+                        {v.file_system || '—'}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)' }}>
                         {v.size_gb ? `${v.size_gb} GB` : '-'}
@@ -584,12 +584,16 @@ export function NetworkStoragePage() {
                         {v.free_gb ? `${v.free_gb} GB` : '-'}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
+                        {freePercent == null ? (
+                          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>—</span>
+                        ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 120 }}>
                           <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
                             <div style={{ height: '100%', width: `${freePercent}%`, background: freePercent > 20 ? 'var(--status-safe)' : 'var(--status-danger)' }} />
                           </div>
                           <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'monospace' }}>{freePercent}%</span>
                         </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -747,7 +751,7 @@ export function NetworkStoragePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Network size={20} style={{ color: 'var(--accent)' }} />
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-1)' }}>{a.name || 'Ethernet'}</div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text-1)' }}>{a.name || '—'}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{a.description || a.InterfaceDescription}</div>
                   </div>
                 </div>
@@ -772,7 +776,7 @@ export function NetworkStoragePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-3)' }}>{t('سرعة الرابط (Link Speed):')}</span>
                   <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
-                    {a.link_speed || a.LinkSpeed || '1 Gbps'}
+                    {a.link_speed || a.LinkSpeed || '—'}
                   </span>
                 </div>
               </div>

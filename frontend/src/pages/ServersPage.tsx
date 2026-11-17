@@ -279,7 +279,7 @@ export function ServersPage() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>
-                    {localServer.computer_name || 'SRV-LOCAL'}
+                    {localServer.computer_name || '—'}
                   </span>
                   <span className="badge badge--success" style={{ fontSize: 11 }}>
                     {t('الخادم المحلي النشط (Host Control Plane)')}

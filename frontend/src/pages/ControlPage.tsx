@@ -107,7 +107,7 @@ export function ControlPage() {
   const toast = useToast();
 
   const sessions = useMemo(() => snapshot?.sessions ?? [], [snapshot?.sessions]);
-  const hostname = snapshot?.host?.hostname || snapshot?.host?.host || 'SRV-LOCAL';
+  const hostname = snapshot?.host?.hostname || snapshot?.host?.host || '—';
 
   const [query, setQuery] = useState('');
   const [serverFilter, setServerFilter] = useState('all');

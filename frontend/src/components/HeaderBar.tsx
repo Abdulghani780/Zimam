@@ -115,7 +115,7 @@ export function HeaderBar({
             title={hostname ? `${t('إدارة السيرفر ')}${hostname}` : t('إدارة السيرفرات')}
           >
             <Server size={15} />
-            <span className="server-select__name" dir="ltr">{hostname || 'SRV-LOCAL'}</span>
+            <span className="server-select__name" dir="ltr">{hostname || '—'}</span>
             <span className="server-select__meta">{health?.os_display ? 'Windows Server' : 'Server'}</span>
             <ChevronDown size={14} className="server-select__chev" />
           </NavLink>

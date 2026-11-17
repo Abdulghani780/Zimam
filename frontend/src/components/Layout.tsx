@@ -102,7 +102,7 @@ export function Layout() {
 
           <footer className="app-footer">
             <div className="app-footer__group">
-              <span dir="ltr">v{health?.version || '3.0.0'} | ASAAS</span>
+              <span dir="ltr">v{health?.version || '—'} | ASAAS</span>
             </div>
             <div className="app-footer__group">
               <span><Server size={13} /> {t('الجلسات النشطة:')} {activeSessions}</span>
@@ -142,7 +142,7 @@ export function Layout() {
 
       <AssistantWidget
         user={{
-          id: currentUser?.username || 'admin',
+          id: currentUser?.username || 'guest',
           displayName: currentUser?.full_name || currentUser?.username || t('مدير النظام'),
         }}
         title={t('مساعد أساس الذكي')}

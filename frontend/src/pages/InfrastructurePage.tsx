@@ -839,7 +839,7 @@ export function InfrastructurePage() {
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
                         <span className="badge badge--neutral" style={{ fontSize: 10 }}>
-                          {s.start_type || 'Manual'}
+                          {s.start_type || '—'}
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -973,13 +973,13 @@ export function InfrastructurePage() {
                         {h.HotFixID}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
-                        {h.Description || 'Security Update'}
+                        {h.Description || '—'}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
                         {h.InstalledOn || t('غير محدد')}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
-                        {h.InstalledBy || 'NT AUTHORITY\\SYSTEM'}
+                        {h.InstalledBy || '—'}
                       </td>
                     </tr>
                   ))}

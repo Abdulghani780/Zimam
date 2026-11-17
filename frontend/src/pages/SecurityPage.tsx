@@ -142,9 +142,9 @@ export function SecurityPage() {
     }
   };
 
-  const threatLevel = stats?.threat_level || 'LOW';
-  const threatLabel = threatLevel === 'HIGH' ? t('مرتفع (High)') : threatLevel === 'MEDIUM' ? t('متوسط (Medium)') : t('منخفض (Safe)');
-  const threatColor = threatLevel === 'HIGH' ? 'var(--unpaid)' : threatLevel === 'MEDIUM' ? 'var(--partial)' : 'var(--accent)';
+  const threatLevel = stats?.threat_level || 'UNKNOWN';
+  const threatLabel = threatLevel === 'HIGH' ? t('مرتفع (High)') : threatLevel === 'MEDIUM' ? t('متوسط (Medium)') : threatLevel === 'LOW' ? t('منخفض (Safe)') : t('غير متاح (—)');
+  const threatColor = threatLevel === 'HIGH' ? 'var(--unpaid)' : threatLevel === 'MEDIUM' ? 'var(--partial)' : threatLevel === 'LOW' ? 'var(--accent)' : 'var(--text-3)';
   const firewallActive = stats?.firewall_active ?? false;
 
   return (
