@@ -350,3 +350,4 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 |---|---|
 | (هذا الالتزام السابق) | `feat(ui): restore official ASAAS identity` — الكيت + النصوص |
 | (هذا الالتزام) | `refactor: rename product identity ZIMAM -> ASAAS` — backend/agent/launcher/packaging |
+| 2026-10-19 | الخطة | تحديث `PROJECT_MAP.md` (خريطة كاملة + قاعدة "أول ⬜ بالأولوية")؛ تنفيذ متسلسل: password complexity (تغيير كلمة المرور في Windows)، `restart-elevated.ps1`، e2e CI موجود مسبقاً، `/api/v1/sessions` مربوط بـ agent `session.list` + terminate بـ signed `session.logoff` job (202)، `/api/sessions/shadow` preflight حقيقي | اختبارات الوحدة 15/15 + control_plane 10/10 ✅ — enterprise live tests تفشل لغياب خادم حي/كلمة مرور `admin@asaas2026` (pre-existing) |
