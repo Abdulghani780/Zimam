@@ -304,3 +304,49 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 *الاسم التجاري: أساس / ASAAS*
 *الهوية البصرية: skills/frontend/asaas-ui/template*
 *بدون Docker — بناء أصلي Windows.*
+
+---
+
+## 7. عكس الهوية: ZIMAM → ASAAS الرسمي (2026-11-17)
+
+> بقرار المستخدم: إلغاء مسار ZIMAM بالكامل والعودة للهوية الرسمية للشركة من `github.com/AI-ASAAS/skills`.
+
+### 7.1 الهوية البصرية
+
+- مزامنة `skills/frontend/asaas-ui` مع GitHub — النسخة المحلية مطابقة لـ HEAD (فرق CRLF فقط)
+- استبدال `frontend/src/zimam-ui` (النسخة المعدّلة "الداكنة السيادية") بـ `frontend/src/asaas-ui` الرسمي حرفياً
+- نقل `ui/Table.tsx` المحلي (غير موجود في الرسمي) + إضافة exports في `index.ts`
+- نقل امتدادات API المحلية المطلوبة من الصفحات إلى مكونات الكيت الرسمية: `Button.iconNode` + variant aliases، `Modal.open`، `Field required/error` + render-prop، `TextInput/PasswordInput error`، `Toast` tones info/warn
+- `frontend/public/theme-init.js` → الرسمي (فاتح افتراضي، داكن محفوظ) — إلغاء الافتراضي الداكن
+- استعادة `src/tokens/design-tokens.css` (طبقة الدلالات التي يستخدمها app.css) + ربطها في `tokens.css`؛ حذف `design-tokens.json`-meta القديمة واستبدالها
+- إصلاح `caret-color: var(--primary)` → `var(--accent)` — آخر متغير ناقص
+- `index.html`: عنوان ووصف BASIS → أساس / ASAAS
+
+### 7.2 عكس التسمية في كامل المشروع
+
+| المجال | التغيير |
+|---|---|
+| Frontend | `zimam-ui`→`asaas-ui`، `زِمام`→`أساس`، `ZIMAM`→`ASAAS`، `Zimam.Agent`→`Asaas.Agent`، storage keys → `asaas-*` |
+| Backend | `ZIMAM_HOST/PORT` → `ASAAS_HOST/PORT` (fallback للاسم القديم)، logger `asaas.*` |
+| Control plane | حزمة `zimam_control` → `asaas_control` + كل الـ imports |
+| Cookies/Headers | `zimam_v1_session`→`asaas_v1_session`، `X-ZIMAM-Proxy-*`→`x-asaas-proxy-*` |
+| DB | `zimam_v2.db` → `asaas_v2.db` + ترحيل تلقائي عند الإقلاع |
+| Agent | `Zimam.Agent.csproj` → `Asaas.Agent.csproj`، `ASAAS_*` env vars، خدمة `ASAAS Windows Agent` |
+| Launcher | `ZimamLauncher` → `AsaasLauncher`، manifest/اختصارات محدّثة |
+| Packaging | `zimam.iss` → `asaas.iss` → `ASAAS-Setup-{ver}.exe`، `asaas-backend.exe`/`asaas-control.exe` |
+| CI/Tests/Docs | `.github/workflows/ci.yml`، `tests/`، `docs/`، `tools/`، سكربتات التشغيل |
+
+### 7.3 التحقق
+
+- `npm run build` ✅ (tsc + vite نظيف)
+- `oxlint` ✅ (تحذيران قديمان فقط)
+- `python -m unittest` — 15/15 unit + 10/10 control_plane ✅
+- enterprise_v25/v30 (اختبارات live-server) ما زالت 401 — تحتاج خادمًا يعمل بالكود الجديد + كلمة مرور `admin@asaas2026` المزروعة في CI
+- **ملاحظة:** الخوادم الشغالة حالياً على :8765/:8876 ما زالت النسخة القديمة (ZIMAM) — تحتاج إعادة تشغيل لتحميل الكود الجديد
+
+### 7.4 commits
+
+| Commit | الوصف |
+|---|---|
+| (هذا الالتزام السابق) | `feat(ui): restore official ASAAS identity` — الكيت + النصوص |
+| (هذا الالتزام) | `refactor: rename product identity ZIMAM -> ASAAS` — backend/agent/launcher/packaging |
