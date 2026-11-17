@@ -19,6 +19,21 @@ class UserService:
     """Service for querying and managing local Windows user accounts and permissions."""
 
     @staticmethod
+    def _password_policy_error(password: str) -> str | None:
+        """Enforces minimum length plus composition complexity for Windows account passwords."""
+        if not password or len(password) < 8:
+            return 'كلمة المرور قصيرة جداً (الحد الأدنى 8 رموز).'
+        classes = sum([
+            bool(re.search(r'[a-z]', password)),
+            bool(re.search(r'[A-Z]', password)),
+            bool(re.search(r'\d', password)),
+            bool(re.search(r'[^a-zA-Z0-9]', password)),
+        ])
+        if classes < 3:
+            return 'كلمة المرور ضعيفة: استخدم 3 أنواع على الأقل من (أحرف صغيرة، كبيرة، أرقام، رموز).'
+        return None
+
+    @staticmethod
     def _get_group_members(group_name: str) -> Set[str]:
         """Queries local group membership using NetLocalGroupGetMembers from netapi32.dll."""
         members: Set[str] = set()
@@ -212,8 +227,9 @@ class UserService:
         clean_user = username.strip()
         if not clean_user or not re.match(r'^[a-zA-Z0-9_\-\.]{2,30}$', clean_user):
             return {'ok': False, 'error': 'اسم المستخدم غير صالح. استخدم أحرف إنجليزية وأرقام فقط.'}
-        if not password or len(password) < 8:
-            return {'ok': False, 'error': 'كلمة المرور قصيرة جداً (الحد الأدنى 8 رموز).'}
+        pw_error = UserService._password_policy_error(password)
+        if pw_error:
+            return {'ok': False, 'error': pw_error}
 
         try:
             # 1. Create user (password stays inside the process, never in argv)
@@ -280,8 +296,9 @@ class UserService:
         clean_user = username.strip()
         if not clean_user or not new_password:
             return {'ok': False, 'error': 'اسم المستخدم وكلمة المرور الجديدة مطلوبان.'}
-        if len(new_password) < 8:
-            return {'ok': False, 'error': 'كلمة المرور قصيرة جداً (الحد الأدنى 8 رموز).'}
+        pw_error = UserService._password_policy_error(new_password)
+        if pw_error:
+            return {'ok': False, 'error': pw_error}
         try:
             code = UserService._net_user_set_password(clean_user, new_password)
             if code != 0:
