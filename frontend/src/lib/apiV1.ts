@@ -131,7 +131,16 @@ export interface V1AccessPolicy {
 }
 
 export interface V1Session {
-  id: string;
+  id?: string;
+  session_id?: number | null;
+  agent_id?: string;
+  agent_name?: string;
+  agent_status?: string;
+  collected_at?: string | null;
+  session_name?: string;
+  username?: string;
+  state?: string;
+  current?: boolean;
   user_id?: string;
   asset_id?: string;
   status?: string;
@@ -261,9 +270,11 @@ export const apiV1 = {
   createAccessPolicy: (policy: Partial<V1AccessPolicy> & { name: string }) =>
     post<V1AccessPolicy>('/access-policies', policy),
 
-  // Sessions & recordings
-  sessions: () => request<V1Session[] | { sessions?: V1Session[] }>('/sessions'),
-  terminateSession: (sessionId: string) => post<unknown>(`/sessions/${sessionId}/terminate`),
+  // Sessions & recordings — backed by agent session.list collectors;
+  // terminate queues a signed session.logoff job (async, 202).
+  sessions: () => request<{ items?: V1Session[]; sessions?: V1Session[]; count?: number }>('/sessions'),
+  terminateSession: (agentId: string, sessionId: number) =>
+    post<{ job_id: string; status: string }>('/sessions/terminate', { agent_id: agentId, session_id: sessionId }),
   recordings: () => request<unknown>('/recordings'),
 
   // Connection tokens (gateway consumption)
