@@ -1,11 +1,11 @@
 /**
- * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
+ * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 6: Containers & Virtualization (إدارة حاويات Docker والآلات الافتراضية Hyper-V)
  * Zero-Mock Production with Real Windows Hyper-V vmms & Docker CLI
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, useToast } from '../zimam-ui';
+import { Card, Button, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import { NavLink } from 'react-router-dom';
@@ -306,13 +306,13 @@ export function ContainersPage() {
             )}
           </Card>
 
-          {/* ZIMAM remote agent Hyper-V VMs — read-only hyperv.vms collector */}
+          {/* ASAAS remote agent Hyper-V VMs — read-only hyperv.vms collector */}
           {fleetVms.length > 0 && (
             <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Server size={18} style={{ color: 'var(--accent)' }} />
-                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('آلات وكلاء زِمام الافتراضية (قراءة فقط)')}</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('آلات وكلاء أساس الافتراضية (قراءة فقط)')}</h3>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('hyperv.vms حقيقية: آلات Hyper-V على كل وكيل')}</span>
                 </div>
                 <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>

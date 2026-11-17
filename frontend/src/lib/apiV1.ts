@@ -1,5 +1,5 @@
 /**
- * ZIMAM Control Plane v1 API client.
+ * ASAAS Control Plane v1 API client.
  *
  * Talks to `/api/v1` served by the FastAPI control plane (same origin when the
  * SPA is mounted at `/console` on :8876). Auth is an HttpOnly session cookie —
@@ -53,7 +53,7 @@ const post = <T>(path: string, body?: unknown) =>
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
-// --- Types mirroring control_plane/zimam_control/api.py ---
+// --- Types mirroring control_plane/asaas_control/api.py ---
 
 export interface V1Health {
   ok: boolean;

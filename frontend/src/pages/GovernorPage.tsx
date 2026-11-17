@@ -1,11 +1,11 @@
 /**
- * ZIMAM v2.5 - Screen _1
+ * ASAAS v2.5 - Screen _1
  * مركز التحكم وحاكم الموارد الذكي (Resource Governor)
  * Strict implementation of Stitch Prototype _1
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Glass, useToast } from '../zimam-ui';
+import { Card, Button, Glass, useToast } from '../asaas-ui';
 import { api, type GovernorStatus, type ServiceItem, type ProcessItem } from '../lib/api';
 import {
   Cpu,

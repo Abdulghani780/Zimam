@@ -1,5 +1,5 @@
 /**
- * ZIMAM v2.5 - Screen Session Replay
+ * ASAAS v2.5 - Screen Session Replay
  * مركز استرجاع التسجيلات والتحقيق الجنائي الرقمي (Forensic Session Replay)
  * Strict implementation of Stitch Prototype session_replay
  */
@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
-import { Card, Button, Glass, useToast } from '../zimam-ui';
+import { Card, Button, Glass, useToast } from '../asaas-ui';
 import {
   Play,
   Pause,
@@ -74,7 +74,7 @@ export function SessionReplayPage() {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(keystrokes, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', 'zimam-session-replay-audit.json');
+    downloadAnchor.setAttribute('download', 'asaas-session-replay-audit.json');
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -191,7 +191,7 @@ export function SessionReplayPage() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, height: '100%', overflowY: 'auto' }}>
                     <div style={{ color: 'var(--accent)', fontWeight: 'bold', borderBottom: '1px solid var(--glass-rim-low)', paddingBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>ZIMAM Windows Security Timeline Replay</span>
+                      <span>ASAAS Windows Security Timeline Replay</span>
                       <span style={{ color: 'var(--text-3)' }}>{keystrokes.length} Recorded Events</span>
                     </div>
                     {keystrokes.slice(0, Math.max(1, Math.floor((progress / 100) * keystrokes.length))).slice(-12).map((k, idx) => (

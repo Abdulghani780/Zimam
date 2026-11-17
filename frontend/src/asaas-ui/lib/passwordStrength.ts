@@ -5,7 +5,7 @@ export type StrengthLevel = 0 | 1 | 2 | 3 | 4;
 /** The level's name in the page language ("Very weak" to "Strong"). */
 export const strengthLabel = (level: StrengthLevel) => kitText(`strength${level}`);
 
-const COMMON = ['password', 'qwerty', 'zimam', 'admin', '123456', 'abc123', 'iloveyou', '000000', '111111'];
+const COMMON = ['password', 'qwerty', 'asaas', 'admin', '123456', 'abc123', 'iloveyou', '000000', '111111'];
 const SEQUENCES = ['0123456789', 'abcdefghijklmnopqrstuvwxyz', 'qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
 
 /** Has a run of `length` consecutive characters from a keyboard/alphabet/number sequence. */

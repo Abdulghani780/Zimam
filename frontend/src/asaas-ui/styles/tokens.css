@@ -1,7 +1,6 @@
-/* ───────── Brand: ZIMAM — ink, gold & sand (from the brand guideline) ───────── */
-/* Project semantic layer (surfaces/actions/status) used by app.css + Tailwind. */
 @import '../../tokens/design-tokens.css';
 
+/* ───────── Brand: ASAAS — ink, gold & sand (from the brand guideline) ───────── */
 :root {
   --brand-ink: #221f1f;
   --brand-gold: #ba9555;

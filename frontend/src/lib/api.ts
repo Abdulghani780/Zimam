@@ -1,6 +1,6 @@
 import { t } from './i18n';
 /**
- * ZIMAM - Typed API Client & Real-time Live Telemetry.
+ * ASAAS - Typed API Client & Real-time Live Telemetry.
  */
 
 export interface SystemHost {
@@ -754,7 +754,7 @@ export const api = {
     request<{ ok: boolean; records_checked: number; chain_intact: boolean; root_hash: string; full_digest?: string; message: string }>('/api/audit/verify-chain'),
 
   // =====================================================================
-  // ZIMAM Enterprise v3.0: Windows Server & Developer Platform API Client
+  // ASAAS Enterprise v3.0: Windows Server & Developer Platform API Client
   // =====================================================================
 
   // 1. Servers & Server Groups

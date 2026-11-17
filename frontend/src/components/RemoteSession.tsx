@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Guacamole from 'guacamole-common-js';
-import { Button } from '../zimam-ui';
+import { Button } from '../asaas-ui';
 import { t } from '../lib/i18n';
 
 interface RemoteSessionProps {

@@ -21,7 +21,7 @@ export interface AssistantConfig {
   ask: (messages: AssistantMessage[]) => Promise<AssistantAnswer>;
   /** The signed-in person: the greeting uses the first name; the chat is kept per id. */
   user: { id: string; displayName: string };
-  /** Shown in the header and on the launcher; defaults to "Zimam assistant" in the page language. */
+  /** Shown in the header and on the launcher; defaults to "Asaas assistant" in the page language. */
   title?: string;
   subtitle?: string;
   /** Tappable first questions in the empty chat. */
@@ -43,7 +43,7 @@ interface Entry {
 /** Only the latest exchanges are sent: long threads make smaller models drift. */
 const HISTORY_LIMIT = 8;
 const MAX_QUESTION = 1500;
-const storageKey = (userId: string) => `zimam-ui:assistant:${userId}`;
+const storageKey = (userId: string) => `asaas-ui:assistant:${userId}`;
 
 function load(key: string): Entry[] {
   try {

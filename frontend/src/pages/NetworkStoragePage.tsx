@@ -1,11 +1,11 @@
 /**
- * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
+ * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 8: Network & Storage (إدارة الأقراص، وحدات التخزين، مشاركات SMB، مستعرض الملفات، المحولات، الجدار الناري والتشخيص)
  * Zero-Mock Production with Real Windows Physical Disks, Volumes, NetAdapters & Firewall
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
+import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -284,13 +284,13 @@ export function NetworkStoragePage() {
         </Button>
       </div>
 
-      {/* ZIMAM remote agent shares — read-only shares.list collector data */}
+      {/* ASAAS remote agent shares — read-only shares.list collector data */}
       {fleetShares.length > 0 && (
         <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Share2 size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('مشاركات وكلاء زِمام (قراءة فقط)')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('مشاركات وكلاء أساس (قراءة فقط)')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('shares.list حقيقية: مشاركات SMB على كل وكيل')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>

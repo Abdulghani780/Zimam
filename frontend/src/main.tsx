@@ -1,9 +1,9 @@
 import './styles/app.css';
-import './zimam-ui/styles/index.css';
+import './asaas-ui/styles/index.css';
 import { StrictMode, Component, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { ToastProvider, Ambient } from './zimam-ui';
+import { ToastProvider, Ambient } from './asaas-ui';
 import { useLang } from './lib/i18n';
 import App from './App';
 
@@ -29,7 +29,7 @@ class GlobalErrorBoundary extends Component<{ children: ReactNode }, { hasError:
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('ZIMAM Critical Runtime Error caught by GlobalErrorBoundary:', error, errorInfo);
+    console.error('ASAAS Critical Runtime Error caught by GlobalErrorBoundary:', error, errorInfo);
   }
 
   render() {
@@ -58,7 +58,7 @@ class GlobalErrorBoundary extends Component<{ children: ReactNode }, { hasError:
           }}>
             <div style={{ fontSize: 44, marginBottom: 12 }}>🛡️</div>
             <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 10px', color: 'var(--status-danger)' }}>
-              تعذّر تحميل واجهة زِمام
+              تعذّر تحميل واجهة أساس
             </h2>
             <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6, margin: '0 0 20px' }}>
               حدث خطأ غير متوقع أثناء تحميل لوحة التحكم. أعد المحاولة للعودة إلى مساحة العمل.

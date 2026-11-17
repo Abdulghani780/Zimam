@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useToast } from '../zimam-ui';
+import { useToast } from '../asaas-ui';
 import { api, type AssetItem, type JitGrant, type LocalUser } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {

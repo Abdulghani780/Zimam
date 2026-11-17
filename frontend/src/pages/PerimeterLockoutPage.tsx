@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, Clock3, ShieldCheck } from 'lucide-react';
-import { Button, Glass } from '../zimam-ui';
+import { Button, Glass } from '../asaas-ui';
 import { t } from '../lib/i18n';
 
 export function PerimeterLockoutPage() {
@@ -8,10 +8,10 @@ export function PerimeterLockoutPage() {
 
   return (
     <main className="access-state-page" dir="rtl">
-      <a href="/" className="brand access-state-page__brand" aria-label={t('زِمام')}>
+      <a href="/" className="brand access-state-page__brand" aria-label={t('أساس')}>
         <span className="brand__mark" />
         <span>
-          <strong className="brand__name">{t('زِمام')}</strong>
+          <strong className="brand__name">{t('أساس')}</strong>
           <small className="brand__tag">{t('إدارة الوصول والخوادم')}</small>
         </span>
       </a>
@@ -22,7 +22,7 @@ export function PerimeterLockoutPage() {
           <span className="access-state-card__eyebrow">{t('حماية الحساب')}</span>
           <h1>{t('تم إيقاف محاولة الدخول مؤقتًا')}</h1>
           <p className="prose">
-            {t('حدثت محاولات دخول متكررة. انتظر انتهاء مدة الحماية ثم أعد المحاولة، أو أعد ضبط حساب الطوارئ من جهاز ZIMAM نفسه.')}
+            {t('حدثت محاولات دخول متكررة. انتظر انتهاء مدة الحماية ثم أعد المحاولة، أو أعد ضبط حساب الطوارئ من جهاز ASAAS نفسه.')}
           </p>
         </div>
 

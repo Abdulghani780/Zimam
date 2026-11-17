@@ -1,12 +1,12 @@
 /**
- * ZIMAM v2.5 - Screen JIT Elevation
+ * ASAAS v2.5 - Screen JIT Elevation
  * مركز اعتماد وترقية الصلاحيات المؤقتة (Just-In-Time Elevation Center)
  * Strict implementation of Stitch Prototype jit_elevation
  */
 
 import { useState, useEffect } from 'react';
 import { apiV1 } from '../lib/apiV1';
-import { Card, Button, Glass, Field, TextInput, useToast } from '../zimam-ui';
+import { Card, Button, Glass, Field, TextInput, useToast } from '../asaas-ui';
 import {
   CheckCircle2,
   Clock,

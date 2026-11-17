@@ -7,8 +7,8 @@
   var theme = 'light';
   var lang = 'ar';
   try {
-    if (localStorage.getItem('zimam-theme') === 'dark') theme = 'dark';
-    if (localStorage.getItem('zimam-lang') === 'en') lang = 'en';
+    if (localStorage.getItem('asaas-theme') === 'dark') theme = 'dark';
+    if (localStorage.getItem('asaas-lang') === 'en') lang = 'en';
   } catch {
     /* storage unavailable: keep the defaults */
   }

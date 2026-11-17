@@ -1,11 +1,11 @@
 /**
- * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
+ * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 10: Database Management & Sovereign SQL Studio (إدارة واستكشاف قواعد البيانات)
  * Zero-Mock Production with Real Windows SQL Server, PostgreSQL, and SQLite Engine
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
+import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import { NavLink } from 'react-router-dom';
@@ -332,13 +332,13 @@ export function DatabasesPage() {
         </Card>
       </div>
 
-      {/* ZIMAM remote agent DB engines — derived from real service/process collectors */}
+      {/* ASAAS remote agent DB engines — derived from real service/process collectors */}
       {fleetDbs.length > 0 && (
         <Card style={{ padding: 22, border: '1px solid var(--glass-rim)', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Database size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('محركات قواعد البيانات على وكلاء زِمام')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('محركات قواعد البيانات على وكلاء أساس')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('مُشتقة من service.list و process.list الحقيقية — خدمات وعمليات قواعد البيانات فقط')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>

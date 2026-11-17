@@ -1,11 +1,11 @@
 /**
- * ZIMAM v2.5 - Screen RDP
+ * ASAAS v2.5 - Screen RDP
  * حوكمة مستخدمي ويندوز المحليين وصلاحيات سطح المكتب البعيد RDP & IAM
  * Strict implementation of Stitch Prototype RDP
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, Field, TextInput, PasswordInput, PasswordStrength, Glass, Select, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../zimam-ui';
+import { Card, Button, Modal, Field, TextInput, PasswordInput, PasswordStrength, Glass, Select, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { api, type LocalUser, type DomainProfile, type AppUser } from '../lib/api';
 import { apiV1, type V1User } from '../lib/apiV1';
 import {
@@ -31,7 +31,7 @@ export function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [actionUser, setActionUser] = useState<string | null>(null);
 
-  // ZIMAM application-user management — now served by /api/v1 (identity authority).
+  // ASAAS application-user management — now served by /api/v1 (identity authority).
   const [appUsers, setAppUsers] = useState<V1User[]>([]);
   const [appUsersLoading, setAppUsersLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
@@ -514,7 +514,7 @@ export function UsersPage() {
       {/* 3b. Remote agent local accounts — read-only local.users collector */}
       {fleetUsers.length > 0 && (
         <Card
-          title={t('حسابات وكلاء زِمام (قراءة فقط)')}
+          title={t('حسابات وكلاء أساس (قراءة فقط)')}
           icon="users"
           actions={
             <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
@@ -570,9 +570,9 @@ export function UsersPage() {
         </Card>
       )}
 
-      {/* 4. ZIMAM Application Users (operators of the console itself) */}
+      {/* 4. ASAAS Application Users (operators of the console itself) */}
       <Card
-        title={t('حسابات مشغلي النظام (ZIMAM App Users)')}
+        title={t('حسابات مشغلي النظام (ASAAS App Users)')}
         icon="users"
         actions={
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -858,9 +858,9 @@ export function UsersPage() {
           </form>
         </Modal>
       )}
-      {/* Modal: Create ZIMAM App User */}
+      {/* Modal: Create ASAAS App User */}
       {appModalOpen && (
-        <Modal onClose={() => setAppModalOpen(false)} title={t('إضافة حساب مشغل جديد لمنصة ZIMAM')}>
+        <Modal onClose={() => setAppModalOpen(false)} title={t('إضافة حساب مشغل جديد لمنصة ASAAS')}>
           <form onSubmit={handleCreateAppUser} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Field label={t('اسم المستخدم (Username)')}>
               {(id) => (

@@ -1,11 +1,11 @@
 /**
- * ZIMAM v2.5 - Screen _7
+ * ASAAS v2.5 - Screen _7
  * إدارة سعة التخزين وتطهير السيرفر وفك أقفال العمليات (Storage & Handle Locks)
  * Strict implementation of Stitch Prototype _7
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, useToast } from '../zimam-ui';
+import { Card, Button, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -60,7 +60,7 @@ export function StoragePage() {
   const [cleaningUser, setCleaningUser] = useState<string | null>(null);
 
   // Locked files diagnostic state (Story 9)
-    const [customFilePath, setCustomFilePath] = useState('C:\\Data\\ZIMAM_PROD.mdf');
+    const [customFilePath, setCustomFilePath] = useState('C:\\Data\\ASAAS_PROD.mdf');
   const [customCheckResult, setCustomCheckResult] = useState<any>(null);
   const [checkingLock, setCheckingLock] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
@@ -245,13 +245,13 @@ export function StoragePage() {
         </div>
       </div>
 
-      {/* 1b. ZIMAM remote agent disks — real disk.list collector results */}
+      {/* 1b. ASAAS remote agent disks — real disk.list collector results */}
       {fleetDisks.length > 0 && (
         <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <HardDrive size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('أقراص وكلاء زِمام')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('أقراص وكلاء أساس')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('بيانات disk.list حقيقية من كل وكيل')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
@@ -439,7 +439,7 @@ export function StoragePage() {
               <Search size={16} color="var(--text-3)" style={{ position: 'absolute', insetInlineStart: 12, top: 12 }} />
               <input
                 type="text"
-                placeholder={t('أدخل المسار الكامل للملف (مثال: C:\\Data\\ZIMAM_PROD.mdf)...')}
+                placeholder={t('أدخل المسار الكامل للملف (مثال: C:\\Data\\ASAAS_PROD.mdf)...')}
                 value={customFilePath}
                 onChange={(e) => setCustomFilePath(e.target.value)}
                 className="text-input"

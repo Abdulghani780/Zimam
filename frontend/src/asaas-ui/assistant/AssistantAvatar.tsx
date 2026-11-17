@@ -8,7 +8,7 @@ import { firstName } from '../lib/format';
 import { kitText } from '../lib/i18n';
 
 /**
- * Zimam robot artwork (exported to WebP).
+ * Asaas robot artwork (exported to WebP).
  * The full robot greets from outside the chat; inside it, only its face shows.
  */
 const FACES = {

@@ -1,11 +1,11 @@
 /**
- * ZIMAM v2.5 - Screens _5 & _9
+ * ASAAS v2.5 - Screens _5 & _9
  * مصفوفة الدفاع السيبراني ورادار الاختراق ومحلل مخاطر الأوامر
  * Strict implementation of Stitch Prototypes _5 & _9
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../zimam-ui';
+import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../asaas-ui';
 import { api, type SecurityStats, type SecurityEvent } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -253,7 +253,7 @@ export function SecurityPage() {
         </Glass>
       </div>
 
-      {/* 2b. ZIMAM remote agent security — real firewall/eventlog collector results */}
+      {/* 2b. ASAAS remote agent security — real firewall/eventlog collector results */}
       {fleetSec.length > 0 && (
         <Glass style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
@@ -263,10 +263,10 @@ export function SecurityPage() {
               </div>
               <div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                  {t('درع زِمام عن بُعد (Remote Agent Shield)')}
+                  {t('درع أساس عن بُعد (Remote Agent Shield)')}
                 </h2>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  {t('حالة جدار الحماية وأحدث أحداث السجل من وكلاء Zimam.Agent — بيانات حقيقية مجمعة')}
+                  {t('حالة جدار الحماية وأحدث أحداث السجل من وكلاء ASAAS.Agent — بيانات حقيقية مجمعة')}
                 </span>
               </div>
             </div>
@@ -528,7 +528,7 @@ export function SecurityPage() {
                       {ip}
                     </TableCell>
                     <TableCell style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                      Inbound Block Rule (ZIMAM-DEFENSE)
+                      Inbound Block Rule (ASAAS-DEFENSE)
                     </TableCell>
                     <TableCell style={{ fontSize: 12, color: 'var(--text-3)' }}>
                       {t('محاولات تخمين RDP متكررة (Brute-force)')}

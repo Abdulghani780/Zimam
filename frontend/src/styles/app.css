@@ -38,7 +38,7 @@ button, input, select, textarea, .btn, .badge {
   font-variant-numeric: tabular-nums;
 }
 
-/* ───────── Shared ZIMAM authentication surfaces ───────── */
+/* ───────── Shared ASAAS authentication surfaces ───────── */
 .auth-page {
   position: relative;
   z-index: 1;
@@ -293,7 +293,7 @@ button, input, select, textarea, .btn, .badge {
   .access-state-card__actions .btn { width: 100%; }
 }
 
-/* ───────── ZIMAM Application Styles ───────── */
+/* ───────── ASAAS Application Styles ───────── */
 
 .app-layout {
   display: flex;
@@ -425,7 +425,7 @@ button, input, select, textarea, .btn, .badge {
   gap: 8px;
 }
 
-/* Main area and shared ZIMAM product header */
+/* Main area and shared ASAAS product header */
 .app-main {
   flex: 1;
   min-width: 0;
@@ -1021,7 +1021,7 @@ button, input, select, textarea, .btn, .badge {
 }
 
 input, textarea, select {
-  caret-color: var(--primary);
+  caret-color: var(--accent);
 }
 
 /* Global Smooth Thin Scrollbar */
@@ -1286,7 +1286,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
 }
 
 /* =====================================================================
-   ZIMAM v3.0 — Slate & Gold Dashboard Design System
+   ASAAS v3.0 — Slate & Gold Dashboard Design System
    Shared shell, navigation, panels, KPI cards, charts, tables and the
    RDP / PAM / Port-Isolation workspaces.
    ===================================================================== */

@@ -6,7 +6,7 @@ import { AssistantRobot } from './AssistantAvatar';
 import { type AssistantConfig, AssistantPanel } from './AssistantPanel';
 
 /**
- * The Zimam robot floating at the bottom of every page; it opens the chat in a
+ * The Asaas robot floating at the bottom of every page; it opens the chat in a
  * small window (full screen on phones), so questions never leave the current page.
  * Mount it once in the app shell, after the user is signed in.
  */

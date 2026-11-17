@@ -8,7 +8,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { useToast } from '../zimam-ui';
+import { useToast } from '../asaas-ui';
 import { api, type ManagedServer, type PortItem } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -300,7 +300,7 @@ export function PortsPage() {
   const [autoAllocate, setAutoAllocate] = useState(() => {
     if (typeof window === 'undefined') return true;
     try {
-      return window.localStorage.getItem('zimam.ports.autoAllocate') !== '0';
+      return window.localStorage.getItem('asaas.ports.autoAllocate') !== '0';
     } catch {
       return true;
     }
@@ -391,7 +391,7 @@ export function PortsPage() {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('zimam.ports.autoAllocate', autoAllocate ? '1' : '0');
+      window.localStorage.setItem('asaas.ports.autoAllocate', autoAllocate ? '1' : '0');
     } catch {
       // The preference remains in memory when storage is unavailable.
     }
@@ -875,7 +875,7 @@ export function PortsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `zimam-ports-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `asaas-ports-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -1055,13 +1055,13 @@ export function PortsPage() {
         </div>
       </div>
 
-      {/* ZIMAM remote agent ports — read-only ports.list collector data */}
+      {/* ASAAS remote agent ports — read-only ports.list collector data */}
       {fleetPorts.length > 0 && (
         <section className="panel" style={{ padding: '18px 20px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Waypoints size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('منافذ وكلاء زِمام (قراءة فقط)')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('منافذ وكلاء أساس (قراءة فقط)')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('ports.list حقيقية: كل المنافذ المستمعة TCP/UDP على كل وكيل')}</span>
             </div>
             <Link to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
@@ -1783,7 +1783,7 @@ export function PortsPage() {
                         setFormProject(event.target.value);
                         setFormError(null);
                       }}
-                      placeholder={t('مثال: متجر زِمام / نظام ERP')}
+                      placeholder={t('مثال: متجر أساس / نظام ERP')}
                     />
                   </label>
                 </div>

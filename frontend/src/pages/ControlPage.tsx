@@ -4,7 +4,7 @@ import { api, type UserSession } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import { SessionDrawer } from '../components/SessionDrawer';
 import { BroadcastModal } from '../components/BroadcastModal';
-import { useToast } from '../zimam-ui';
+import { useToast } from '../asaas-ui';
 import {
   AlertCircle,
   Bot,
@@ -450,13 +450,13 @@ export function ControlPage() {
         </div>
       )}
 
-      {/* ZIMAM remote agent sessions — real session.list collector data */}
+      {/* ASAAS remote agent sessions — real session.list collector data */}
       {fleetSessions.length > 0 && (
         <section style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Bot size={18} style={{ color: 'var(--accent)' }} />
-              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('جلسات وكلاء زِمام')}</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('جلسات وكلاء أساس')}</h2>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('session.list حقيقية من كل وكيل — عرض فقط')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
@@ -513,13 +513,13 @@ export function ControlPage() {
         </section>
       )}
 
-      {/* ZIMAM remote agent processes — real process.list collector data */}
+      {/* ASAAS remote agent processes — real process.list collector data */}
       {fleetSessions.length > 0 && (
         <section style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <MonitorPlay size={18} style={{ color: 'var(--accent)' }} />
-              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('عمليات وكلاء زِمام')}</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('عمليات وكلاء أساس')}</h2>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('process.list حقيقية من كل وكيل — عرض فقط')}</span>
             </div>
           </div>

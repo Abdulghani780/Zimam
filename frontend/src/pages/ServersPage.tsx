@@ -1,11 +1,11 @@
 /**
- * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
+ * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 2: Servers & Server Groups (إدارة الخوادم ومجموعات البنية التحتية)
  * Zero-Mock Production with Real Windows Server 2025 Standard APIs
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, Select, useToast } from '../zimam-ui';
+import { Card, Button, Modal, TextInput, Select, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -373,13 +373,13 @@ export function ServersPage() {
         </Card>
       )}
 
-      {/* ZIMAM agent-backed servers — real fleet telemetry via /api/v1 */}
+      {/* ASAAS agent-backed servers — real fleet telemetry via /api/v1 */}
       {fleet && fleet.agents.length > 0 && (
         <Card style={{ padding: 20, border: '1px solid var(--glass-rim)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Bot size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('خوادم وكلاء زِمام')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('خوادم وكلاء أساس')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)' }}>
                 {fleet.totals.online}/{fleet.totals.agents} {t('متصل')} · {fleet.totals.with_results} {t('بقياسات')}
               </span>

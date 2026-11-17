@@ -1,6 +1,6 @@
 /**
- * Zimam UI kit: Thmanyah type, brand tokens, liquid-glass components and the
- * assistant widget. Import the styles once (main.tsx): `import './zimam-ui/styles/index.css'`.
+ * Asaas UI kit: Thmanyah type, brand tokens, liquid-glass components and the
+ * assistant widget. Import the styles once (main.tsx): `import './asaas-ui/styles/index.css'`.
  */
 export { Ambient } from './ui/Ambient';
 export { Button } from './ui/Button';

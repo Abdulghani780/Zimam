@@ -1,11 +1,11 @@
 /**
- * ZIMAM v2.5 - Screen _6
+ * ASAAS v2.5 - Screen _6
  * سلسلة سجلات الامتثال غير القابلة للتلاعب (Tamper-Proof Immutable Audit Ledger)
  * Strict implementation of Stitch Prototype _6 (NCA ECC-1:2018 & ISO 27001 Compliant)
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../zimam-ui';
+import { Card, Button, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { api, type AuditLog } from '../lib/api';
 import { apiV1, type V1AuditEvent, type V1AuditVerify } from '../lib/apiV1';
 import {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Modal, Button, Field, TextInput, useToast } from '../zimam-ui';
+import { Modal, Button, Field, TextInput, useToast } from '../asaas-ui';
 import { api, type GovernorStatus } from '../lib/api';
 import { Zap, Clock, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { t } from '../lib/i18n';

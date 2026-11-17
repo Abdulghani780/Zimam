@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Button, Modal, Field, Select, TextInput, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../zimam-ui';
+import { Card, Button, Modal, Field, Select, TextInput, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
 import { apiV1, type V1Agent, type V1AgentJob, type V1Asset } from '../lib/apiV1';
 import { Bot, ClipboardList, DownloadCloud, Play, Radar, RefreshCw, Terminal } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -180,7 +180,7 @@ export function AgentsPage() {
       <div className="page-hero" style={{ borderRadius: 16, padding: '24px 28px', background: 'linear-gradient(135deg, var(--glass-tint-strong), var(--surface-ground))', border: '1px solid var(--accent-soft)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: '0 0 8px' }}>{t('وكلاء الأصول (ZIMAM Agents)')}</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: '0 0 8px' }}>{t('وكلاء الأصول (ASAAS Agents)')}</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 800, lineHeight: 1.6 }}>
               {t('وكلاء Windows خروجية فقط يُسجَّلون عبر مفتاح لمرة واحدة، ويستلمون مهاماً موقعة Ed25519 للقراءة فقط — لا يوجد تنفيذ أوامر كتابية عن بُعد.')}
             </p>
@@ -256,7 +256,7 @@ export function AgentsPage() {
       <Card title={t('حزمة التحديث الذاتي')} icon="vault">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, lineHeight: 1.7 }}>
-            {t('ارفع ملف Zimam.Agent.exe الجديد مرة واحدة، ثم أرسل مهمة agent.update موقعة — الوكيل يتحقق من البصمة SHA-256 ويطبّقها عند إعادة التشغيل.')}
+            {t('ارفع ملف ASAAS.Agent.exe الجديد مرة واحدة، ثم أرسل مهمة agent.update موقعة — الوكيل يتحقق من البصمة SHA-256 ويطبّقها عند إعادة التشغيل.')}
           </p>
           {bundle?.available ? (
             <div style={{ fontSize: 12, color: 'var(--text-2)', background: 'var(--surface-glass-tint)', borderRadius: 10, padding: '10px 14px', fontFamily: 'var(--font-telemetry)' }}>

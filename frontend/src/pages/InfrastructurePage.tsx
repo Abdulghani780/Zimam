@@ -1,11 +1,11 @@
 /**
- * ZIMAM Enterprise v3.0 - Sovereign Windows Server Management
+ * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
  * Domain 7: Infrastructure (أدوار Windows، ميزات الخادم، الخدمات، المهام المجدولة، التحديثات والشهادات)
  * Zero-Mock Production with Real Windows Server 2025 Standard APIs
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../zimam-ui';
+import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -157,7 +157,7 @@ export function InfrastructurePage() {
   // 5. Certificates State
   const [certs, setCerts] = useState<any[]>([]);
 
-  // 6. ZIMAM agent network telemetry
+  // 6. ASAAS agent network telemetry
   const [fleetNet, setFleetNet] = useState<FleetNetAgent[]>([]);
 
   const loadFleetNet = async () => {
@@ -339,13 +339,13 @@ export function InfrastructurePage() {
         </Button>
       </div>
 
-      {/* ZIMAM agent networks — real network.info collector data */}
+      {/* ASAAS agent networks — real network.info collector data */}
       {fleetNet.length > 0 && (
         <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Network size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('شبكات وكلاء زِمام')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('شبكات وكلاء أساس')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('network.info حقيقية: IP وDNS والبوابة والسرعة لكل وكيل')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
@@ -409,13 +409,13 @@ export function InfrastructurePage() {
         </Card>
       )}
 
-      {/* ZIMAM remote agent services — real service.list collector data */}
+      {/* ASAAS remote agent services — real service.list collector data */}
       {fleetNet.length > 0 && (
         <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Cog size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('خدمات وكلاء زِمام')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('خدمات وكلاء أساس')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('service.list حقيقية: حالة وخدمة بدء كل خدمة على كل وكيل')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
@@ -475,13 +475,13 @@ export function InfrastructurePage() {
         </Card>
       )}
 
-      {/* ZIMAM remote agent roles/tasks/hotfixes — real collector data */}
+      {/* ASAAS remote agent roles/tasks/hotfixes — real collector data */}
       {fleetNet.length > 0 && (
         <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Layers size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('أدوار ومهام مجدولة وتحديثات وكلاء زِمام')}</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('أدوار ومهام مجدولة وتحديثات وكلاء أساس')}</h3>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('windows.features + scheduled.tasks + hotfix.list حقيقية لكل وكيل')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>

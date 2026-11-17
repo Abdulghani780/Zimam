@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { useTheme, useToast } from '../zimam-ui';
+import { useTheme, useToast } from '../asaas-ui';
 import { api, type HealthInfo, type AppUser } from '../lib/api';
 import { useLang, toggleLang } from '../lib/i18n';
 import {
@@ -100,10 +100,10 @@ export function HeaderBar({
   return (
     <header className="site-header">
       <div className="header-inner">
-        <NavLink to="/" className="header-brand header-brand--mobile" aria-label={t('زِمام - لوحة القيادة')}>
+        <NavLink to="/" className="header-brand header-brand--mobile" aria-label={t('أساس - لوحة القيادة')}>
           <img className="header-brand__logo" src="/logo-light.png" alt="" width={36} height={36} />
           <span className="header-brand__text">
-            <strong>ZIMAM</strong>
+            <strong>ASAAS</strong>
             <span>Server Control</span>
           </span>
         </NavLink>

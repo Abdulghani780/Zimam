@@ -66,7 +66,7 @@ interface BackupRecord {
   size_mb: number;
 }
 
-const RANGE_KEY = 'zimam-overview-range';
+const RANGE_KEY = 'asaas-overview-range';
 
 function formatTimeLabel(value: string, range: '24h' | '7d'): string {
   const date = new Date(value.includes('T') ? value : value.replace(' ', 'T'));
@@ -291,7 +291,7 @@ export function OverviewPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Bot size={18} style={{ color: 'var(--accent)' }} />
-              <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>{t('أسطول زِمام')}</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>{t('أسطول أساس')}</h2>
               <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)' }}>
                 {fleet.totals.online}/{fleet.totals.agents} {t('متصل')} · {fleet.totals.with_results} {t('بقياسات')}
               </span>
@@ -302,7 +302,7 @@ export function OverviewPage() {
           </div>
           {fleet.agents.length === 0 ? (
             <div style={{ border: '1px dashed var(--accent-soft)', borderRadius: 14, padding: '18px 20px', color: 'var(--text-3)', fontSize: 13 }}>
-              {t('لا يوجد وكلاء مسجلون بعد — ثبّت Zimam.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.')}
+              {t('لا يوجد وكلاء مسجلون بعد — ثبّت ASAAS.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.')}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
