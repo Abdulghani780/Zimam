@@ -568,3 +568,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `startup.program.remove` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `SecurityPage` قسم «برامج بدء التشغيل (Run keys)» — زر «إزالة» أحمر لكل صف مع confirm → `apiV1.createJob('startup.program.remove', {key, name})`.
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب agent مُعاد نشره.
+### 12.19 ثالث عشر agent write job — `local.user`
+
+- **Agent**: `local.user` في `AllowedJobs` + `LocalUserControl(payload)` — `{username, action: enable|disable|remove|create, password?}` عبر `Enable/Disable/Remove/New-LocalUser`؛ username مقيّد بـ regex (1-20 حرف)، الحسابات المدمجة (Administrator/Guest/DefaultAccount/WDAGUtilityAccount) محمية من التعطيل/الحذف، create يتطلب كلمة مرور ≥8 أحرف، كل أمر يتبعه `Get-LocalUser` للتأكيد.
+- **Control plane**: `local.user` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `UsersPage` بطاقة «حسابات وكلاء أساس» — أزرار تفعيل/تعطيل/حذف لكل مستخدم (مع confirm، والحذف مخفي للحسابات المدمجة) + صف إنشاء حساب (اسم + كلمة مرور) → `apiV1.createJob('local.user')`؛ أُزيلت صيغة «قراءة فقط» من العنوان.
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب agent مُعاد نشره.

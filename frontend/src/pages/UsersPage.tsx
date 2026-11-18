@@ -45,6 +45,8 @@ export function UsersPage() {
 
   // Remote agent local accounts — read-only local.users collector results.
   const [fleetUsers, setFleetUsers] = useState<any[]>([]);
+  const [agentUserBusy, setAgentUserBusy] = useState<string | null>(null);
+  const [agentCreateUser, setAgentCreateUser] = useState<Record<string, { username: string; password: string }>>({});
 
   // Form states
   const [username, setUsername] = useState('');
@@ -52,6 +54,19 @@ export function UsersPage() {
   const [fullName, setFullName] = useState('');
   const [isRdp, setIsRdp] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Signed agent write job: enable/disable/remove/create a local Windows account.
+  const queueAgentUser = async (agentId: string, payload: Record<string, unknown>, busyKey: string) => {
+    setAgentUserBusy(busyKey);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'local.user', payload });
+      toast(t('تم إرسال أمر الحساب — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setAgentUserBusy(null);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -514,7 +529,7 @@ export function UsersPage() {
       {/* 3b. Remote agent local accounts — read-only local.users collector */}
       {fleetUsers.length > 0 && (
         <Card
-          title={t('حسابات وكلاء أساس (قراءة فقط)')}
+          title={t('حسابات وكلاء أساس')}
           icon="users"
           actions={
             <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
@@ -550,15 +565,72 @@ export function UsersPage() {
                       return (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={uname}>{uname}</span>
-                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center' }}>
                             {source && <span style={{ fontSize: 9 }}>{source}</span>}
                             {lastLogon ? <span style={{ fontSize: 9 }}>{String(lastLogon).slice(0, 10)}</span> : null}
                             <span style={{ color: enabled === false ? 'var(--unpaid)' : 'var(--paid)' }}>{enabled === false ? t('معطّل') : t('نشط')}</span>
+                            <button
+                              type="button"
+                              disabled={agentUserBusy !== null}
+                              onClick={() => {
+                                const action = enabled === false ? 'enable' : 'disable';
+                                if (window.confirm(t(`${action === 'enable' ? 'تفعيل' : 'تعطيل'} الحساب «${uname}» على ${ag.name}؟`))) {
+                                  void queueAgentUser(ag.id, { username: uname, action }, `${ag.id}:${uname}:${action}`);
+                                }
+                              }}
+                              style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: agentUserBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--accent)' }}
+                            >
+                              {enabled === false ? t('تفعيل') : t('تعطيل')}
+                            </button>
+                            {!/^(administrator|guest|defaultaccount|wdagutilityaccount)$/i.test(uname) && (
+                              <button
+                                type="button"
+                                disabled={agentUserBusy !== null}
+                                onClick={() => {
+                                  if (window.confirm(t(`حذف الحساب «${uname}» على ${ag.name}؟ لا يمكن التراجع.`))) {
+                                    void queueAgentUser(ag.id, { username: uname, action: 'remove' }, `${ag.id}:${uname}:remove`);
+                                  }
+                                }}
+                                style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: agentUserBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--status-danger)' }}
+                              >
+                                {t('حذف')}
+                              </button>
+                            )}
                           </span>
                         </div>
                       );
                     })}
                     {ag.users.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ag.users.length - 40} {t('حساب آخر')}</div>}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <TextInput
+                        value={agentCreateUser[ag.id]?.username || ''}
+                        onChange={(e: any) => setAgentCreateUser((prev) => ({ ...prev, [ag.id]: { username: e.target.value, password: prev[ag.id]?.password || '' } }))}
+                        placeholder={t('اسم المستخدم الجديد')}
+                        style={{ flex: 1, fontSize: 11 }}
+                      />
+                      <TextInput
+                        type="password"
+                        value={agentCreateUser[ag.id]?.password || ''}
+                        onChange={(e: any) => setAgentCreateUser((prev) => ({ ...prev, [ag.id]: { username: prev[ag.id]?.username || '', password: e.target.value } }))}
+                        placeholder={t('كلمة المرور (8+)')}
+                        style={{ flex: 1, fontSize: 11 }}
+                      />
+                      <Button
+                        variant="secondary"
+                        disabled={agentUserBusy !== null}
+                        onClick={() => {
+                          const cu = agentCreateUser[ag.id] || { username: '', password: '' };
+                          if (!cu.username.trim() || !cu.password) { toast(t('أدخل اسم المستخدم وكلمة المرور'), 'error'); return; }
+                          if (window.confirm(t(`إنشاء الحساب «${cu.username.trim()}» على ${ag.name}؟`))) {
+                            void queueAgentUser(ag.id, { username: cu.username.trim(), action: 'create', password: cu.password }, `${ag.id}:create:${cu.username.trim()}`);
+                            setAgentCreateUser((prev) => ({ ...prev, [ag.id]: { username: '', password: '' } }));
+                          }
+                        }}
+                        style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' }}
+                      >
+                        {t('إنشاء')}
+                      </Button>
+                    </div>
                     {ag.entry.completed_at && (
                       <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.entry.completed_at).toLocaleString('ar-SA')}</div>
                     )}

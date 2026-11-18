@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove", "local.user"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -332,6 +332,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "disk.state" => DiskState(payload),
         "hotfix.install" => HotfixInstall(payload),
         "startup.program.remove" => StartupProgramRemove(payload),
+        "local.user" => LocalUserControl(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -689,6 +690,47 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         var escName = name.Replace("'", "''");
         PsProbe.Run($"Remove-ItemProperty -LiteralPath '{escKey}' -Name '{escName}' -ErrorAction Stop; if((Get-Item -LiteralPath '{escKey}').GetValueNames() -contains '{escName}'){{ throw 'value still present after removal' }}");
         return new { key, name, executed = true };
+    }
+
+    // Signed write job: manage a local Windows user account.
+    // payload: {"username": "ops", "action": "enable"|"disable"|"remove"|"create", "password"?: "..."}
+    // Built-in critical accounts cannot be disabled or removed.
+    private static object LocalUserControl(JsonElement payload)
+    {
+        var username = payload.TryGetProperty("username", out var u) ? u.GetString() : null;
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        var password = payload.TryGetProperty("password", out var pw) ? pw.GetString() : null;
+        if (string.IsNullOrWhiteSpace(username) || !System.Text.RegularExpressions.Regex.IsMatch(username, @"^[A-Za-z0-9][A-Za-z0-9._-]{0,19}$"))
+            throw new InvalidOperationException("local.user requires payload.username (1-20 chars: letters, digits, . _ -)");
+        var protectedNames = new[] { "administrator", "guest", "defaultaccount", "wdagutilityaccount" };
+        var isProtected = protectedNames.Contains(username.ToLowerInvariant());
+        var escUser = username.Replace("'", "''");
+        string ps;
+        switch (action)
+        {
+            case "enable":
+                if (isProtected) throw new InvalidOperationException("built-in account cannot be modified");
+                ps = $"Enable-LocalUser -Name '{escUser}'; (Get-LocalUser -Name '{escUser}').Enabled | ConvertTo-Json -Compress";
+                break;
+            case "disable":
+                if (isProtected) throw new InvalidOperationException("built-in account cannot be modified");
+                ps = $"Disable-LocalUser -Name '{escUser}'; (Get-LocalUser -Name '{escUser}').Enabled | ConvertTo-Json -Compress";
+                break;
+            case "remove":
+                if (isProtected) throw new InvalidOperationException("built-in account cannot be removed");
+                ps = $"Remove-LocalUser -Name '{escUser}'; if(Get-LocalUser -Name '{escUser}' -ErrorAction SilentlyContinue){{ throw 'user still present after removal' }}; 'removed'";
+                break;
+            case "create":
+                if (string.IsNullOrEmpty(password) || password.Length < 8)
+                    throw new InvalidOperationException("local.user create requires payload.password (min 8 chars)");
+                var escPw = password.Replace("'", "''");
+                ps = $"New-LocalUser -Name '{escUser}' -Password (ConvertTo-SecureString '{escPw}' -AsPlainText -Force) -PasswordNeverExpires -ErrorAction Stop; (Get-LocalUser -Name '{escUser}').Name | ConvertTo-Json -Compress";
+                break;
+            default:
+                throw new InvalidOperationException("local.user action must be enable|disable|remove|create");
+        }
+        PsProbe.Run(ps);
+        return new { username, action, executed = true };
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,
