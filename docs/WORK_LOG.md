@@ -390,3 +390,24 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 ### 8.3 الخطوة التالية
 
 - `SecurityPage` → `firewall.state` collector (الخطوة 3 في `PROJECT_MAP.md` §10)
+
+---
+
+## 9. SecurityPage firewall.state + NetworkStoragePage disk.list (2026-11-18)
+
+### 9.1 SecurityPage — عرض منظم لحالة جدار الحماية لكل وكيل
+
+- `firewall.state` كان يُعرض كـ JSON خام داخل `<details>` — صار يُعرض مهيكلاً: بطاقة لكل وكيل فيها صفوف profiles (`profile / enabled / rule_count`) + «آخر قياس» + حالة خطأ.
+- بقية الصفحة (blocklist، command risk، security event stream) تبقى على `/api/*` — لا توجد collectors لها.
+
+### 9.2 NetworkStoragePage — volumes → disk.list
+
+- تبويب **وحدات التخزين** استُبدل `api.getVolumes()` (Get-Volume) بجدول مجمّع عبر الوكلاء من `disk.list` — أعمدة: الوحدة، الوكيل، السعة، المتاح، شريط نسبة الشغور، آخر قياس. حالة فارغة صادقة («أرسل disk.list من صفحة الوكلاء»).
+- جلب موحّد `fetchFleetAgents`: يجلب `shares.list` + `disk.list` لكل وكيل في مسار واحد (polling كل 60 ثانية)؛ بطاقة مشاركات الوكلاء حُدّثت للبنية الجديدة.
+- **ports → ports.list**: منفّذ مسبقاً في `PortsPage` (بطاقات منافذ لكل وكيل proto/addr/process/pid) — لا حاجة لعمل هنا.
+- **أبقي عمداً على `/api/*`**: تبويب الأقراص الفيزيائية (Get-Disk — لا collector له)، إنشاء/حذف المشاركات، file explorer، adapters، firewall rules، diagnostics — كلها ميزات سيرفر محلي.
+
+### 9.3 التحقق
+
+- `npm run build` (tsc + vite) ✅
+- `oxlint` ✅ — نفس التحذيرين القديمين فقط

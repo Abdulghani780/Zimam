@@ -252,8 +252,8 @@ powershell tools/build-release.ps1   # binaries → release/
 ### Next concrete steps (in order)
 1. ~~Verify agent compiles~~ ✅ DONE — user-local SDK 10.0.402 at `%LOCALAPPDATA%\Microsoft\dotnet\dotnet.exe` builds `agent/` clean (0 warnings). NOTE: system `C:\Program Files\dotnet` has runtime only, no SDK.
 2. ~~Migrate `InfrastructurePage` tabs to fleet collectors~~ ✅ DONE (2026-11-18): roles→`windows.features`, services→`service.list`, tasks→`scheduled.tasks`, updates→`hotfix.list` — aggregated fleet tables with agent column + honest per-agent empty states; certs tab stays legacy (no collector). Also: `service.list` collector upgraded from `sc.exe` (name-only) to `Get-Service` `{name,display_name,status,start_type}` — requires agent rebuild/redeploy; fixed missing `session.disconnect` in agent `AllowedJobs`. Write actions (service control, role install) removed — no agent write job types exist.
-3. Migrate `SecurityPage` firewall state → `firewall.state` collector.
-4. `NetworkStoragePage` disks → `disk.list`; ports → `ports.list`.
+3. ~~Migrate `SecurityPage` firewall state → `firewall.state` collector.~~ ✅ DONE (2026-11-18, b412e2a): structured per-agent profile rows; rest of page stays legacy.
+4. ~~`NetworkStoragePage` disks → `disk.list`; ports → `ports.list`.~~ ✅ DONE (2026-11-18): volumes tab → fleet `disk.list` aggregated table; `ports.list` already on `PortsPage`. Physical disks tab stays legacy (no collector).
 5. Remaining P5 release gates: SSH/SFTP data path, Redis token consumption, recordings, AD/LDAP sync, backup replication, mTLS (see CONTROL_PLANE.md 501/503 list).
 6. P6 remainder: Inno Setup build (`packaging/asaas.iss` via ISCC), agent-as-service install test, clean VM install test.
 

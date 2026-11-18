@@ -4,7 +4,7 @@
  * Zero-Mock Production with Real Windows Physical Disks, Volumes, NetAdapters & Firewall
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
@@ -27,6 +27,84 @@ import {
 import { NavLink } from 'react-router-dom';
 import { t } from '../lib/i18n';
 
+type ResultEntry = { job_id: string; completed_at: string | null; result: unknown; error: string | null };
+
+// Generic row extraction for agent collector payloads (array or {items|...}).
+function agentRows(result: unknown, ...keys: string[]): any[] {
+  let arr: unknown = result;
+  if (!Array.isArray(arr) && arr && typeof arr === 'object') {
+    for (const k of keys) {
+      const v = (arr as any)[k];
+      if (Array.isArray(v)) { arr = v; break; }
+    }
+  }
+  return Array.isArray(arr) ? arr.filter((x) => x && typeof x === 'object') : [];
+}
+
+// PowerShell collectors serialize a single row as a bare object, not a
+// one-element array — wrap it. Wrapper objects ({count, items,...}) are skipped.
+function asItemArray(result: unknown, ...keys: string[]): any[] {
+  const rows = agentRows(result, ...keys);
+  if (rows.length > 0) return rows;
+  if (result && typeof result === 'object' && !Array.isArray(result)) {
+    const o = result as Record<string, unknown>;
+    const isWrapper = keys.some((k) => o[k] !== undefined) || o.count !== undefined || o.observed_at !== undefined;
+    if (!isWrapper) return [o];
+  }
+  return [];
+}
+
+const pickField = (o: any, ...keys: string[]) => {
+  for (const k of keys) {
+    const v = o?.[k];
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+  return '';
+};
+
+interface AgentRef {
+  id: string;
+  label: string;
+  status: string;
+  hostname: string;
+}
+
+interface FleetAgentInfo {
+  id: string;
+  name: string;
+  status: string;
+  hostname?: string | null;
+  linked_asset: { id: string; name: string; hostname: string } | null;
+  sharesEntry: ResultEntry | null;
+  shareRows: any[];
+  diskEntry: ResultEntry | null;
+  driveRows: { drive: string; totalGb: number | null; freeGb: number | null }[];
+}
+
+function agentRefOf(ag: FleetAgentInfo): AgentRef {
+  return {
+    id: ag.id,
+    label: ag.linked_asset?.name || ag.name,
+    status: ag.status,
+    hostname: ag.hostname || ag.linked_asset?.hostname || ag.id.slice(0, 8),
+  };
+}
+
+// disk.list payload: [{name:"C:\\", total_gb, free_gb}] per agent.
+function driveRows(result: unknown): { drive: string; totalGb: number | null; freeGb: number | null }[] {
+  return asItemArray(result, 'disks', 'drives', 'items', 'volumes').map((d) => {
+    const total = Number(pickField(d, 'total_gb', 'totalGB', 'total', 'size_gb', 'size'));
+    const free = Number(pickField(d, 'free_gb', 'freeGB', 'free', 'available_gb', 'available'));
+    return {
+      drive: String(pickField(d, 'name', 'drive', 'drive_letter', 'letter', 'device', 'mount') || '?'),
+      totalGb: Number.isFinite(total) ? total : null,
+      freeGb: Number.isFinite(free) ? free : null,
+    };
+  });
+}
+
+type DriveFleetRow = ReturnType<typeof driveRows>[number] & { agent: AgentRef; completedAt: string | null };
+
 export function NetworkStoragePage() {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'disks' | 'volumes' | 'shares' | 'explorer' | 'adapters' | 'firewall' | 'diagnostics'>('disks');
@@ -34,7 +112,6 @@ export function NetworkStoragePage() {
 
   // 1. Disks & Volumes
   const [disks, setDisks] = useState<any[]>([]);
-  const [volumes, setVolumes] = useState<any[]>([]);
 
   // 2. SMB Shares
   const [shares, setShares] = useState<any[]>([]);
@@ -67,45 +144,64 @@ export function NetworkStoragePage() {
   const [tcpResult, setTcpResult] = useState<any>(null);
   const [testingTcp, setTestingTcp] = useState(false);
 
-  // Remote agent SMB shares — read-only shares.list collector results.
-  const [fleetShares, setFleetShares] = useState<any[]>([]);
+  // Remote agent fleet data — read-only shares.list + disk.list collectors.
+  const [fleetAgents, setFleetAgents] = useState<FleetAgentInfo[]>([]);
 
-  const fetchFleetShares = async () => {
+  const fetchFleetAgents = async () => {
     try {
       const fleetRes = await apiV1.fleetSummary();
-      if (!fleetRes?.agents?.length) { setFleetShares([]); return; }
+      if (!fleetRes?.agents?.length) { setFleetAgents([]); return; }
       const detailed = await Promise.all(
         fleetRes.agents.map(async (ag) => {
+          let sharesEntry: ResultEntry | null = null;
+          let diskEntry: ResultEntry | null = null;
           const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
-          const entry = r?.results?.['shares.list'] ?? null;
-          let arr: any[] = [];
-          const raw = entry && !entry.error ? entry.result : null;
-          const src = Array.isArray(raw) ? raw : ((raw as any)?.shares ?? (raw as any)?.items ?? []);
-          if (Array.isArray(src)) arr = src.filter((x) => x && typeof x === 'object');
-          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, shares: arr };
+          sharesEntry = r?.results?.['shares.list'] ?? null;
+          diskEntry = r?.results?.['disk.list'] ?? null;
+          const shareRows = sharesEntry && !sharesEntry.error
+            ? asItemArray(sharesEntry.result, 'shares', 'items')
+            : [];
+          const drives = diskEntry && !diskEntry.error ? driveRows(diskEntry.result) : [];
+          return {
+            id: ag.id,
+            name: ag.name,
+            status: ag.status,
+            hostname: ag.hostname ?? null,
+            linked_asset: ag.linked_asset ?? null,
+            sharesEntry,
+            shareRows,
+            diskEntry,
+            driveRows: drives,
+          };
         }),
       );
-      setFleetShares(detailed);
+      setFleetAgents(detailed);
     } catch {
-      setFleetShares([]);
+      setFleetAgents([]);
     }
   };
 
   useEffect(() => {
-    fetchFleetShares();
+    fetchFleetAgents();
+    const timer = window.setInterval(fetchFleetAgents, 60000);
+    return () => window.clearInterval(timer);
   }, []);
+
+  const fleetShares = useMemo(
+    () => fleetAgents.filter((ag) => ag.sharesEntry || ag.shareRows.length > 0),
+    [fleetAgents],
+  );
+  const fleetVolumes = useMemo<DriveFleetRow[]>(() => fleetAgents.flatMap((ag) => {
+    const entry = ag.diskEntry;
+    if (!entry || entry.error) return [];
+    const ref = agentRefOf(ag);
+    return driveRows(entry.result).map((d) => ({ ...d, agent: ref, completedAt: entry.completed_at }));
+  }), [fleetAgents]);
 
   const fetchDisks = async () => {
     try {
       const res = await api.getDisks();
       setDisks(res?.disks || []);
-    } catch {}
-  };
-
-  const fetchVolumes = async () => {
-    try {
-      const res = await api.getVolumes();
-      setVolumes(res?.volumes || []);
     } catch {}
   };
 
@@ -149,7 +245,6 @@ export function NetworkStoragePage() {
   const loadTabData = async () => {
     setLoading(true);
     if (activeTab === 'disks') await fetchDisks();
-    else if (activeTab === 'volumes') await fetchVolumes();
     else if (activeTab === 'shares') await fetchShares();
     else if (activeTab === 'explorer') await fetchExplorer();
     else if (activeTab === 'adapters') await fetchAdapters();
@@ -278,7 +373,7 @@ export function NetworkStoragePage() {
             {t('إدارة متكاملة للأقراص الفيزيائية، وحدات التخزين، مشاركات SMB، مستعرض ملفات السيرفر، محولات الشبكة، والجدار الناري.')}
           </p>
         </div>
-        <Button variant="ghost" onClick={loadTabData} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Button variant="ghost" onClick={() => { void fetchFleetAgents(); void loadTabData(); }} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={15} className={loading ? 'spin' : ''} />
           <span>{t('تحديث')}</span>
         </Button>
@@ -301,23 +396,23 @@ export function NetworkStoragePage() {
             {fleetShares.map((ag) => (
               <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.linked_asset?.name || ag.name}</span>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
                     {ag.status}
                   </span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
-                  {ag.hostname || ag.id.slice(0, 8)}{ag.shares.length ? ` · ${ag.shares.length} ${t('مشاركة')}` : ''}
+                  {ag.hostname || ag.linked_asset?.hostname || ag.id.slice(0, 8)}{ag.shareRows.length ? ` · ${ag.shareRows.length} ${t('مشاركة')}` : ''}
                 </div>
-                {!ag.entry ? (
+                {!ag.sharesEntry ? (
                   <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع المشاركات بعد — أرسله من صفحة الوكلاء.')}</div>
-                ) : ag.entry.error ? (
-                  <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.entry.error}</div>
-                ) : ag.shares.length === 0 ? (
+                ) : ag.sharesEntry.error ? (
+                  <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.sharesEntry.error}</div>
+                ) : ag.shareRows.length === 0 ? (
                   <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا مشاركات SMB أو نتيجة غير معروفة.')}</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
-                    {ag.shares.slice(0, 40).map((s: any, i: number) => {
+                    {ag.shareRows.slice(0, 40).map((s: any, i: number) => {
                       const sname = String(s.name ?? s.Name ?? '?');
                       const spath = String(s.path ?? s.Path ?? '');
                       const sdesc = String(s.description ?? s.Description ?? '');
@@ -325,7 +420,7 @@ export function NetworkStoragePage() {
                       return (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={`${sname} → ${spath}`}>
-                            \\{ag.hostname || ag.name}\{sname}
+                            \\{ag.hostname || ag.linked_asset?.hostname || ag.name}\{sname}
                           </span>
                           <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
                             {users !== '' && users !== null && <span style={{ fontSize: 9 }}>{t('مستخدمون')}: {users}</span>}
@@ -334,9 +429,9 @@ export function NetworkStoragePage() {
                         </div>
                       );
                     })}
-                    {ag.shares.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ag.shares.length - 40} {t('مشاركة أخرى')}</div>}
-                    {ag.entry.completed_at && (
-                      <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.entry.completed_at).toLocaleString('ar-SA')}</div>
+                    {ag.shareRows.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ag.shareRows.length - 40} {t('مشاركة أخرى')}</div>}
+                    {ag.sharesEntry.completed_at && (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.sharesEntry.completed_at).toLocaleString('ar-SA')}</div>
                     )}
                   </div>
                 )}
@@ -387,7 +482,7 @@ export function NetworkStoragePage() {
           }}
         >
           <HardDrive size={15} />
-          <span>{t('وحدات التخزين')} (Volumes - {volumes.length})</span>
+          <span>{t('وحدات التخزين')} ({fleetVolumes.length})</span>
         </button>
 
         <button
@@ -549,39 +644,46 @@ export function NetworkStoragePage() {
       {activeTab === 'volumes' && (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-            {t('وحدات التخزين والتقسيمات (Windows Volumes via Get-Volume)')}
+            {t('وحدات التخزين عبر وكلاء أساس (disk.list — بيانات حية لكل وكيل)')}
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('حرف الوحدة')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('تسمية الوحدة (Label)')}</th>
-                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نظام الملفات')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوحدة')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
                   <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('السعة الإجمالية')}</th>
                   <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المساحة المتاحة')}</th>
                   <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نسبة الشغور')}</th>
+                  <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('آخر قياس')}</th>
                 </tr>
               </thead>
               <tbody>
-                {volumes.map((v, i) => {
-                  const freePercent = v.percent_free ?? (v.size_gb && v.free_gb != null ? Math.round((v.free_gb / v.size_gb) * 100) : null);
+                {fleetVolumes.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '24px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-3)' }}>
+                      {t('لا توجد بيانات أقراص — أرسل job_type=«disk.list» من صفحة الوكلاء ثم انتظر النتيجة.')}
+                    </td>
+                  </tr>
+                )}
+                {fleetVolumes.map((v, i) => {
+                  const freePercent = v.totalGb != null && v.freeGb != null && v.totalGb > 0
+                    ? Math.round((v.freeGb / v.totalGb) * 100)
+                    : null;
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
+                    <tr key={`${v.agent.id}-${v.drive}-${i}`} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
                       <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 800, fontSize: 14, color: 'var(--accent)' }}>
-                        {v.drive_letter ? `${v.drive_letter}:` : 'Volume'}
+                        {v.drive}
                       </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
-                        {v.label || '—'}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
-                        {v.file_system || '—'}
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{v.agent.label}</span>
+                        <span style={{ display: 'block', fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>{v.agent.hostname}</span>
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)' }}>
-                        {v.size_gb ? `${v.size_gb} GB` : '-'}
+                        {v.totalGb != null ? `${v.totalGb.toFixed(1)} GB` : '—'}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-2)' }}>
-                        {v.free_gb ? `${v.free_gb} GB` : '-'}
+                        {v.freeGb != null ? `${v.freeGb.toFixed(1)} GB` : '—'}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         {freePercent == null ? (
@@ -594,6 +696,9 @@ export function NetworkStoragePage() {
                           <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'monospace' }}>{freePercent}%</span>
                         </div>
                         )}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 11, color: 'var(--text-3)' }}>
+                        {v.completedAt ? new Date(v.completedAt).toLocaleString('ar-SA') : '—'}
                       </td>
                     </tr>
                   );
