@@ -491,3 +491,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `service.control` في `ALLOWED_JOB_TYPES` — `POST /api/v1/jobs` يوقّع payload.
 - **Frontend**: `InfrastructurePage` services tab — عمود «إجراءات» مع أزرار تشغيل/إيقاف/إعادة تشغيل لكل صف (agent_id مضاف لـ `ServiceFleetRow`) → `apiV1.createJob` + toast «ينفذ خلال ~15 ثانية» (polling agent).
 - **تحقق**: `dotnet build` 0/0 ✅، `npm run build` ✅، oxlint ✅، 10/10 tests ✅. تنفيذ فعلي يحتاج agent منشور بالجديد + خدمة حقيقية.
+
+### 12.8 ثاني agent write job — `process.kill`
+
+- **Agent**: `process.kill` في `AllowedJobs` + `ProcessKill(payload)` — `{pid}` → `Process.Kill(entireProcessTree)`؛ يرفض pid ≤4 وعملية الوكيل نفسه.
+- **Control plane**: `process.kill` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `ControlPage` بطاقات عمليات الوكلاء — زر «إنهاء» لكل صف PID صالح (>4) مع `confirm` → `apiV1.createJob`.
+- **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.

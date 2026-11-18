@@ -160,7 +160,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
-        "service.control"
+        "service.control", "process.kill"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -316,8 +316,24 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "startup.programs" => PsProbe.Run("$paths=@('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run','HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce','HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run','HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run','HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce'); $out=@(); foreach($p in $paths){ if(Test-Path $p){ $k=Get-Item $p; foreach($n in $k.GetValueNames()){ $out += [pscustomobject]@{ hive=($p -split ':')[0]; key=$p; name=$n; command=[string]$k.GetValue($n); kind=[string]$k.GetValueKind($n) } } } }; $out | ConvertTo-Json -Compress -Depth 4"),
         "hyperv.vms" => PsProbe.Run("if(-not (Get-Command Get-VM -ErrorAction SilentlyContinue)){ throw 'Hyper-V PowerShell module not available on this host' }; Get-VM | ForEach-Object { [pscustomobject]@{ name=$_.Name; state=[string]$_.State; cpu_usage=$_.ProcessorUsage; memory_assigned_gb=[math]::Round($_.MemoryAssigned/1GB,2); memory_startup_gb=[math]::Round($_.MemoryStartup/1GB,2); uptime=$_.Uptime.ToString(); version=$_.Version.ToString() } } | ConvertTo-Json -Compress -Depth 4"),
         "service.control" => ServiceControl(payload),
+        "process.kill" => ProcessKill(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
+
+    // Signed write job: terminate a process by PID.
+    // payload: {"pid": 1234} — refuses PID 0/4/System/own process.
+    private static object ProcessKill(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("pid", out var pidEl) || !pidEl.TryGetInt32(out var pid))
+            throw new InvalidOperationException("process.kill requires payload.pid (integer)");
+        if (pid <= 4 || pid == Environment.ProcessId)
+            throw new InvalidOperationException($"process.kill refused for protected pid {pid}");
+        var proc = Process.GetProcessById(pid);
+        var name = proc.ProcessName;
+        proc.Kill(entireProcessTree: true);
+        proc.WaitForExit(5000);
+        return new { pid, name, killed = proc.HasExited };
+    }
 
     // Signed write job: start/stop/restart a Windows service.
     // payload: {"name": "<service>", "action": "start"|"stop"|"restart"}

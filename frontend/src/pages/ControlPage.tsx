@@ -129,6 +129,7 @@ export function ControlPage() {
   const [now, setNow] = useState(() => Date.now());
   const [fleetSessions, setFleetSessions] = useState<FleetSessionAgent[]>([]);
   const [fleetBusy, setFleetBusy] = useState<string | null>(null);
+  const [procKillBusy, setProcKillBusy] = useState<string | null>(null);
 
   const loadFleetSessions = async () => {
     try {
@@ -596,14 +597,36 @@ export function ControlPage() {
                     </details>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 220, overflowY: 'auto' }}>
-                      {procs.slice(0, 25).map((p, i) => (
+                      {procs.slice(0, 25).map((p, i) => {
+                        const pidNum = parseInt(p.pid, 10);
+                        const canKill = Number.isFinite(pidNum) && pidNum > 4;
+                        const killKey = `${ag.id}:${pidNum}`;
+                        return (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                          <span style={{ color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', flexShrink: 0 }} dir="ltr">
+                          <span style={{ color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }} dir="ltr">
                             {p.pid ? `#${p.pid}` : ''}{p.mem ? ` · ${p.mem}` : ''}{p.cpu ? ` · ${p.cpu}` : ''}
+                            {canKill && (
+                              <button
+                                type="button"
+                                disabled={procKillBusy !== null}
+                                onClick={() => {
+                                  if (!window.confirm(t(`إنهاء العملية ${p.name} (PID ${pidNum}) على ${ag.linked_asset?.name || ag.name}؟`))) return;
+                                  setProcKillBusy(killKey);
+                                  apiV1.createJob({ agent_id: ag.id, job_type: 'process.kill', payload: { pid: pidNum } })
+                                    .then(() => toast(t('تم إرسال أمر الإنهاء — ينفذ على الوكيل خلال ~15 ثانية'), 'success'))
+                                    .catch((e: any) => toast(e?.message || t('فشل إرسال الأمر'), 'error'))
+                                    .finally(() => setProcKillBusy(null));
+                                }}
+                                style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: procKillBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--status-danger, #dc2626)' }}
+                              >
+                                {procKillBusy === killKey ? '…' : t('إنهاء')}
+                              </button>
+                            )}
                           </span>
                         </div>
-                      ))}
+                        );
+                      })}
                       {procs.length > 25 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{procs.length - 25} {t('عملية أخرى')}</div>}
                       {ag.processes.completed_at && (
                         <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.processes.completed_at).toLocaleString('ar-SA')}</div>
