@@ -136,7 +136,17 @@ jobs:
       - name: Start ASAAS Backend
         run: |
           Start-Process -FilePath python -ArgumentList 'backend/main.py' -WindowStyle Hidden
-          Start-Sleep -Seconds 5
+          # Wait for /api/health instead of a fixed sleep — cold init_db can
+          # exceed 5s and the first login POST then fails, leaving SMK-01 stuck.
+          $deadline = (Get-Date).AddSeconds(90)
+          do {
+            Start-Sleep -Seconds 2
+            try {
+              $r = Invoke-WebRequest -Uri 'http://127.0.0.1:8765/api/health' -UseBasicParsing -TimeoutSec 5
+              if ($r.StatusCode -eq 200) { break }
+            } catch { }
+          } while ((Get-Date) -lt $deadline)
+          if ((Get-Date) -ge $deadline) { throw 'Backend did not become healthy within 90s' }
 
       - name: Run Playwright Smoke Tests
         working-directory: frontend
