@@ -128,6 +128,7 @@ export function ControlPage() {
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [fleetSessions, setFleetSessions] = useState<FleetSessionAgent[]>([]);
+  const [fleetBusy, setFleetBusy] = useState<string | null>(null);
 
   const loadFleetSessions = async () => {
     try {
@@ -303,6 +304,26 @@ export function ControlPage() {
       noteActionError(message);
     } finally {
       setBusy(null);
+    }
+  };
+
+  const handleFleetSessionAction = async (ag: FleetSessionAgent, sessionId: string, kind: 'disconnect' | 'logoff') => {
+    const sid = Number.parseInt(sessionId, 10);
+    if (!Number.isFinite(sid) || sid <= 0) {
+      toast(t('معرّف جلسة غير صالح'), 'error');
+      return;
+    }
+    const key = `${ag.id}:${sid}:${kind}`;
+    setFleetBusy(key);
+    try {
+      const res = kind === 'disconnect'
+        ? await apiV1.disconnectSession(ag.id, sid)
+        : await apiV1.terminateSession(ag.id, sid);
+      toast(`${t('تمت جدولة الأمر')} (${res.job_id?.slice(0, 8) ?? '…'}) — ${t('ينفذه الوكيل عند أول poll تالٍ')}`, 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل جدولة الأمر'), 'error');
+    } finally {
+      setFleetBusy(null);
     }
   };
 
@@ -495,8 +516,32 @@ export function ControlPage() {
                       {rows.slice(0, 8).map((s, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '6px 8px', borderRadius: 8, background: 'var(--surface-ground)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)' }} dir="ltr">{s.user}{s.id ? ` · #${s.id}` : ''}</span>
-                          <span style={{ color: s.state.toLowerCase().includes('active') ? 'var(--paid)' : 'var(--text-3)', fontSize: 10 }}>
-                            {s.state || '—'}{s.logon ? ` · ${s.logon}` : ''}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: s.state.toLowerCase().includes('active') ? 'var(--paid)' : 'var(--text-3)', fontSize: 10 }}>
+                              {s.state || '—'}{s.logon ? ` · ${s.logon}` : ''}
+                            </span>
+                            {/^\d+$/.test(s.id) && !/listen/i.test(s.state) && (
+                              <>
+                                <button
+                                  type="button"
+                                  title={t('فصل الجلسة (يبقيها، يقطع الاتصال)')}
+                                  disabled={fleetBusy !== null}
+                                  onClick={() => handleFleetSessionAction(ag, s.id, 'disconnect')}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2, display: 'inline-flex' }}
+                                >
+                                  <Unplug size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  title={t('تسجيل خروج الجلسة')}
+                                  disabled={fleetBusy !== null}
+                                  onClick={() => handleFleetSessionAction(ag, s.id, 'logoff')}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger, #dc2626)', padding: 2, display: 'inline-flex' }}
+                                >
+                                  <LogOut size={12} />
+                                </button>
+                              </>
+                            )}
                           </span>
                         </div>
                       ))}
