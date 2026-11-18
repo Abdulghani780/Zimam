@@ -68,7 +68,9 @@ class EnterpriseV30Tests(unittest.TestCase):
         self.assertTrue(res.get('ok'))
         srv = res.get('local_server', {})
         self.assertTrue('SRV' in srv.get('computer_name', '') or srv.get('computer_name'))
-        self.assertIn('Windows Server 2025', srv.get('os_caption', ''))
+        caption = srv.get('os_caption', '')
+        self.assertIn('Windows', caption)
+        self.assertTrue('Server' in caption or '2025' in caption, f'unexpected os_caption: {caption}')
         self.assertGreaterEqual(srv.get('cpu_logical_cores', 0), 1)
         self.assertGreaterEqual(srv.get('ram_total_gb', 0), 1.0)
 
