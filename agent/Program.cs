@@ -159,7 +159,8 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     {
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
-        "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms"
+        "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
+        "service.control"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -314,8 +315,31 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "ports.list" => PsProbe.Run("$names=@{}; Get-Process | ForEach-Object { $names[[int]$_.Id]=$_.ProcessName }; $tcp=Get-NetTCPConnection -State Listen | ForEach-Object { [pscustomobject]@{ proto='tcp'; local_address=[string]$_.LocalAddress; local_port=[int]$_.LocalPort; pid=[int]$_.OwningProcess; process=$names[[int]$_.OwningProcess] } }; $udp=Get-NetUDPEndpoint | ForEach-Object { [pscustomobject]@{ proto='udp'; local_address=[string]$_.LocalAddress; local_port=[int]$_.LocalPort; pid=[int]$_.OwningProcess; process=$names[[int]$_.OwningProcess] } }; @($tcp)+@($udp) | Sort-Object local_port | ConvertTo-Json -Compress -Depth 4"),
         "startup.programs" => PsProbe.Run("$paths=@('HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run','HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce','HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run','HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run','HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce'); $out=@(); foreach($p in $paths){ if(Test-Path $p){ $k=Get-Item $p; foreach($n in $k.GetValueNames()){ $out += [pscustomobject]@{ hive=($p -split ':')[0]; key=$p; name=$n; command=[string]$k.GetValue($n); kind=[string]$k.GetValueKind($n) } } } }; $out | ConvertTo-Json -Compress -Depth 4"),
         "hyperv.vms" => PsProbe.Run("if(-not (Get-Command Get-VM -ErrorAction SilentlyContinue)){ throw 'Hyper-V PowerShell module not available on this host' }; Get-VM | ForEach-Object { [pscustomobject]@{ name=$_.Name; state=[string]$_.State; cpu_usage=$_.ProcessorUsage; memory_assigned_gb=[math]::Round($_.MemoryAssigned/1GB,2); memory_startup_gb=[math]::Round($_.MemoryStartup/1GB,2); uptime=$_.Uptime.ToString(); version=$_.Version.ToString() } } | ConvertTo-Json -Compress -Depth 4"),
+        "service.control" => ServiceControl(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
+
+    // Signed write job: start/stop/restart a Windows service.
+    // payload: {"name": "<service>", "action": "start"|"stop"|"restart"}
+    private static object ServiceControl(JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var n) ? n.GetString() : null;
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("service.control requires payload.name");
+        if (name.Any(c => !(char.IsLetterOrDigit(c) || c is '_' or '-' or '.' or ' ')))
+            throw new InvalidOperationException("service name contains invalid characters");
+        var escaped = name.Replace("'", "''");
+        var ps = action switch
+        {
+            "start" => $"Start-Service -Name '{escaped}'",
+            "stop" => $"Stop-Service -Name '{escaped}' -Force",
+            "restart" => $"Restart-Service -Name '{escaped}' -Force",
+            _ => throw new InvalidOperationException("service.control action must be start|stop|restart")
+        };
+        PsProbe.Run($"{ps}; Get-Service -Name '{escaped}' | Select-Object Name,Status,StartType | ConvertTo-Json -Compress");
+        return new { name, action, executed = true };
+    }
 
     // Signed self-update: downloads the bundle hosted by the control plane,
     // verifies SHA-256 against the signed job payload, and stages it as

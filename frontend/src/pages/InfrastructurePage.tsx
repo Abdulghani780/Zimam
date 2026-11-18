@@ -160,7 +160,7 @@ function agentRef(ag: FleetNetAgent): AgentRef {
   };
 }
 
-interface ServiceFleetRow extends RemoteService { agent: AgentRef; completedAt: string | null }
+interface ServiceFleetRow extends RemoteService { agent: AgentRef; agentId: string; completedAt: string | null }
 interface FeatureFleetRow { agent: AgentRef; completedAt: string | null; name: string; state: string; installed: boolean; available: boolean }
 interface TaskFleetRow { agent: AgentRef; completedAt: string | null; name: string; path: string; state: string }
 interface HotfixFleetRow { agent: AgentRef; completedAt: string | null; id: string; description: string; installedOn: string }
@@ -182,6 +182,7 @@ export function InfrastructurePage() {
   const [serviceSearch, setServiceSearch] = useState('');
   const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
   const [tasksSearch, setTasksSearch] = useState('');
+  const [svcBusy, setSvcBusy] = useState<string | null>(null);
 
   // Certificates still come from the legacy local-server API.
   const [certs, setCerts] = useState<any[]>([]);
@@ -209,6 +210,20 @@ export function InfrastructurePage() {
       setFleetNet(detailed);
     } catch {
       setFleetNet([]);
+    }
+  };
+
+  // Signed agent write job: start/stop/restart a service on its host agent.
+  const queueServiceControl = async (svc: ServiceFleetRow, action: 'start' | 'stop' | 'restart') => {
+    const key = `${svc.agentId}:${svc.name}:${action}`;
+    setSvcBusy(key);
+    try {
+      await apiV1.createJob({ agent_id: svc.agentId, job_type: 'service.control', payload: { name: svc.name, action } });
+      toast(t('تم إرسال أمر الخدمة — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال أمر الخدمة'), 'error');
+    } finally {
+      setSvcBusy(null);
     }
   };
 
@@ -245,7 +260,7 @@ export function InfrastructurePage() {
   const fleetServices = useMemo<ServiceFleetRow[]>(() => fleetNet.flatMap((ag) => {
     const entry = ag.services;
     if (!entry || entry.error) return [];
-    return serviceRows(entry.result).map((s) => ({ ...s, agent: agentRef(ag), completedAt: entry.completed_at }));
+    return serviceRows(entry.result).map((s) => ({ ...s, agent: agentRef(ag), agentId: ag.id, completedAt: entry.completed_at }));
   }), [fleetNet]);
 
   const fleetFeatures = useMemo<FeatureFleetRow[]>(() => fleetNet.flatMap((ag) => {
@@ -878,6 +893,7 @@ export function InfrastructurePage() {
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نوع البدء')}</th>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('إجراءات')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -900,6 +916,28 @@ export function InfrastructurePage() {
                             </span>
                           </td>
                           {agentCell(s.agent, s.completedAt)}
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {(['start', 'stop', 'restart'] as const).map((action) => {
+                                const key = `${s.agentId}:${s.name}:${action}`;
+                                const busy = svcBusy === key;
+                                return (
+                                  <button
+                                    key={action}
+                                    type="button"
+                                    disabled={svcBusy !== null}
+                                    onClick={() => queueServiceControl(s, action)}
+                                    style={{
+                                      fontSize: 11, padding: '4px 8px', borderRadius: 6, cursor: svcBusy ? 'wait' : 'pointer',
+                                      border: '1px solid var(--glass-rim)', background: 'var(--surface-card)', color: 'var(--text-2)',
+                                    }}
+                                  >
+                                    {busy ? '…' : action === 'start' ? t('تشغيل') : action === 'stop' ? t('إيقاف') : t('إعادة تشغيل')}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

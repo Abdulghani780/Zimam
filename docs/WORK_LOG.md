@@ -484,3 +484,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - `POST /system/backup` ينسخ تلقائياً عند الضبط — `replication` field في الرد + audit `system.backup.replicate`؛ الفشل يُبلَّغ ولا يُخفى. `GET /system/backup/replication` للتشخيص بدون أسرار.
 - `boto3>=1.34,<2` في requirements + ثُبّت 1.44.5.
 - **تحقق**: compile + imports + status + 10/10 tests ✅. نسخ فعلي لـ remote حقيقي خطوة نشر.
+
+### 12.7 أول agent write job — `service.control`
+
+- **Agent**: `service.control` في `AllowedJobs` + `ServiceControl(payload)` — `{name, action: start|stop|restart}` عبر `Start-Service`/`Stop-Service -Force`/`Restart-Service -Force` ثم `Get-Service` للتأكيد؛ تحقق من اسم الخدمة (أحرف آمنة فقط) — signed jobs فقط (Ed25519) كالمعتاد.
+- **Control plane**: `service.control` في `ALLOWED_JOB_TYPES` — `POST /api/v1/jobs` يوقّع payload.
+- **Frontend**: `InfrastructurePage` services tab — عمود «إجراءات» مع أزرار تشغيل/إيقاف/إعادة تشغيل لكل صف (agent_id مضاف لـ `ServiceFleetRow`) → `apiV1.createJob` + toast «ينفذ خلال ~15 ثانية» (polling agent).
+- **تحقق**: `dotnet build` 0/0 ✅، `npm run build` ✅، oxlint ✅، 10/10 tests ✅. تنفيذ فعلي يحتاج agent منشور بالجديد + خدمة حقيقية.

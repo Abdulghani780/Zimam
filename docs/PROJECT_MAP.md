@@ -83,7 +83,7 @@
 1. auth ✅ (منجزة — login يفضّل v1 + bridge)
 2. assets/accounts/policies → tokens → sessions → governor/telemetry
 3. كل شريحة: endpoint حي + صفحة محوّلة + حذف legacy بنفس الـ commit
-4. 🔴 blocked: agent job channel للـ ~15 legacy domain (services/firewall/network/storage/tasks/certs/hyperv/docker/roles/processes)
+4. 🔄 agent write channel: `service.control` (start/stop/restart) ✅ implemented end-to-end (agent `ServiceControl` + `ALLOWED_JOB_TYPES` + InfrastructurePage actions column); ~14 domains remain (firewall rules, task run/enable, process kill, vm power, docker, cert ops, share ops, disk format/mount, hotfix install, startup programs, local.users, feature enable, software uninstall)
 
 ### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:
