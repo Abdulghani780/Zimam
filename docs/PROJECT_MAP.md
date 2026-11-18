@@ -99,7 +99,7 @@
 - [ ] Shadowing: تحقق نهائي (RemoteFX fix مطبّق) + preflight validation
 - [x] Agent كخدمة Windows — `Asaas.Agent.exe install|uninstall|status` موجود (sc.exe + env vars في registry + `AddWindowsService`)؛ تحقق تشغيلي على جهاز نظيف متبقٍ
 - [x] Inno Setup install + بناء `ASAAS-Setup` — ISCC 6.7.3 موجود محلياً (`%LOCALAPPDATA%\Programs\Inno Setup 6`)؛ `installer-out\ASAAS-Setup-1.0.0.exe` (75.7MB) بُني بنجاح 2026-11-18؛ اختبار على VM نظيف متبقٍ
-- [x] إعادة بناء `release/` — `tools/build-release.ps1` نجح (2026-11-18): `asaas-backend.exe` 14.3MB + `asaas-control.exe` 42.3MB (PyInstaller 6.22.3) + `Asaas.Agent.exe` 36.7MB (dotnet publish self-contained) + `web/` — عبر junctions لـ `.venv`/`node_modules` المستودع الرئيسي وSDK المحلي
+- [x] إعادة بناء `release/` + `ASAAS-Setup-1.0.0.exe` (98.1MB، 2026-11-18) — يشمل الوكيل بأحدث write jobs (`software.uninstall` آخراً). ملاحظة: يتطلب SDK 10 في PATH (`%LOCALAPPDATA%\Microsoft\dotnet`) — `C:\Program Files\dotnet` SDK 8 فقط.
 
 ---
 

@@ -635,3 +635,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 ### 12.29 runbook التحقق على VM نظيف — `docs/CLEAN_VM_VALIDATION.md`
 
 - دليل خطوة-بخطوة لبوابة Phase 6: تثبيت → `validate-clean-vm.ps1` → إعادة تشغيل → wizard/دخول → تسجيل وكيل + مهمة `system.info` موقعة → (اختياري) mTLS/SFTP/recording/uninstall. كل خطوة بمعيار PASS واضح وقائمة sign-off نهائية.
+
+### 12.30 إعادة بناء release + المثبّت بالوكيل الأخير
+
+- **`tools/build-release.ps1`**: نجح بعد تمرير PATH لـ SDK المحلي 10.0.402 (الافتراضي C:\Program Files\dotnet كان SDK 8 فقط ويفشل على net10.0). stage: backend 14.3MB + control 60.6MB + **Asaas.Agent.exe 36.7MB يتضمن `software.uninstall`** + libsodium.
+- **ISCC**: `ASAAS-Setup-1.0.0.exe` أُعيد بناؤه = **98.1MB** (كان 75.7MB — الزيادة من وكيل أحدث + web bundle محدّث بكل شرائح Phase 4 الأخيرة).
+- **ملاحظة**: `installer-out/` و`release/` في .gitignore — المثبّت artifact محلي، يُرفع للـ VM/التوزيع يدوياً.
