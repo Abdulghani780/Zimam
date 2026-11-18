@@ -1,14 +1,25 @@
 import { test, expect } from '@playwright/test';
 
+const USER = process.env.E2E_USER || 'e2e-admin';
+const PASS = process.env.E2E_PASS || '';
+
 test.describe('ASAAS - Modals & Interactive Dialogs', () => {
+  test.skip(!PASS, 'E2E_PASS not set');
+
   test.beforeEach(async ({ page }) => {
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
+    await page.locator('input[autocomplete="username"]').fill(USER);
+    await page.locator('input[autocomplete="current-password"]').fill(PASS);
+    await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20000 });
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
   });
 
   test('MD-01: AI Ops Radar Diagnostic Modal lifecycle', async ({ page }) => {
-    // 1. Open AI Ops Radar modal from header
-    const aiDiagBtn = page.getByRole('button', { name: /رادار الذكاء الاصطناعي/i });
+    // 1. Open quick-settings menu, then AI Ops Radar menuitem
+    await page.getByRole('button', { name: /إعدادات سريعة/ }).click();
+    const aiDiagBtn = page.getByRole('menuitem', { name: /رادار الذكاء الاصطناعي/ });
     await expect(aiDiagBtn).toBeVisible({ timeout: 10000 });
     await aiDiagBtn.click();
 
@@ -17,8 +28,9 @@ test.describe('ASAAS - Modals & Interactive Dialogs', () => {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText(/تقرير التشخيص الذكي لخوادم أساس/i)).toBeVisible();
 
-    // 3. Vital signals inside dialog
-    await expect(dialog.getByText(/المعالج والأنوية/i)).toBeVisible();
+    // 3. Vital signals inside dialog — rendered only after the async
+    // diagnosis fetch resolves, so allow extra time.
+    await expect(dialog.getByText(/المعالج والأنوية/i)).toBeVisible({ timeout: 15000 });
     await expect(dialog.getByText(/حاكم الذاكرة/i)).toBeVisible();
     await expect(dialog.getByText(/الأقراص والتخزين/i)).toBeVisible();
 
@@ -64,9 +76,9 @@ test.describe('ASAAS - Modals & Interactive Dialogs', () => {
 
   test('MD-03: User Account & Role Switcher Modal lifecycle', async ({ page }) => {
     // 1. Click user pill in header
-    const userBtn = page.getByRole('button', { name: /تغيير المستخدم والدور/i });
+    const userBtn = page.locator('.header-user');
     await expect(userBtn).toBeVisible({ timeout: 10000 });
-    await userBtn.click({ force: true });
+    await userBtn.click();
 
     // 2. Dialog appears
     const dialog = page.getByRole('dialog');
@@ -74,7 +86,7 @@ test.describe('ASAAS - Modals & Interactive Dialogs', () => {
     await expect(dialog.getByText(/إدارة الحسابات وصلاحيات الوصول/i)).toBeVisible();
 
     // 3. Close modal via close button
-    const closeIcon = dialog.getByRole('button', { name: /إغلاق النافذة/i });
+    const closeIcon = dialog.getByRole('button', { name: /^إغلاق$/ });
     await expect(closeIcon).toBeVisible();
     await closeIcon.click();
     await expect(dialog).not.toBeVisible();

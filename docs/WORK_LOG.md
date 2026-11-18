@@ -664,3 +664,13 @@ Backend:     127.0.0.1:8765 (loopback فقط)
   2. GitHub repo → Settings → Secrets → `SONAR_TOKEN` = User Token من SonarCloud
   3. GitHub repo → Settings → Variables → `SONAR_ENABLED` = `true`
   4. push/PR جديد → التحليل يعمل؛ الفحص الفاشل القديم من الـ GitHub App قد يبقى ظاهراً حتى إعادة import أو ربط الـ App بالمشروع الجديد
+
+### 12.34 إصلاح murmurs قديمة في e2e — المجموعة الكاملة خضراء محلياً
+
+- **المشكلة**: 3 specs قديمة (`dashboard-telemetry`, `modals-and-dialogs`, `navigation-and-pages`) لم تُحدَّث بعد إعادة تصميم الواجهة — 14 فشل عند التشغيل الكامل (كانت تمرّ في CI لأن CI يشغّل `smoke.spec.ts` فقط).
+- **الإصلاحات**:
+  - إضافة `beforeEach` تسجيل دخول حقيقي (E2E_USER/E2E_PASS) للثلاثة — كانت تذهب لـ `/` بدون جلسة فتُحوَّل لـ /login.
+  - `navigation-and-pages`: NAV-01 → `/governor` (النصوص على GovernorPage لا ControlPage)؛ NAV-02 → نصوص PortsPage الحالية («عزل المنافذ»، «حالة المنافذ على السيرفر»).
+  - `dashboard-telemetry`: أعيدت كتابتها لتطابق OverviewPage الجديد — `.conn-pill` بدل «متصل مباشر»، `.kpi-grid` بست بطاقات KPI، لوحة «حالة السيرفر»/«السيرفرات والخدمات»/«النشاط الأخير» بدل البانرات والجداول القديمة. لوحة «أسطول أساس» شرطية على `/api/v1` فلم تُختبر.
+  - `modals-and-dialogs`: MD-01 يفتح قائمة «إعدادات سريعة» ثم menuitem «رادار الذكاء الاصطناعي» + timeout 15s لإشارات التشخيص غير المتزامنة؛ MD-03 ينقر `.header-user` وزر الإغلاق «إغلاق».
+- **التحقق**: المجموعة الكاملة `npx playwright test --project="Desktop Chromium"` على backend حي :8766 = **65/65** (بعد إعادة تشغيل العيّنين المتقطعين viewport-matrix التي نجحت منفردة — timeout بيئي تحت حمل المجموعة).

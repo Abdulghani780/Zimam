@@ -1,9 +1,22 @@
 import { test, expect } from '@playwright/test';
 
+const USER = process.env.E2E_USER || 'e2e-admin';
+const PASS = process.env.E2E_PASS || '';
+
 test.describe('ASAAS - Navigation & Core Pages Journeys', () => {
-  test('NAV-01: Navigate to Resource Governor (/control)', async ({ page }) => {
-    await page.goto('/control');
-    await expect(page).toHaveURL(/.*control/);
+  test.skip(!PASS, 'E2E_PASS not set');
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
+    await page.locator('input[autocomplete="username"]').fill(USER);
+    await page.locator('input[autocomplete="current-password"]').fill(PASS);
+    await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20000 });
+  });
+
+  test('NAV-01: Navigate to Resource Governor (/governor)', async ({ page }) => {
+    await page.goto('/governor');
+    await expect(page).toHaveURL(/.*governor/);
 
     // Verify main headings
     await expect(page.getByText(/مركز التحكم وحاكم الموارد الذكي/i)).toBeVisible();
@@ -15,8 +28,9 @@ test.describe('ASAAS - Navigation & Core Pages Journeys', () => {
     await page.goto('/ports');
     await expect(page).toHaveURL(/.*ports/);
 
-    await expect(page.getByText(/درع الذكاء الاصطناعي لعزل المنافذ/i)).toBeVisible();
-    await expect(page.getByText(/كاشف المنافذ والاتصالات والخدمات/i)).toBeVisible();
+    await expect(page.getByText(/عزل المنافذ/).first()).toBeVisible();
+    await expect(page.getByText(/إدارة وتوزيع منافذ المشاريع/i)).toBeVisible();
+    await expect(page.getByText(/حالة المنافذ على السيرفر/i)).toBeVisible();
   });
 
   test('NAV-03: Navigate to Windows Local Users Directory (/users)', async ({ page }) => {

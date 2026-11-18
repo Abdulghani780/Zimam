@@ -1,73 +1,64 @@
 import { test, expect } from '@playwright/test';
 
+const USER = process.env.E2E_USER || 'e2e-admin';
+const PASS = process.env.E2E_PASS || '';
+
 test.describe('ASAAS - Dashboard & Live Telemetry Journeys', () => {
+  test.skip(!PASS, 'E2E_PASS not set');
+
   test.beforeEach(async ({ page }) => {
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
+    await page.locator('input[autocomplete="username"]').fill(USER);
+    await page.locator('input[autocomplete="current-password"]').fill(PASS);
+    await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20000 });
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
   });
 
-  test('TC-01: Page title and Live SSE connection status', async ({ page }) => {
+  test('TC-01: Page title and connection status pill', async ({ page }) => {
     await expect(page).toHaveTitle(/أساس/);
 
-    // Live status badge in header
-    const liveBadge = page.getByText(/متصل مباشر/i);
-    await expect(liveBadge).toBeVisible({ timeout: 10000 });
+    // Connection pill in header shows live/disconnected state
+    const connPill = page.locator('.conn-pill');
+    await expect(connPill).toBeVisible({ timeout: 10000 });
+    await expect(connPill).toContainText(/متصل|غير متصل/);
   });
 
-  test('TC-02: Vital Stat Cards render with real numeric values', async ({ page }) => {
-    // Scope search within the stat-grid container to avoid colliding with navigation links
-    const statGrid = page.locator('.stat-grid');
-    await expect(statGrid).toBeVisible();
+  test('TC-02: KPI cards render with real metric labels', async ({ page }) => {
+    const kpiGrid = page.locator('.kpi-grid');
+    await expect(kpiGrid).toBeVisible();
 
-    // 1. CPU Usage Stat Card
-    await expect(statGrid.getByText('استخدام المعالج')).toBeVisible();
-
-    // 2. RAM Usage Stat Card
-    await expect(statGrid.getByText('الذاكرة المستخدمة')).toBeVisible();
-
-    // 3. Active Sessions Stat Card
-    await expect(statGrid.getByText('الجلسات النشطة')).toBeVisible();
-
-    // 4. Disk Storage Stat Card
-    await expect(statGrid.getByText('التخزين والملفات')).toBeVisible();
+    await expect(kpiGrid.getByText('المعالج (CPU)')).toBeVisible();
+    await expect(kpiGrid.getByText('الذاكرة (RAM)')).toBeVisible();
+    await expect(kpiGrid.getByText('القرص (C:)')).toBeVisible();
+    await expect(kpiGrid.getByText('الشبكة')).toBeVisible();
+    await expect(kpiGrid.getByText('جلسات RDP النشطة')).toBeVisible();
+    await expect(kpiGrid.getByText('التنبيهات الأمنية')).toBeVisible();
   });
 
-  test('TC-03: Quick Action Banners (Governor & PAM JumpServer)', async ({ page }) => {
-    // Governor banner
-    await expect(page.getByText(/حاكم الموارد الذكي/i).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /إعدادات الحاكم/i })).toBeVisible();
-
-    // PAM banner
-    await expect(page.getByText(/حصن إدارة الوصول المميز/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /درع الأمان/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /خزنة الحسابات/i })).toBeVisible();
+  test('TC-03: Server status panels render', async ({ page }) => {
+    // Fleet panel is conditional on control-plane /api/v1 availability —
+    // assert only the always-rendered host panels.
+    await expect(page.getByText(/حالة السيرفر/).first()).toBeVisible();
+    await expect(page.getByText(/السيرفرات والخدمات/).first()).toBeVisible();
+    await expect(page.getByText(/النشاط الأخير/)).toBeVisible();
   });
 
-  test('TC-04: Active RDP User Sessions table containment', async ({ page }) => {
-    await expect(page.getByText(/جلسات سطح المكتب النشطة/i)).toBeVisible();
+  test('TC-04: Servers & services table renders with real columns', async ({ page }) => {
+    await expect(page.getByText('السيرفرات والخدمات').first()).toBeVisible();
 
-    // Table headers using resilient columnheader roles
-    await expect(page.getByRole('columnheader', { name: 'معرف الجلسة' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'اسم المستخدم' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'اسم السيرفر / الخدمة' })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: 'الحالة' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'الذاكرة المستخدمة' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'المعالج' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'الذاكرة' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'القرص' })).toBeVisible();
   });
 
-  test('TC-05: Top Resource Processes table format and action buttons', async ({ page }) => {
-    // Ensure the card title is rendered
-    await expect(page.getByText(/أعلى العمليات استهلاكاً للذاكرة/i)).toBeVisible();
-
-    // Table columns
-    await expect(page.getByRole('columnheader', { name: 'PID' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'اسم العملية' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'المستخدم / الجلسة' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'الذاكرة (RAM)' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'إنهاء العملية' })).toBeVisible();
-
-    // Auto-wait for processes to load and ensure termination buttons exist
-    const terminateFirst = page.getByRole('button', { name: 'إنهاء' }).first();
-    await expect(terminateFirst).toBeVisible({ timeout: 10000 });
-    const count = await page.getByRole('button', { name: 'إنهاء' }).count();
-    expect(count).toBeGreaterThan(0);
+  test('TC-05: Recent activity feed renders audit entries', async ({ page }) => {
+    const activity = page.locator('.activity-card');
+    await expect(activity).toBeVisible();
+    await expect(activity.getByText(/النشاط الأخير/)).toBeVisible();
+    await expect(activity.getByText(/لا توجد أحداث تدقيق حديثة|عرض جميع السجلات/).first()).toBeVisible({ timeout: 10000 });
   });
 });
