@@ -30,6 +30,22 @@ export function ContainersPage() {
 
   // Remote agent Hyper-V VMs — read-only hyperv.vms collector results.
   const [fleetVms, setFleetVms] = useState<any[]>([]);
+  const [vmBusy, setVmBusy] = useState<string | null>(null);
+
+  // Signed agent write job: power action on a Hyper-V VM.
+  const queueVmPower = async (agentId: string, vmName: string, hostName: string, action: 'start' | 'stop' | 'restart') => {
+    const key = `${agentId}:${vmName}:${action}`;
+    if (!window.confirm(t(`تنفيذ ${action} على الآلة ${vmName} في ${hostName}؟`))) return;
+    setVmBusy(key);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'hyperv.power', payload: { vm_name: vmName, action } });
+      toast(t('تم إرسال أمر الطاقة — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setVmBusy(null);
+    }
+  };
 
   const fetchFleetVms = async () => {
     try {
@@ -312,8 +328,8 @@ export function ContainersPage() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Server size={18} style={{ color: 'var(--accent)' }} />
-                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('آلات وكلاء أساس الافتراضية (قراءة فقط)')}</h3>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('hyperv.vms حقيقية: آلات Hyper-V على كل وكيل')}</span>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('آلات وكلاء أساس الافتراضية')}</h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('hyperv.vms + أوامر طاقة موقعة (start/stop/restart)')}</span>
                 </div>
                 <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
                   {t('إدارة الوكلاء')} ←
@@ -350,11 +366,35 @@ export function ContainersPage() {
                           return (
                             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
                               <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={vname}>{vname}</span>
-                              <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                              <span style={{ display: 'flex', gap: 4, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center' }}>
                                 {vmem !== '' && <span>{vmem} GB</span>}
                                 {vcpu !== '' && <span>{typeof vcpu === 'number' ? `${Math.round(vcpu * 100)}%` : vcpu}</span>}
                                 <span style={{ color: /running|running/i.test(vstate) ? 'var(--paid)' : 'var(--unpaid)' }}>{vstate || '—'}</span>
                               </span>
+                            </div>
+                          );
+                        })}
+                        {/* power actions */}
+                        {ag.vms.slice(0, 30).map((vm: any, i: number) => {
+                          const vname = String(vm.name ?? vm.Name ?? '');
+                          if (!vname) return null;
+                          const host = ag.name || ag.hostname || ag.id.slice(0, 8);
+                          return (
+                            <div key={`act-${i}`} style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                              {(['start', 'stop', 'restart'] as const).map((action) => {
+                                const key = `${ag.id}:${vname}:${action}`;
+                                return (
+                                  <button
+                                    key={action}
+                                    type="button"
+                                    disabled={vmBusy !== null}
+                                    onClick={() => queueVmPower(ag.id, vname, host, action)}
+                                    style={{ fontSize: 10, padding: '2px 8px', borderRadius: 5, cursor: vmBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'var(--surface-card)', color: 'var(--text-2)' }}
+                                  >
+                                    {vmBusy === key ? '…' : action === 'start' ? t('تشغيل') : action === 'stop' ? t('إيقاف') : t('إعادة')}
+                                  </button>
+                                );
+                              })}
                             </div>
                           );
                         })}

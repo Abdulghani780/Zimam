@@ -505,3 +505,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `task.control` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `InfrastructurePage` tasks tab — عمود «إجراءات» (تشغيل/تفعيل/تعطيل) لكل مهمة → `apiV1.createJob`.
 - **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.
+
+### 12.10 رابع agent write job — `hyperv.power`
+
+- **Agent**: `hyperv.power` في `AllowedJobs` + `HypervPower(payload)` — `{vm_name, action: start|stop|restart|save|pause|resume}` عبر `Start-VM`/`Stop-VM -TurnOff`/`Restart-VM`/`Save-VM`/`Suspend-VM`/`Resume-VM` ثم `Get-VM` للتأكيد؛ تحقق من اسم الآلة.
+- **Control plane**: `hyperv.power` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `ContainersPage` تبويب Hyper-V — أزرار تشغيل/إيقاف/إعادة لكل VM في بطاقات الوكلاء (مع confirm) → `apiV1.createJob`؛ حُدّث عنوان البطاقة (لم تعد «قراءة فقط»).
+- **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.

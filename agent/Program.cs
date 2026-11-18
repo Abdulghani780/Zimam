@@ -160,7 +160,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
-        "service.control", "process.kill", "task.control"
+        "service.control", "process.kill", "task.control", "hyperv.power"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -318,8 +318,34 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "service.control" => ServiceControl(payload),
         "process.kill" => ProcessKill(payload),
         "task.control" => TaskControl(payload),
+        "hyperv.power" => HypervPower(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
+
+    // Signed write job: power action on a Hyper-V VM.
+    // payload: {"vm_name": "...", "action": "start"|"stop"|"restart"|"save"|"pause"|"resume"}
+    private static object HypervPower(JsonElement payload)
+    {
+        var name = payload.TryGetProperty("vm_name", out var n) ? n.GetString() : null;
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("hyperv.power requires payload.vm_name");
+        if (name.Any(c => !(char.IsLetterOrDigit(c) || c is '_' or '-' or '.' or ' ' or '(' or ')' or '[' or ']')))
+            throw new InvalidOperationException("VM name contains invalid characters");
+        var escaped = name.Replace("'", "''");
+        var ps = action switch
+        {
+            "start" => $"Start-VM -Name '{escaped}'",
+            "stop" => $"Stop-VM -Name '{escaped}' -Force -TurnOff",
+            "restart" => $"Restart-VM -Name '{escaped}' -Force",
+            "save" => $"Save-VM -Name '{escaped}'",
+            "pause" => $"Suspend-VM -Name '{escaped}'",
+            "resume" => $"Resume-VM -Name '{escaped}'",
+            _ => throw new InvalidOperationException("hyperv.power action must be start|stop|restart|save|pause|resume")
+        };
+        PsProbe.Run($"{ps}; Get-VM -Name '{escaped}' | Select-Object Name,State | ConvertTo-Json -Compress");
+        return new { vm_name = name, action, executed = true };
+    }
 
     // Signed write job: run/enable/disable a scheduled task.
     // payload: {"task_name": "...", "task_path": "\\" (optional), "action": "run"|"enable"|"disable"}
