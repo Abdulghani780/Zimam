@@ -97,3 +97,8 @@ data/i18n-*.txt
 
 launcher/bin/
 launcher/obj/
+
+launcher/AsaasLauncher.exe
+launcher/AsaasLauncher.dll
+launcher/AsaasLauncher.deps.json
+launcher/AsaasLauncher.runtimeconfig.json

@@ -22,7 +22,17 @@ namespace AsaasLauncher
             try
             {
                 string scriptDir = AppDomain.CurrentDomain.BaseDirectory;
-                string projectDir = Directory.GetParent(scriptDir.TrimEnd('\\'))!.FullName;
+                // Walk upward until we find the repo root (backend\main.py +
+                // control_plane\serve.py). Works whether the exe sits in
+                // launcher\ or launcher\bin\Release\net8.0-windows\.
+                string? projectDir = null;
+                for (string? d = new DirectoryInfo(scriptDir).Parent?.FullName; d != null; d = Directory.GetParent(d)?.FullName)
+                {
+                    if (File.Exists(Path.Combine(d, "backend", "main.py")) &&
+                        File.Exists(Path.Combine(d, "control_plane", "serve.py")))
+                    { projectDir = d; break; }
+                }
+                projectDir ??= Directory.GetParent(scriptDir.TrimEnd('\\'))!.FullName;
                 string dataDir = Path.Combine(projectDir, "data");
                 string browserProfile = Path.Combine(dataDir, "browser_profile");
                 string url = $"http://127.0.0.1:{ControlPlanePort}";
@@ -54,9 +64,12 @@ namespace AsaasLauncher
                 started.Add(Process.Start(bePsi)!);
 
                 // Control plane + built SPA on :8876 (proxies legacy /api).
+                // Must use python.exe, not pythonw: uvicorn's logging writes to
+                // sys.stderr, which is None under pythonw and crashes startup.
+                // CreateNoWindow still hides the console window.
                 var cpPsi = new ProcessStartInfo
                 {
-                    FileName = pyw,
+                    FileName = ResolvePythonExe(projectDir),
                     Arguments = "\"control_plane\\serve.py\"",
                     WorkingDirectory = projectDir,
                     UseShellExecute = false,
@@ -74,7 +87,17 @@ namespace AsaasLauncher
                 Process? browser = LaunchBrowser(browserProfile, url);
                 if (browser != null)
                 {
-                    browser.WaitForExit();
+                    // The initial chrome.exe/msedge.exe process often exits
+                    // immediately after re-exec'ing into the real browser
+                    // process, so WaitForExit() on it is unreliable. Instead
+                    // poll for any live process carrying our dedicated
+                    // --user-data-dir; when the app window closes they all
+                    // exit and we shut the servers down.
+                    browser.Dispose();
+                    Log(projectDir, "app window launched; servers stay up until it closes");
+                    while (BrowserWindowAlive(browserProfile))
+                        Thread.Sleep(2000);
+                    Log(projectDir, "app window closed; stopping servers");
                 }
                 else
                 {
@@ -91,10 +114,47 @@ namespace AsaasLauncher
                 }
                 return 0;
             }
-            catch
+            catch (Exception ex)
             {
+                try
+                {
+                    string logDir = Path.Combine(
+                        Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\'))?.FullName
+                        ?? AppDomain.CurrentDomain.BaseDirectory, "data");
+                    Directory.CreateDirectory(logDir);
+                    File.AppendAllText(Path.Combine(logDir, "launcher.log"),
+                        $"{DateTime.Now:O} FATAL {ex}\n");
+                }
+                catch { }
                 return 1;
             }
+        }
+
+        private static void Log(string projectDir, string message)
+        {
+            try
+            {
+                string logDir = Path.Combine(projectDir, "data");
+                Directory.CreateDirectory(logDir);
+                File.AppendAllText(Path.Combine(logDir, "launcher.log"),
+                    $"{DateTime.Now:O} {message}\n");
+            }
+            catch { }
+        }
+
+        private static string ResolvePythonExe(string projectDir)
+        {
+            var candidates = new[]
+            {
+                Path.Combine(projectDir, ".venv", "Scripts", "python.exe"),
+                @"C:\Python315\python.exe",
+                @"C:\Python312\python.exe",
+                @"C:\Program Files\Python312\python.exe",
+                "python.exe",
+            };
+            foreach (var c in candidates)
+                if (File.Exists(c)) return c;
+            return "python.exe";
         }
 
         private static string ResolvePythonW(string projectDir)
@@ -153,6 +213,32 @@ namespace AsaasLauncher
                 UseShellExecute = false,
             };
             return Process.Start(psi);
+        }
+
+        private static bool BrowserWindowAlive(string profileDir)
+        {
+            // Every process of the app-window browser carries
+            // --user-data-dir=<profileDir> in its command line. Query via
+            // Get-CimInstance (always present on Windows) for chrome/edge.
+            string needle = profileDir.Replace("'", "''");
+            var psi = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                Arguments = "-NoProfile -NonInteractive -Command \"if (Get-CimInstance Win32_Process | Where-Object { ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') -and $_.CommandLine -like '*" + needle + "*' } | Select-Object -First 1) { exit 0 } else { exit 1 }\"",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            try
+            {
+                using var p = Process.Start(psi);
+                if (p == null) return true;
+                if (!p.WaitForExit(20_000)) { try { p.Kill(); } catch { } return true; }
+                return p.ExitCode == 0;
+            }
+            catch
+            {
+                return true; // on poll failure assume alive — never kill servers spuriously
+            }
         }
 
         private static void KillPortListeners(int port)
