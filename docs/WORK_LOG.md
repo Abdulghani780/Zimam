@@ -526,3 +526,13 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `feature.toggle` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `InfrastructurePage` roles/features tab — عمود «إجراءات» (تفعيل/تعطيل مع confirm يوضح احتمال إعادة التشغيل) → `apiV1.createJob`.
 - **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.
+
+### 12.13 سابع agent write job — `firewall.rule` (+ جامع `firewall.rules`)
+
+- **Agent**: `firewall.rules` (قراءة) في `AllowedJobs` — `Get-NetFirewallRule` (أول 500 قاعدة: Name/DisplayName/Direction/Action/Enabled/Profile). `firewall.rule` (كتابة) في `AllowedJobs` + `FirewallRuleControl(payload)`:
+  - `add`: `{display_name, direction?, rule_action? (allow|block), protocol? (tcp|udp|any), local_port?, remote_address?, profile? (any|domain|private|public)}` → `New-NetFirewallRule` ثم `Get-NetFirewallRule` للتأكيد.
+  - `remove|enable|disable`: `{name}` أو `{display_name}` → `Get-NetFirewallRule | Remove/Enable/Disable-NetFirewallRule` ثم قراءة تأكيد.
+  - تحقق من كل الحقول (قوائم بيضاء للاتجاه/الإجراء/البروتوكول/الملف، أنماط للمنافذ والعناوين) — signed jobs فقط كالمعتاد.
+- **Control plane**: `firewall.rules` + `firewall.rule` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `SecurityPage` بطاقات «درع أساس عن بُعد» — قسم «قواعد جدار الحماية» لكل وكيل (قائمة + تفعيل/تعطيل/حذف مع confirm + نموذج إضافة قاعدة) → `apiV1.createJob('firewall.rule')`؛ `AgentsPage` أضيف `firewall.rules` لقائمة المهام ومجموعة «قياسات» (COLLECTOR_JOB_TYPES).
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج agent مُعاد نشره بالجديد.

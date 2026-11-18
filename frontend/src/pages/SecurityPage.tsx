@@ -31,11 +31,59 @@ interface FleetSecAgent {
   linked_asset: { id: string; name: string; hostname: string } | null;
   collector_count: number;
   firewall: ResultEntry | null;
+  rules: ResultEntry | null;
   eventlog: ResultEntry | null;
   startup: ResultEntry | null;
 }
 
 interface FwProfile { profile: string; enabled: boolean | null; ruleCount: number | null }
+
+interface FwRule {
+  name: string;
+  displayName: string;
+  direction: string;
+  action: string;
+  enabled: boolean | null;
+  profile: string;
+}
+
+// Heuristic row extraction for firewall.rules payloads — array or {rules|items}.
+function firewallRules(result: unknown): FwRule[] {
+  let arr: unknown = result;
+  if (!Array.isArray(arr) && arr && typeof arr === 'object') {
+    for (const k of ['rules', 'items']) {
+      const v = (arr as any)[k];
+      if (Array.isArray(v)) { arr = v; break; }
+    }
+  }
+  if (!Array.isArray(arr)) {
+    // PowerShell serializes a single row as a bare object — wrap it unless it's a wrapper.
+    if (arr && typeof arr === 'object' && (arr as any).Name !== undefined) arr = [arr];
+    else return [];
+  }
+  const pick = (o: any, ...keys: string[]) => {
+    for (const k of keys) { const v = o?.[k]; if (v !== undefined && v !== null && v !== '') return v; }
+    return '';
+  };
+  return (arr as unknown[])
+    .filter((r: unknown) => r && typeof r === 'object')
+    .map((r: any) => {
+      const rawEnabled = pick(r, 'Enabled', 'enabled');
+      const enabled = rawEnabled === '' ? null
+        : typeof rawEnabled === 'boolean' ? rawEnabled
+        : /^(true|1|enabled)$/i.test(String(rawEnabled)) ? true
+        : /^(false|0|disabled)$/i.test(String(rawEnabled)) ? false
+        : null;
+      return {
+        name: String(pick(r, 'Name', 'name') || ''),
+        displayName: String(pick(r, 'DisplayName', 'display_name', 'displayName') || '?'),
+        direction: String(pick(r, 'Direction', 'direction') || ''),
+        action: String(pick(r, 'Action', 'action') || ''),
+        enabled,
+        profile: String(pick(r, 'Profile', 'profile') || ''),
+      };
+    });
+}
 
 // Heuristic extraction for firewall.state payloads — {profiles:[{profile,enabled,rule_count}]}.
 function firewallProfiles(result: unknown): FwProfile[] {
@@ -81,6 +129,9 @@ export function SecurityPage() {
   const [commandResult, setCommandResult] = useState<any>(null);
   const [checkingCmd, setCheckingCmd] = useState(false);
   const [fleetSec, setFleetSec] = useState<FleetSecAgent[]>([]);
+  const [fwRuleBusy, setFwRuleBusy] = useState<string | null>(null);
+  const [fwAddAgent, setFwAddAgent] = useState<string | null>(null);
+  const [fwForm, setFwForm] = useState({ display_name: '', direction: 'inbound', rule_action: 'allow', protocol: 'any', local_port: '', profile: 'any' });
 
   const fetchSecurity = async () => {
     try {
@@ -97,15 +148,17 @@ export function SecurityPage() {
         const detailed = await Promise.all(
           fleetRes.agents.map(async (ag) => {
             let firewall: ResultEntry | null = null;
+            let rules: ResultEntry | null = null;
             let eventlog: ResultEntry | null = null;
             let startup: ResultEntry | null = null;
             if (ag.collector_count > 0) {
               const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
               firewall = r?.results?.['firewall.state'] ?? null;
+              rules = r?.results?.['firewall.rules'] ?? null;
               eventlog = r?.results?.['eventlog.tail'] ?? null;
               startup = r?.results?.['startup.programs'] ?? null;
             }
-            return { ...ag, firewall, eventlog, startup };
+            return { ...ag, firewall, rules, eventlog, startup };
           }),
         );
         setFleetSec(detailed);
@@ -174,6 +227,35 @@ export function SecurityPage() {
     } finally {
       setCheckingCmd(false);
     }
+  };
+
+  // Signed agent write job: add/remove/enable/disable a firewall rule.
+  const queueFirewallRule = async (ag: FleetSecAgent, payload: Record<string, unknown>, busyKey: string) => {
+    setFwRuleBusy(busyKey);
+    try {
+      await apiV1.createJob({ agent_id: ag.id, job_type: 'firewall.rule', payload });
+      toast(t('تم إرسال أمر قاعدة الجدار الناري — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setFwRuleBusy(null);
+    }
+  };
+
+  const submitFwRule = async (ag: FleetSecAgent) => {
+    if (!fwForm.display_name.trim()) { toast(t('أدخل اسم القاعدة'), 'error'); return; }
+    const payload: Record<string, unknown> = {
+      action: 'add',
+      display_name: fwForm.display_name.trim(),
+      direction: fwForm.direction,
+      rule_action: fwForm.rule_action,
+      protocol: fwForm.protocol,
+      profile: fwForm.profile,
+    };
+    if (fwForm.local_port.trim()) payload.local_port = fwForm.local_port.trim();
+    await queueFirewallRule(ag, payload, `add:${ag.id}`);
+    setFwForm({ display_name: '', direction: 'inbound', rule_action: 'allow', protocol: 'any', local_port: '', profile: 'any' });
+    setFwAddAgent(null);
   };
 
   const threatLevel = stats?.threat_level || 'UNKNOWN';
@@ -367,7 +449,130 @@ export function SecurityPage() {
                   );
                 })()}
 
-                {/* eventlog.tail — raw JSON details (unchanged) */}
+                {/* firewall.rules — signed firewall.rule write jobs per agent */}
+                {(() => {
+                  const entry = ag.rules;
+                  const rules = entry && !entry.error ? firewallRules(entry.result) : [];
+                  return (
+                    <details style={{ marginBottom: 8, border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 10px' }}>
+                      <summary style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                        <span>{t('قواعد جدار الحماية')}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400 }}>
+                          {entry ? `${rules.length} ${t('قاعدة')}` : t('لا بيانات')}
+                        </span>
+                      </summary>
+                      {!entry ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>{t('لم يُرسل جامع القواعد بعد — أرسله من صفحة الوكلاء (firewall.rules).')}</div>
+                      ) : entry.error ? (
+                        <div className="text-status-danger" style={{ fontSize: 11, marginTop: 6 }}>{entry.error}</div>
+                      ) : rules.length === 0 ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>{t('لا قواعد أو نتيجة غير معروفة.')}</div>
+                      ) : (
+                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              onClick={() => setFwAddAgent(fwAddAgent === ag.id ? null : ag.id)}
+                              style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--accent-soft)', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 700 }}
+                            >
+                              {fwAddAgent === ag.id ? t('إلغاء') : `+ ${t('قاعدة جديدة')}`}
+                            </button>
+                          </div>
+                          {fwAddAgent === ag.id && (
+                            <div style={{ border: '1px solid var(--accent-soft)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface-ground)' }}>
+                              <input
+                                value={fwForm.display_name}
+                                onChange={(e) => setFwForm({ ...fwForm, display_name: e.target.value })}
+                                placeholder={t('اسم القاعدة (DisplayName)')}
+                                style={{ fontSize: 11, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--hairline)', background: 'transparent', color: 'var(--text)' }}
+                              />
+                              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <select value={fwForm.direction} onChange={(e) => setFwForm({ ...fwForm, direction: e.target.value })} style={{ fontSize: 10, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--hairline)', background: 'var(--surface-ground)', color: 'var(--text)' }}>
+                                  <option value="inbound">{t('وارد')}</option>
+                                  <option value="outbound">{t('صادر')}</option>
+                                </select>
+                                <select value={fwForm.rule_action} onChange={(e) => setFwForm({ ...fwForm, rule_action: e.target.value })} style={{ fontSize: 10, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--hairline)', background: 'var(--surface-ground)', color: 'var(--text)' }}>
+                                  <option value="allow">{t('سماح')}</option>
+                                  <option value="block">{t('حظر')}</option>
+                                </select>
+                                <select value={fwForm.protocol} onChange={(e) => setFwForm({ ...fwForm, protocol: e.target.value })} style={{ fontSize: 10, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--hairline)', background: 'var(--surface-ground)', color: 'var(--text)' }}>
+                                  <option value="any">{t('أي بروتوكول')}</option>
+                                  <option value="tcp">TCP</option>
+                                  <option value="udp">UDP</option>
+                                </select>
+                                <select value={fwForm.profile} onChange={(e) => setFwForm({ ...fwForm, profile: e.target.value })} style={{ fontSize: 10, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--hairline)', background: 'var(--surface-ground)', color: 'var(--text)' }}>
+                                  <option value="any">{t('كل الملفات')}</option>
+                                  <option value="domain">Domain</option>
+                                  <option value="private">Private</option>
+                                  <option value="public">Public</option>
+                                </select>
+                                <input
+                                  value={fwForm.local_port}
+                                  onChange={(e) => setFwForm({ ...fwForm, local_port: e.target.value })}
+                                  placeholder={t('منفذ محلي (مثال 443)')}
+                                  dir="ltr"
+                                  style={{ fontSize: 10, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--hairline)', background: 'transparent', color: 'var(--text)', width: 110 }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <Button size="sm" variant="primary" loading={fwRuleBusy === `add:${ag.id}`} disabled={!fwForm.display_name.trim()} onClick={() => void submitFwRule(ag)} style={{ fontSize: 11 }}>
+                                  {t('إضافة القاعدة')}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
+                            {rules.slice(0, 40).map((r, i) => {
+                              const key = `${ag.id}:${r.name || r.displayName}:${i}`;
+                              const isBlock = /block/i.test(r.action);
+                              return (
+                                <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '4px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                                  <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left', flex: 1 }} title={r.name}>
+                                    {r.displayName}
+                                  </span>
+                                  <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                    {r.direction && <span>{r.direction === 'Inbound' ? t('وارد') : r.direction === 'Outbound' ? t('صادر') : r.direction}</span>}
+                                    <span style={{ color: isBlock ? 'var(--unpaid)' : 'var(--paid)' }}>{isBlock ? t('حظر') : t('سماح')}</span>
+                                    <span style={{ color: r.enabled === false ? 'var(--unpaid)' : 'var(--paid)' }}>
+                                      {r.enabled === true ? t('مفعّلة') : r.enabled === false ? t('معطّلة') : '—'}
+                                    </span>
+                                    {r.name && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          disabled={fwRuleBusy !== null}
+                                          onClick={() => void queueFirewallRule(ag, { action: r.enabled === false ? 'enable' : 'disable', name: r.name }, `tgl:${key}`)}
+                                          style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: fwRuleBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--accent)' }}
+                                        >
+                                          {fwRuleBusy === `tgl:${key}` ? '…' : r.enabled === false ? t('تفعيل') : t('تعطيل')}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={fwRuleBusy !== null}
+                                          onClick={() => { if (window.confirm(t(`حذف قاعدة الجدار الناري «${r.displayName}» على ${ag.linked_asset?.name || ag.name || ag.hostname || ag.id.slice(0, 8)}؟`))) void queueFirewallRule(ag, { action: 'remove', name: r.name }, `del:${key}`); }}
+                                          style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: fwRuleBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--status-danger, #dc2626)' }}
+                                        >
+                                          {fwRuleBusy === `del:${key}` ? '…' : t('حذف')}
+                                        </button>
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                            {rules.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{rules.length - 40} {t('قاعدة أخرى')}</div>}
+                            {entry.completed_at && (
+                              <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(entry.completed_at).toLocaleString('ar-SA')}</div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </details>
+                  );
+                })()}
+
+                {/* eventlog.tail — raw JSON details (unchanged) */}"
+
                 {(() => {
                   const entry = ag.eventlog;
                   const label = t('أحداث سجل النظام');

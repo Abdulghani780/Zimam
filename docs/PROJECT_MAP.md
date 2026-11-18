@@ -83,7 +83,7 @@
 1. auth ✅ (منجزة — login يفضّل v1 + bridge)
 2. assets/accounts/policies → tokens → sessions → governor/telemetry
 3. كل شريحة: endpoint حي + صفحة محوّلة + حذف legacy بنفس الـ commit
-4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` + `feature.toggle` ✅ end-to-end؛ ~9 domains remain (firewall rules, docker ops, cert ops, disk ops, hotfix install, startup programs, local.users, software uninstall, share create UI)
+4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` + `feature.toggle` + `firewall.rule` (+ `firewall.rules` collector) ✅ end-to-end؛ ~8 domains remain (docker ops, cert ops, disk ops, hotfix install, startup programs, local.users, software uninstall, share create UI)
 
 ### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:
@@ -242,6 +242,7 @@ powershell tools/build-release.ps1   # binaries → release/
 - P4 sessions slice ✅: `/api/v1/sessions` (agent `session.list` aggregation), `/sessions/terminate` + `/sessions/disconnect` (signed jobs, 202), `session.disconnect` in `agent/Program.cs` (`SessionProbe.Disconnect`, WTSDisconnectSession P/Invoke), ControlPage fleet rows actionable
 - P6 shadow preflight ✅ (`backend/app/api/router.py` `/api/sessions/shadow` validates Active/non-self session)
 - InfrastructurePage fleet migration ✅ (2026-11-18): 4 tabs → fleet collectors, `service.list` upgraded to `Get-Service`, `session.disconnect` added to agent allowlist
+- Firewall rules slice ✅ (2026-11-18): `firewall.rules` collector + `firewall.rule` write job (`add|remove|enable|disable` via New-NetFirewallRule/Get-NetFirewallRule) — SecurityPage agent cards: rules list + toggle/delete + add-rule form → `apiV1.createJob`; `firewall.rules` added to AgentsPage collectors
 
 ### Established pattern for remaining Phase 4 domains
 1. Agent already implements collectors in `agent/Program.cs` dispatch (line ~287-315): service.list, disk.list, network.info, eventlog.tail, software.list, firewall.state, windows.features, scheduled.tasks, local.users, shares.list, hotfix.list, ports.list, startup.programs, hyperv.vms

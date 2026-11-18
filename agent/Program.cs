@@ -160,7 +160,8 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
-        "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle"
+        "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
+        "firewall.rules", "firewall.rule"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -298,6 +299,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "eventlog.tail" => EventLogProbe.Tail(payload),
         "software.list" => SoftwareProbe.ListInstalled(),
         "firewall.state" => FirewallProbe.State(),
+        "firewall.rules" => PsProbe.Run("Get-NetFirewallRule | Sort-Object DisplayName | Select-Object -First 500 Name,DisplayName,Direction,Action,Enabled,Profile | ConvertTo-Json -Compress -Depth 3"),
         "inventory.collect" => new
         {
             hostname = Environment.MachineName,
@@ -321,6 +323,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "hyperv.power" => HypervPower(payload),
         "share.control" => ShareControl(payload),
         "feature.toggle" => FeatureToggle(payload),
+        "firewall.rule" => FirewallRuleControl(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -465,6 +468,98 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         };
         PsProbe.Run($"{ps}; Get-Service -Name '{escaped}' | Select-Object Name,Status,StartType | ConvertTo-Json -Compress");
         return new { name, action, executed = true };
+    }
+
+    // Signed write job: manage Windows Firewall rules (New-NetFirewallRule etc.).
+    // payload: {"action": "add"|"remove"|"enable"|"disable", ...}
+    //   add:     requires display_name; optional direction (inbound|outbound),
+    //            rule_action (allow|block), protocol (tcp|udp|any),
+    //            local_port ("443"|"8000-8010"|"80,443"), remote_address
+    //            (IP/CIDR list), profile (any|domain|private|public)
+    //   remove|enable|disable: requires name (rule Name) or display_name
+    private static object FirewallRuleControl(JsonElement payload)
+    {
+        string? Str(string key) => payload.TryGetProperty(key, out var el) && el.ValueKind == JsonValueKind.String ? el.GetString() : null;
+        static string Esc(string s) => s.Replace("'", "''");
+        var action = Str("action")?.ToLowerInvariant();
+        var name = Str("name");
+        var displayName = Str("display_name");
+
+        string lookup = "";
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            if (name.Any(c => !(char.IsLetterOrDigit(c) || c is ' ' or '_' or '-' or '.' or '{' or '}')))
+                throw new InvalidOperationException("firewall rule name contains invalid characters");
+            lookup = $"-Name '{Esc(name)}'";
+        }
+        else if (!string.IsNullOrWhiteSpace(displayName))
+        {
+            if (displayName.Any(c => !(char.IsLetterOrDigit(c) || c is ' ' or '_' or '-' or '.' or ',' or '(' or ')' or '[' or ']')))
+                throw new InvalidOperationException("firewall display_name contains invalid characters");
+            lookup = $"-DisplayName '{Esc(displayName)}'";
+        }
+
+        if (action == "add")
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+                throw new InvalidOperationException("firewall.rule add requires payload.display_name");
+            var sb = new StringBuilder($"New-NetFirewallRule -DisplayName '{Esc(displayName)}'");
+            var direction = Str("direction")?.ToLowerInvariant();
+            if (direction is not null)
+                sb.Append(direction is "inbound" or "outbound"
+                    ? $" -Direction {char.ToUpperInvariant(direction[0])}{direction[1..]}"
+                    : throw new InvalidOperationException("firewall.rule direction must be inbound|outbound"));
+            var ruleAction = Str("rule_action")?.ToLowerInvariant();
+            if (ruleAction is not null)
+                sb.Append(ruleAction is "allow" or "block"
+                    ? $" -Action {char.ToUpperInvariant(ruleAction[0])}{ruleAction[1..]}"
+                    : throw new InvalidOperationException("firewall.rule rule_action must be allow|block"));
+            var protocol = Str("protocol")?.ToLowerInvariant();
+            if (protocol is not null && protocol != "any")
+                sb.Append(protocol is "tcp" or "udp"
+                    ? $" -Protocol {char.ToUpperInvariant(protocol[0])}{protocol[1..]}"
+                    : throw new InvalidOperationException("firewall.rule protocol must be tcp|udp|any"));
+            var localPort = Str("local_port");
+            if (!string.IsNullOrWhiteSpace(localPort))
+            {
+                if (localPort.Length > 64 || localPort.Any(c => !(char.IsDigit(c) || c is ',' or '-')))
+                    throw new InvalidOperationException("firewall.rule local_port must be digits/ranges e.g. 443 or 8000-8010");
+                sb.Append($" -LocalPort '{Esc(localPort)}'");
+            }
+            var remote = Str("remote_address");
+            if (!string.IsNullOrWhiteSpace(remote))
+            {
+                if (remote.Length > 128 || remote.Any(c => !(char.IsLetterOrDigit(c) || c is '.' or ':' or ',' or '/' or '-')))
+                    throw new InvalidOperationException("firewall.rule remote_address contains invalid characters");
+                sb.Append($" -RemoteAddress '{Esc(remote)}'");
+            }
+            var profile = Str("profile")?.ToLowerInvariant();
+            if (profile is not null && profile != "any")
+                sb.Append(profile is "domain" or "private" or "public"
+                    ? $" -Profile {char.ToUpperInvariant(profile[0])}{profile[1..]}"
+                    : throw new InvalidOperationException("firewall.rule profile must be any|domain|private|public"));
+            PsProbe.Run($"{sb} | Out-Null; Get-NetFirewallRule -DisplayName '{Esc(displayName)}' -ErrorAction SilentlyContinue | Select-Object -First 1 Name,DisplayName,Direction,Action,Enabled,Profile | ConvertTo-Json -Compress");
+            return new { action, display_name = displayName, executed = true };
+        }
+
+        if (action is "remove" or "enable" or "disable")
+        {
+            if (string.IsNullOrWhiteSpace(lookup))
+                throw new InvalidOperationException("firewall.rule remove|enable|disable requires payload.name or payload.display_name");
+            var ps = action switch
+            {
+                "remove" => $"Get-NetFirewallRule {lookup} | Remove-NetFirewallRule -Confirm:$false",
+                "enable" => $"Get-NetFirewallRule {lookup} | Enable-NetFirewallRule",
+                _ => $"Get-NetFirewallRule {lookup} | Disable-NetFirewallRule"
+            };
+            var verify = action == "remove"
+                ? $"Get-NetFirewallRule {lookup} -ErrorAction SilentlyContinue | Select-Object -First 1 Name | ConvertTo-Json -Compress"
+                : $"Get-NetFirewallRule {lookup} -ErrorAction SilentlyContinue | Select-Object -First 1 Name,DisplayName,Direction,Action,Enabled,Profile | ConvertTo-Json -Compress";
+            PsProbe.Run($"{ps}; {verify}");
+            return new { action, name = name ?? displayName, executed = true };
+        }
+
+        throw new InvalidOperationException("firewall.rule action must be add|remove|enable|disable");
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,
