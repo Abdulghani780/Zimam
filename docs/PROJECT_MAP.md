@@ -231,3 +231,32 @@ powershell tools/build-release.ps1   # binaries → release/
 ---
 
 *Rule from now on: always work on the first ⬜ item in the highest incomplete phase — 0→6 in order.*
+
+---
+
+## 10. NEXT SESSION HANDOFF (2026-11-17)
+
+### Done since map was written
+- P2 password complexity ✅ (`backend/app/services/user_service.py::_validate_windows_password_policy`, tests in `tests/test_security_primitives.py`)
+- P3 `scripts/restart-elevated.ps1` ✅ (e2e CI was already present)
+- P4 sessions slice ✅: `/api/v1/sessions` (agent `session.list` aggregation), `/sessions/terminate` + `/sessions/disconnect` (signed jobs, 202), `session.disconnect` in `agent/Program.cs` (`SessionProbe.Disconnect`, WTSDisconnectSession P/Invoke), ControlPage fleet rows actionable
+- P6 shadow preflight ✅ (`backend/app/api/router.py` `/api/sessions/shadow` validates Active/non-self session)
+
+### Established pattern for remaining Phase 4 domains
+1. Agent already implements collectors in `agent/Program.cs` dispatch (line ~287-315): service.list, disk.list, network.info, eventlog.tail, software.list, firewall.state, windows.features, scheduled.tasks, local.users, shares.list, hotfix.list, ports.list, startup.programs, hyperv.vms
+2. Read model: `GET /api/v1/agents/{id}/results/latest` (latest succeeded result per job_type) and `GET /api/v1/fleet/summary` — `_latest_results_map(db, agent_id)` in `control_plane/asaas_control/api.py:1088`
+3. Frontend pattern: `apiV1.agentLatestResults(id)` + heuristic row extraction (see `ControlPage.tsx` `sessionRows`/`procRows`, `fleetSessions` state ~line 130-148)
+4. Job dispatch for UI-triggered actions: `POST /api/v1/jobs` (JobCreateRequest, allowlist `ALLOWED_JOB_TYPES` api.py:123)
+
+### Next concrete steps (in order)
+1. **Verify agent compiles** — `session.disconnect` C# is UNVERIFIED (no .NET 10 SDK locally; `dotnet --list-sdks` empty). Needs build on machine with SDK before release.
+2. Migrate `InfrastructurePage` tabs to fleet collectors: services→`service.list`, tasks→`scheduled.tasks`, roles→`windows.features`, updates→`hotfix.list`. Page uses `api.getRoles/getServicesList/getTasksList/getUpdates` (lines ~195-231).
+3. Migrate `SecurityPage` firewall state → `firewall.state` collector.
+4. `NetworkStoragePage` disks → `disk.list`; ports → `ports.list`.
+5. Remaining P5 release gates: SSH/SFTP data path, Redis token consumption, recordings, AD/LDAP sync, backup replication, mTLS (see CONTROL_PLANE.md 501/503 list).
+6. P6 remainder: Inno Setup build (`packaging/asaas.iss` via ISCC), agent-as-service install test, clean VM install test.
+
+### Known issues
+- enterprise_v25/v30 tests fail: need live server + `admin@asaas2026` (stale fixture vs live DB password).
+- `frontend/ui-audit.mjs` unused `vh`; `AssetsPage.tsx` unnecessary `?? {}` — oxlint warnings.
+- Login throttle `_login_attempts` is in-memory per-process (fine for single worker).
