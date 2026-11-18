@@ -187,6 +187,8 @@ export function InfrastructurePage() {
   const [taskBusy, setTaskBusy] = useState<string | null>(null);
   const [featBusy, setFeatBusy] = useState<string | null>(null);
   const [certBusy, setCertBusy] = useState<string | null>(null);
+  const [hotfixBusy, setHotfixBusy] = useState<string | null>(null);
+  const [hotfixPaths, setHotfixPaths] = useState<Record<string, string>>({});
 
   // Certificates still come from the legacy local-server API.
   const [certs, setCerts] = useState<any[]>([]);
@@ -278,6 +280,22 @@ export function InfrastructurePage() {
       toast(err?.message || t('فشل إرسال الأمر'), 'error');
     } finally {
       setCertBusy(null);
+    }
+  };
+
+  // Signed agent write job: install a local .msu hotfix package on the agent.
+  const queueHotfixInstall = async (agentId: string, hostName: string) => {
+    const path = (hotfixPaths[agentId] || '').trim();
+    if (!path) { toast(t('أدخل مسار ملف .msu على الوكيل أولاً'), 'error'); return; }
+    if (!window.confirm(t(`تثبيت التحديث ${path} على ${hostName}؟ قد يتطلب إعادة تشغيل.`))) return;
+    setHotfixBusy(agentId);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'hotfix.install', payload: { path } });
+      toast(t('تم إرسال أمر التثبيت — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setHotfixBusy(null);
     }
   };
 
@@ -693,6 +711,25 @@ export function InfrastructurePage() {
                                 <span style={{ color: 'var(--text-3)' }}>{pickField(f, 'installed_on', 'InstalledOn', 'installedOn')}</span>
                               </div>
                             ))}
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                            <TextInput
+                              value={hotfixPaths[ag.id] || ''}
+                              onChange={(e: any) => setHotfixPaths((prev) => ({ ...prev, [ag.id]: e.target.value }))}
+                              placeholder={t('C:\\Updates\\KBxxxx.msu')}
+                              style={{ flex: 1, fontSize: 11, direction: 'ltr', textAlign: 'left' }}
+                            />
+                            <Button
+                              variant="secondary"
+                              disabled={hotfixBusy !== null}
+                              onClick={() => void queueHotfixInstall(ag.id, ag.hostname || ag.linked_asset?.name || ag.name)}
+                              style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' }}
+                            >
+                              {hotfixBusy === ag.id ? '…' : t('تثبيت .msu')}
+                            </Button>
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 4 }}>
+                            {t('يتطلب وجود ملف .msu على الوكيل — يُثبّت عبر wusa.exe /quiet /norestart.')}
                           </div>
                         </div>
                       )}

@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -330,6 +330,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "docker.container" => DockerContainerControl(payload),
         "cert.remove" => CertRemove(payload),
         "disk.state" => DiskState(payload),
+        "hotfix.install" => HotfixInstall(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -630,6 +631,38 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         };
         PsProbe.Run($"{ps}; Get-Disk -Number {diskNumber} | Select-Object Number,FriendlyName,OperationalStatus,IsOffline,IsReadOnly | ConvertTo-Json -Compress");
         return new { disk_number = diskNumber, action, executed = true };
+    }
+
+    // Signed write job: install a local .msu hotfix package on this machine.
+    // payload: {"path": "C:\Updates\KB5034441.msu"}
+    // wusa.exe exit codes: 0 = installed, 3010 = installed (reboot required),
+    // anything else is a real failure — surfaced honestly, never faked.
+    private static object HotfixInstall(JsonElement payload)
+    {
+        var path = payload.TryGetProperty("path", out var p) ? p.GetString() : null;
+        if (string.IsNullOrWhiteSpace(path))
+            throw new InvalidOperationException("hotfix.install requires payload.path (local .msu path on the agent)");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(path, @"^([A-Za-z]:\\|\\\\)[^""'|?*<>]*\.msu$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            throw new InvalidOperationException("hotfix.install path must be an absolute local .msu path without quotes or wildcards");
+        var psi = new ProcessStartInfo("wusa.exe", "/quiet /norestart \"" + path + "\"")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = Process.Start(psi)!;
+        var stderrTask = proc.StandardError.ReadToEndAsync();
+        if (!proc.WaitForExit(600000))
+        {
+            try { proc.Kill(true); } catch { }
+            throw new InvalidOperationException("wusa.exe timed out after 10 minutes");
+        }
+        var stderr = stderrTask.GetAwaiter().GetResult();
+        var code = proc.ExitCode;
+        if (code != 0 && code != 3010)
+            throw new InvalidOperationException($"wusa exited {code}: {(stderr.Trim().Length > 300 ? stderr.Trim()[..300] : stderr.Trim())}");
+        return new { path, exit_code = code, reboot_required = code == 3010, executed = true };
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,

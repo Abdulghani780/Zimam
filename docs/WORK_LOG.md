@@ -556,3 +556,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `disk.physical` + `disk.state` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `NetworkStoragePage` تبويب الأقراص — بطاقة «أقراص وكلاء أساس الفيزيائية» لكل وكيل (قائمة الأقراص مع الصحة/الحجم/حالة offline+readonly + أزرار توصيل/فصل/RO/إزالة RO مع confirm) → `apiV1.createJob('disk.state')`؛ الجدول القديم (السيرفر المحلي) بقي أسفله. `AgentsPage` أضيف `disk.physical` للقائمتين.
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج agent مُعاد نشره.
+### 12.17 حادي عشر agent write job — `hotfix.install`
+
+- **Agent**: `hotfix.install` في `AllowedJobs` + `HotfixInstall(payload)` — `{path}` مسار `.msu` محلي على الوكيل (regex: مسار مطلق `C:\` أو UNC، بدون علامات اقتباس/أحرف بدلية) → `wusa.exe /quiet /norestart` مع timeout 10 دقائق؛ exit code 0 = مثبّت، 3010 = مثبّت + reboot مطلوب، غير ذلك خطأ حقيقي يرفع كـ job error — لا نجاح مُختلَق.
+- **Control plane**: `hotfix.install` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `InfrastructurePage` بطاقة «أدوار ومهام مجدولة وتحديثات وكلاء أساس» — داخل قسم «آخر التحديثات المثبتة» حقل مسار `.msu` + زر «تثبيت .msu» مع confirm → `apiV1.createJob('hotfix.install')`.
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب وسم الملف من طرف المشغّل (الوكيل لا يحمّل من الإنترنت) + agent مُعاد نشره.
