@@ -14,6 +14,8 @@
 | **Full Cross-Boundary End-to-End** | `python tests/test_api_contracts.py` | API contract changes | None (in-process mocks & models) |
 | **Security Risk Evaluator Test** | `python -m unittest tests/test_bastion_security.py` | Security / Bastion ACL updates | None |
 | **Port Isolation Guard Test** | `python -m unittest tests/test_port_isolation.py` | Networking & Port service changes | None |
+| **Control Plane v1 Suite** | `cd control_plane && python -m unittest` | Auth/agents/jobs/audit/vault/license changes | Python 3.10+ |
+| **Playwright E2E & Visual Matrix** | `cd frontend && npx playwright test` | UI/navigation/viewport changes | Live backend on :8765, `npx playwright install` |
 
 ---
 

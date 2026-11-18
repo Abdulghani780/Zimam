@@ -71,7 +71,7 @@
 - [x] docker-compose — **محذوف** من المشروع أصلاً
 - [x] `net user` password → NetUserAdd/NetUserSetInfo (موجود)
 - [x] **password complexity ≥8 + 3/4 فئات** — `backend/app/services/user_service.py::_password_policy_error` (len≥8 + 3/4 من lower/upper/digit/symbol)
-- [ ] README/TESTS تحديث نهائي
+- [x] README/TESTS تحديث نهائي — README سليم (هوية ASAAS + /api/v1)؛ TESTS.md أُضيف له صفّا control_plane + Playwright e2e
 
 ### ⬜ المرحلة 3 — استقرار التشغيل
 - [x] `scripts/restart-elevated.ps1` — موجود ومُستخدم
