@@ -65,7 +65,7 @@
 من فحص `ui-audit.mjs` على 20 صفحة × (desktop 1440px + mobile 390px):
 
 | المشكلة | الحل |
-|---|---|
+| --- | --- |
 | أزرار تنضغط ويُقطع نصها في toolbars | `flex-shrink: 0` على `.btn` + السماح بالالتفاف |
 | جداول تتجاوز إطارها وتكتب فوق المحتوى | تغليف الجداول بـ `.table-wrap` أو `.table` |
 | جدول المستخدمين تنهار خلاياه على الموبايل | `tableLayout: fixed` + `minWidth` + توسيع عمود الإجراءات |
@@ -204,7 +204,7 @@
 #### 8.1 حذف الزوائد (commit `a318bd8`)
 
 | الفئة | المحذوف |
-|---|---|
+| --- | --- |
 | سكربتات ترقيع لمرة واحدة | `scripts/` كاملة — 37 ملف `patch_*.py`/`fix_*.py` |
 | Docker | `docker-compose.yml` + `control_plane/Dockerfile` |
 | مخرجات بناء وسيطة | `build-py/` + `dist-py/` (~210MB) |
@@ -216,7 +216,7 @@
 
 #### 8.2 البنية النهائية النظيفة
 
-```
+```text
 agent/          وكيل Windows C# (19 collector)
 backend/        Legacy admin API :8765 (loopback)
 control_plane/  v1 API + proxy + SPA host :8876
@@ -246,7 +246,7 @@ dist/ release/ installer-out/   مخرجات البناء
 ## 3. commits Git الرئيسية
 
 | Commit | الوصف |
-|---|---|
+| --- | --- |
 | `9b0fc3c` | تنظيف ملفات development المتعقبة |
 | `9330cdf` | إصلاح Origin غير مسموح + اختصارات سطح المكتب per-user |
 | `5e6014c` | إصلاح جسر الهوية `::ffff:127.0.0.1` |
@@ -260,7 +260,7 @@ dist/ release/ installer-out/   مخرجات البناء
 ## 4. حالة المشروع النهائية
 
 | الطبقة | الحالة |
-|---|---|
+| --- | --- |
 | Frontend | ✅ ~25 صفحة، هوية kit مطبّقة حرفياً، RTL عربي/إنجليزي، ثيم فاتح/داكن، 0 مشاكل layout |
 | Control plane `/api/v1` | ✅ auth+MFA، agents+jobs+results، audit chain، vault، license، fleet summary |
 | Guacamole gateway | ✅ RDP/SSH/telnet/vnc مُختبر حي end-to-end |
@@ -286,7 +286,7 @@ dist/ release/ installer-out/   مخرجات البناء
 
 ## 6. بيانات الدخول (بيئة التطوير)
 
-```
+```text
 الواجهة:     http://127.0.0.1:8876
 Backend:     127.0.0.1:8765 (loopback فقط)
 
@@ -325,7 +325,7 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 ### 7.2 عكس التسمية في كامل المشروع
 
 | المجال | التغيير |
-|---|---|
+| --- | --- |
 | Frontend | `zimam-ui`→`asaas-ui`، `زِمام`→`أساس`، `ZIMAM`→`ASAAS`، `Zimam.Agent`→`Asaas.Agent`، storage keys → `asaas-*` |
 | Backend | `ZIMAM_HOST/PORT` → `ASAAS_HOST/PORT` (fallback للاسم القديم)، logger `asaas.*` |
 | Control plane | حزمة `zimam_control` → `asaas_control` + كل الـ imports |
@@ -347,7 +347,7 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 ### 7.4 commits
 
 | Commit | الوصف |
-|---|---|
+| --- | --- |
 | (هذا الالتزام السابق) | `feat(ui): restore official ASAAS identity` — الكيت + النصوص |
 | (هذا الالتزام) | `refactor: rename product identity ZIMAM -> ASAAS` — backend/agent/launcher/packaging |
 | 2026-10-19 | الخطة | تحديث `PROJECT_MAP.md` (خريطة كاملة + قاعدة "أول ⬜ بالأولوية")؛ تنفيذ متسلسل: password complexity (تغيير كلمة المرور في Windows)، `restart-elevated.ps1`، e2e CI موجود مسبقاً، `/api/v1/sessions` مربوط بـ agent `session.list` + terminate بـ signed `session.logoff` job (202)، `/api/sessions/shadow` preflight حقيقي | اختبارات الوحدة 15/15 + control_plane 10/10 ✅ — enterprise live tests تفشل لغياب خادم حي/كلمة مرور `admin@asaas2026` (pre-existing) |
