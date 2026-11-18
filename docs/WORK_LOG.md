@@ -430,3 +430,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
   - `dotnet` → SDK محلي `%LOCALAPPDATA%\Microsoft\dotnet` (PATH system فيه runtime فقط)
 - النتائج في `release/` (gitignored): `bin/asaas-backend.exe` 14.3MB، `bin/asaas-control.exe` 42.3MB (PyInstaller onefile)، `bin/Asaas.Agent.exe` 36.7MB + `libsodium.dll` (dotnet publish win-x64 self-contained single-file)، `web/` (vite dist)، `data/`.
 - **متبقٍ في Phase 6**: Inno Setup (`ISCC` غير مثبت — blocker بيئي)، اختبار تثبيت على VM نظيف.
+
+### 11.1 متابعة — Inno Setup وُجد محلياً
+
+- Inno Setup 6.7.3 مثبت في `%LOCALAPPDATA%\Programs\Inno Setup 6` (ليس Program Files) — `winget list` أكد.
+- `ISCC.exe packaging\asaas.iss` نجح في 23.6s → `installer-out\ASAAS-Setup-1.0.0.exe` (**75.7MB**، gitignored).
+- تحذير Inno غير حرج: `PrivilegesRequired=admin` مع per-user areas — مراجعة اختيارية لاحقاً.
+- **المتبقي الوحيد في Phase 6**: اختبار التثبيت على VM نظيف.
