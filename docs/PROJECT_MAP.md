@@ -83,7 +83,7 @@
 1. auth ✅ (منجزة — login يفضّل v1 + bridge)
 2. assets/accounts/policies → tokens → sessions → governor/telemetry
 3. كل شريحة: endpoint حي + صفحة محوّلة + حذف legacy بنفس الـ commit
-4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` ✅ end-to-end؛ ~10 domains remain (firewall rules, docker ops, cert ops, disk ops, hotfix install, startup programs, local.users, feature enable, software uninstall, share create UI)
+4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` + `feature.toggle` ✅ end-to-end؛ ~9 domains remain (firewall rules, docker ops, cert ops, disk ops, hotfix install, startup programs, local.users, software uninstall, share create UI)
 
 ### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:

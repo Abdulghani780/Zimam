@@ -160,7 +160,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
-        "service.control", "process.kill", "task.control", "hyperv.power", "share.control"
+        "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -320,8 +320,30 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "task.control" => TaskControl(payload),
         "hyperv.power" => HypervPower(payload),
         "share.control" => ShareControl(payload),
+        "feature.toggle" => FeatureToggle(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
+
+    // Signed write job: enable/disable a Windows optional feature.
+    // payload: {"feature_name": "...", "action": "enable"|"disable"}
+    // Note: may require a reboot to take effect; result reports RestartNeeded.
+    private static object FeatureToggle(JsonElement payload)
+    {
+        var name = payload.TryGetProperty("feature_name", out var n) ? n.GetString() : null;
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("feature.toggle requires payload.feature_name");
+        if (name.Any(c => !(char.IsLetterOrDigit(c) || c is '_' or '-' or '.' or ' ' or '/' or ':')))
+            throw new InvalidOperationException("feature name contains invalid characters");
+        var escaped = name.Replace("'", "''");
+        var cmdlet = action == "enable" ? "Enable-WindowsOptionalFeature" : action == "disable" ? "Disable-WindowsOptionalFeature" : null;
+        if (cmdlet is null)
+            throw new InvalidOperationException("feature.toggle action must be enable|disable");
+        var result = PsProbe.Run(
+            $"$r = {cmdlet} -FeatureName '{escaped}' -NoRestart -ErrorAction Stop; " +
+            "$r | Select-Object FeatureName,State,RestartNeeded | ConvertTo-Json -Compress");
+        return new { feature_name = name, action, restart_needed = result.TryGetProperty("RestartNeeded", out var rn) && rn.GetBoolean(), executed = true };
+    }
 
     // Signed write job: create or remove an SMB share.
     // payload: {"action": "create"|"delete", "name": "...", "path": "..." (create), "description": "..." (optional)}

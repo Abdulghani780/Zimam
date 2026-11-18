@@ -161,7 +161,7 @@ function agentRef(ag: FleetNetAgent): AgentRef {
 }
 
 interface ServiceFleetRow extends RemoteService { agent: AgentRef; agentId: string; completedAt: string | null }
-interface FeatureFleetRow { agent: AgentRef; completedAt: string | null; name: string; state: string; installed: boolean; available: boolean }
+interface FeatureFleetRow { agent: AgentRef; agentId: string; completedAt: string | null; name: string; state: string; installed: boolean; available: boolean }
 interface TaskFleetRow { agent: AgentRef; agentId: string; completedAt: string | null; name: string; path: string; state: string }
 interface HotfixFleetRow { agent: AgentRef; completedAt: string | null; id: string; description: string; installedOn: string }
 
@@ -184,6 +184,7 @@ export function InfrastructurePage() {
   const [tasksSearch, setTasksSearch] = useState('');
   const [svcBusy, setSvcBusy] = useState<string | null>(null);
   const [taskBusy, setTaskBusy] = useState<string | null>(null);
+  const [featBusy, setFeatBusy] = useState<string | null>(null);
 
   // Certificates still come from the legacy local-server API.
   const [certs, setCerts] = useState<any[]>([]);
@@ -246,6 +247,21 @@ export function InfrastructurePage() {
     }
   };
 
+  // Signed agent write job: enable/disable a Windows optional feature.
+  const queueFeatureToggle = async (f: FeatureFleetRow, action: 'enable' | 'disable') => {
+    const key = `${f.agentId}:${f.name}:${action}`;
+    if (!window.confirm(t(`${action === 'enable' ? 'تفعيل' : 'تعطيل'} الميزة ${f.name} على ${f.agent.label}؟ قد يتطلب إعادة تشغيل.`))) return;
+    setFeatBusy(key);
+    try {
+      await apiV1.createJob({ agent_id: f.agentId, job_type: 'feature.toggle', payload: { feature_name: f.name, action } });
+      toast(t('تم إرسال أمر الميزة — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setFeatBusy(null);
+    }
+  };
+
   const fetchCerts = async () => {
     try {
       const res = await api.getCertificatesList();
@@ -289,6 +305,7 @@ export function InfrastructurePage() {
       const state = String(pickField(f, 'state', 'State') || '');
       return {
         agent: agentRef(ag),
+        agentId: ag.id,
         completedAt: entry.completed_at,
         name: String(pickField(f, 'name', 'Name', 'FeatureName') || '?'),
         state,
@@ -831,6 +848,7 @@ export function InfrastructurePage() {
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المعرف التقني')}</th>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('إجراءات')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -848,6 +866,28 @@ export function InfrastructurePage() {
                             </span>
                           </td>
                           {agentCell(f.agent, f.completedAt)}
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {(['enable', 'disable'] as const).map((action) => {
+                                const key = `${f.agentId}:${f.name}:${action}`;
+                                const busy = featBusy === key;
+                                return (
+                                  <button
+                                    key={action}
+                                    type="button"
+                                    disabled={featBusy !== null}
+                                    onClick={() => queueFeatureToggle(f, action)}
+                                    style={{
+                                      fontSize: 11, padding: '4px 8px', borderRadius: 6, cursor: featBusy ? 'wait' : 'pointer',
+                                      border: '1px solid var(--glass-rim)', background: 'var(--surface-card)', color: 'var(--text-2)',
+                                    }}
+                                  >
+                                    {busy ? '…' : action === 'enable' ? t('تفعيل') : t('تعطيل')}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

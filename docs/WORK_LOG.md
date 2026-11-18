@@ -519,3 +519,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `share.control` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `NetworkStoragePage` بطاقات مشاركات الوكلاء — زر «حذف» لكل مشاركة (مع confirm) → `apiV1.createJob`؛ حُدّث العنوان (لم تعد «قراءة فقط»). الإنشاء متاح عبر API (لا نموذج UI بعد).
 - **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.
+
+### 12.12 سادس agent write job — `feature.toggle`
+
+- **Agent**: `feature.toggle` في `AllowedJobs` + `FeatureToggle(payload)` — `{feature_name, action: enable|disable}` عبر `Enable/Disable-WindowsOptionalFeature -NoRestart`؛ يرجع `restart_needed`؛ تحقق من الاسم.
+- **Control plane**: `feature.toggle` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `InfrastructurePage` roles/features tab — عمود «إجراءات» (تفعيل/تعطيل مع confirm يوضح احتمال إعادة التشغيل) → `apiV1.createJob`.
+- **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.
