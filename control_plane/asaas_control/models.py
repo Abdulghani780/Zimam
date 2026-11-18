@@ -125,3 +125,19 @@ class AuditEvent(Base):
     previous_hash: Mapped[str] = mapped_column(String(64), default="")
     event_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class DirectoryUser(Base):
+    """AD/LDAP-synced directory entry — read model for policy/JIT subjects.
+
+    These rows never create login accounts; they exist so access policies and
+    JIT grants can reference real directory identities.
+    """
+    __tablename__ = "directory_users"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    username: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(255), default="")
+    email: Mapped[str] = mapped_column(String(255), default="")
+    groups_json: Mapped[str] = mapped_column(Text, default="[]")
+    source: Mapped[str] = mapped_column(String(16), default="ldap")
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

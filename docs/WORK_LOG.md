@@ -469,3 +469,11 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - `gateway.py`: `pump_to_client(send_text, recorder=...)` — التسجيل لا يعطّل الجلسة الحية (try/except).
 - Endpoints: `GET /recordings` (non-admin يرى تسجيلاته فقط)، `GET /recordings/{id}`، `DELETE` (admin)، `WS /recordings/{id}/replay` — يعيد بث التعليمات المسجلة بنفس التوقيت لـ guacamole-common-js (cookie auth عبر `_current_user`).
 - **تحقق**: record→list→replay→delete roundtrip فعلي ✅؛ compile+imports+10/10 tests ✅. replay بصري حقيقي يحتاج جلسة guacd حية.
+
+### 12.5 AD/LDAP sync
+
+- `asaas_control/directory.py`: connector عبر `ldap3` (lazy import → 503) — env config: `ASAAS_LDAP_URL` (ldap(s)://)، `ASAAS_LDAP_BIND_DN`/`_PASSWORD`، `ASAAS_LDAP_BASE_DN`، `ASAAS_LDAP_USER_FILTER` (default `(objectClass=user)`)، `ASAAS_LDAP_PAGE_SIZE`.
+- جدول `directory_users` الجديد (read model — لا ينشئ حسابات دخول؛ للـ policies/JIT subjects): username/display_name/email/groups/synced_at؛ stale entries تُحذف عند غيابها عن المزامنة.
+- Endpoints: `POST /directory/sync` (admin فقط + audit) و`GET /directory/users` (writer+).
+- `ldap3>=2.9,<3` في requirements + ثُبّت 2.9.1 في `.venv`.
+- **تحقق**: compile + imports + 10/10 tests ✅. مزامنة AD حقيقية تتطلب بيئة domain.

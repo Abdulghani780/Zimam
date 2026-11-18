@@ -91,7 +91,7 @@
 - ~~Redis-backed token consumption (multi-worker)~~ ✅ `ASAAS_REDIS_URL` → atomic `SET NX EX` في `ConnectionTokenStore`؛ fallback ذاكرة للـ single-worker
 - ~~live session terminate~~ ✅ (signed `session.logoff`/`session.disconnect` agent jobs via `/api/v1/sessions/*`)
 - ~~screen/terminal recording + replay~~ ✅ `asaas_control/recording.py` — guacd instruction stream → `data/recordings/*.jsonl` + replay WebSocket؛ `ASAAS_GW_RECORD`
-- AD/LDAP sync
+- ~~AD/LDAP sync~~ ✅ `asaas_control/directory.py` — ldap3 connector + `directory_users` read model + `POST /directory/sync` + `GET /directory/users`
 - off-box backup replication
 - ~~production mTLS issuance~~ ✅ `asaas_control/mtls.py` — CA محلي ECDSA + `POST /pki/ca` + `POST /agents/{id}/cert` + `GET /pki/ca.crt`؛ إنفاذ client-cert على TLS terminator خطوة نشر
 

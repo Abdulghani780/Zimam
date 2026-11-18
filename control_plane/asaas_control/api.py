@@ -743,8 +743,48 @@ async def replay_recording(websocket: WebSocket, recording_id: str, user: User =
 
 
 @router.post("/directory/sync")
-def sync_directory(_: User = Depends(_current_user)) -> dict:
-    raise HTTPException(status_code=501, detail="AD/LDAP connector is not configured")
+def sync_directory(user: User = Depends(_current_user)) -> dict:
+    """Pull AD/LDAP users into the ``directory_users`` read model.
+
+    Requires ASAAS_LDAP_URL + ASAAS_LDAP_BASE_DN (+ optional bind creds);
+    returns 503 when unconfigured or ldap3 is unavailable.
+    """
+    _require_admin(user)
+    from . import directory
+
+    try:
+        result = directory.sync_directory()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Directory sync failed: {exc}") from exc
+    with db_session() as db:
+        append_audit(db, actor_id=user.id, action="directory.sync", payload=result)
+    return result
+
+
+@router.get("/directory/users")
+def list_directory_users(user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    from .models import DirectoryUser
+
+    with db_session() as db:
+        rows = list(db.scalars(select(DirectoryUser).order_by(DirectoryUser.username)))
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "username": r.username,
+                "display_name": r.display_name,
+                "email": r.email,
+                "groups": json.loads(r.groups_json or "[]"),
+                "source": r.source,
+                "synced_at": r.synced_at,
+            }
+            for r in rows
+        ],
+        "count": len(rows),
+    }
 
 
 @router.get("/users")
