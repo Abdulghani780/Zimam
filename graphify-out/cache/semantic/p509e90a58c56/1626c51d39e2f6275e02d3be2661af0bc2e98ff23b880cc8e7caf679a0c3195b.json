@@ -1,0 +1,1 @@
+{"nodes": [{"id": "skills_ai_references_llm_integration", "label": "LLM Integration Reference", "file_type": "document", "source_file": "skills/ai/references/llm-integration.md", "rationale": "Reference for the single provider client, structured output, prompts, budgets, streaming, and logging; includes LLMClient implementation."}], "edges": [], "hyperedges": []}
