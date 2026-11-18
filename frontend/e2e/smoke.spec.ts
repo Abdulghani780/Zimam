@@ -16,7 +16,18 @@ test.describe('ASAAS smoke', () => {
     await page.goto('/login');
     await page.locator('input[autocomplete="username"]').fill(USER);
     await page.locator('input[autocomplete="current-password"]').fill(PASS);
+    const loginRespPromise = page.waitForResponse(
+      (r) => r.url().includes('/api/auth/login'),
+      { timeout: 20000 },
+    ).catch(() => null);
     await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
+    const loginResp = await loginRespPromise;
+    if (loginResp) {
+      const body = await loginResp.text().catch(() => '<unreadable>');
+      console.log(`[SMK-01] login POST ${loginResp.url()} -> ${loginResp.status()} ${body.slice(0, 300)}`);
+    } else {
+      console.log('[SMK-01] no /api/auth/login request observed');
+    }
     await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30000 });
     await expect(page.locator('h1, h2, .page-title').first()).toBeVisible({ timeout: 15000 });
   });
