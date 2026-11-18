@@ -608,3 +608,8 @@ Backend:     127.0.0.1:8765 (loopback فقط)
   - `DatabasesPage`: محركات/استعلامات/نسخ قواعد البيانات المحلية
   - `PortsPage`, `StoragePage`, `ServersPage`, `NetworkStoragePage`, `SecurityPage`, `OverviewPage`: مجموعات محلية (منافذHost، تنظيف تخزين، مجموعات خوادم محلية، مشاركات/جدار المضيف، metrics محلية)
 - **الخلاصة**: لا يوجد استخدام legacy لبيانات أصول بعيدة — المتبقي أدوات console محلية، وهو مسموح به في Definition of Done. ترحيلها لـ `/api/v1` يتطلب بناء endpoints جديدة في control plane وهي خارج نطاق «الترحيل» الحالي.
+
+### 12.25 سكربت تحقق VM نظيف — `scripts/validate-clean-vm.ps1`
+
+- **Phase 6 gate**: سكربت PowerShell تحقق من 17 فحصاً بعد تثبيت `ASAAS-Setup.exe` على جهاز نظيف: وجود ملفات payload (backend/control/agent/web)، مهام Scheduled Tasks الأربعة (SYSTEM + AtStartup trigger)، استماع المنفذين 8765/8876، `/api/health` + console 8876 + HTML الـ SPA، صلاحيات `data\`، حالة الوكيل، وقراءة Trigger الإقلاع للاستمرارية بعد إعادة التشغيل. يخرج PASS/FAIL لكل فحص مع تلميح إصلاح، وexit code 0/1. مُختبر نحوياً على جهاز التطوير (يفشل بشكل متوقع لغياب التثبيت).
+- **طريقة الاستخدام على VM نظيف**: ثبّت `installer-out\ASAAS-Setup-1.0.0.exe` → شغّل السكربت مرتين: قبل إعادة التشغيل وبعدها (للتحقق من الاستمرارية).
