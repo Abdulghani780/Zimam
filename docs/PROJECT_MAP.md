@@ -88,7 +88,7 @@
 ### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:
 - SSH/SFTP proxy data path
-- Redis-backed token consumption (multi-worker)
+- ~~Redis-backed token consumption (multi-worker)~~ ✅ `ASAAS_REDIS_URL` → atomic `SET NX EX` في `ConnectionTokenStore`؛ fallback ذاكرة للـ single-worker
 - ~~live session terminate~~ ✅ (signed `session.logoff`/`session.disconnect` agent jobs via `/api/v1/sessions/*`)
 - screen/terminal recording + replay
 - AD/LDAP sync

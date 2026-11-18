@@ -47,7 +47,10 @@ def _require_writer(user: User) -> None:
     role = user.role or ("admin" if user.is_admin else "viewer")
     if role == "viewer":
         raise HTTPException(status_code=403, detail="Viewer role is read-only")
-_connection_store = ConnectionTokenStore(hashlib.sha256((settings.gateway_token or "disabled").encode()).digest())
+_connection_store = ConnectionTokenStore(
+    hashlib.sha256((settings.gateway_token or "disabled").encode()).digest(),
+    redis_url=os.environ.get("ASAAS_REDIS_URL") or None,
+)
 
 # In-memory sliding-window login throttling: 8 failures per IP+username per 5 minutes.
 _login_attempts: dict[str, list[float]] = {}
