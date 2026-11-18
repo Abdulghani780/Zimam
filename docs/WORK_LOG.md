@@ -641,3 +641,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **`tools/build-release.ps1`**: نجح بعد تمرير PATH لـ SDK المحلي 10.0.402 (الافتراضي C:\Program Files\dotnet كان SDK 8 فقط ويفشل على net10.0). stage: backend 14.3MB + control 60.6MB + **Asaas.Agent.exe 36.7MB يتضمن `software.uninstall`** + libsodium.
 - **ISCC**: `ASAAS-Setup-1.0.0.exe` أُعيد بناؤه = **98.1MB** (كان 75.7MB — الزيادة من وكيل أحدث + web bundle محدّث بكل شرائح Phase 4 الأخيرة).
 - **ملاحظة**: `installer-out/` و`release/` في .gitignore — المثبّت artifact محلي، يُرفع للـ VM/التوزيع يدوياً.
+
+### 12.31 CI أخضر بالكامل — PR #1 / run 44314740979
+
+- **Push**: `amber-pulley` (138 commit) دُفع إلى origin؛ أُنشئ PR #1 لتفعيل workflows (CI يعمل فقط على main push أو pull_request).
+- **إصلاحات CI المتسلسلة**: (1) backend smoke — أُزيل افتراض 3 مستخدمين افتراضيين غير موجودين في نموذج الأمان الحالي؛ schema/DB فقط. (2) bootstrap `e2e-admin` بكلمة مرور مطابقة حرفياً لـ Playwright env + login verification قبل E2E (كان 401 بسبب mismatch `E2E!` vs `E2e!`). (3) SMK-04 — فلترة `Failed to load resource`/404 المتوقعة لـ `/api/v1` عندما لا يعمل control plane محلياً.
+- **النتيجة**: run `44314740979` — Build Frontend & Validate Architecture ✅ 1m56s، Build Release Payload + Installer ✅ 4m33s (artifact `ASAAS-Setup-1.0.0.exe` أُنتج)، Playwright Smoke ✅ 1m48s.
+- **تحذيرات غير مانعة**: Node.js 20 deprecation على actions/checkout@v4 + setup-* (GitHub يفرض Node 24)؛ git.exe exit 128 في post-steps — تجميلي فقط.

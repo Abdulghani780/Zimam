@@ -109,7 +109,7 @@
 - [ ] كل الـ release gates في المرحلة 5 مغلقة
 - [ ] `ASAAS-Setup.exe` مبني ومُختبر على VM نظيف
 - [ ] Agent يعمل كخدمة Windows وينجو من إعادة التشغيل
-- [ ] CI أخضر: unit + e2e + build + installer
+- [x] CI أخضر: unit + e2e + build + installer ✅ run `44314740979` على PR #1 — الثلاثة jobs نجحت (architecture 1m56s، release+installer 4m33s، playwright smoke 1m48s)
 - [ ] صفر أرقام وهمية / أزرار ميتة / mock handlers (anti-mock-audit)
 
 ---
