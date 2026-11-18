@@ -581,3 +581,8 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `software.uninstall` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `AssetsPage` درج الفحص الميداني — زر «إلغاء» أحمر لكل صف في جدول `software.list` (يظهر فقط عند وجود وكيل مرتبط) مع `window.confirm` → `apiV1.createJob('software.uninstall', {name})`؛ toast «ينفذ على الوكيل خلال ~15 ثانية».
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب agent مُعاد نشره.
+
+### 12.21 خامس عشر agent write job — واجهة إنشاء مشاركات SMB على الوكلاء
+
+- **Frontend فقط**: `NetworkStoragePage` بطاقة «مشاركات وكلاء أساس» — زر «+ مشاركة» لكل وكيل يفتح modal (اسم + مسار محلي + وصف) مع `window.confirm` → `apiV1.createJob('share.control', {action:'create', name, path, description})`؛ toast «ينفذ على الوكيل خلال ~15 ثانية» ويعيد جلب القياسات بعد 20 ثانية. الـ backend `share.control` (create/delete عبر `New-SmbShare`/`Remove-SmbShare`) والـ collector `shares.list` كانا موجودين مسبقاً.
+- **تحقق**: `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅.

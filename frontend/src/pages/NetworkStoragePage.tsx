@@ -153,6 +153,36 @@ export function NetworkStoragePage() {
       setAgentShareBusy(null);
     }
   };
+  // Remote agent share creation state
+  const [agentShareCreate, setAgentShareCreate] = useState<{ agent: any; name: string; path: string; desc: string } | null>(null);
+  const [agentShareCreateBusy, setAgentShareCreateBusy] = useState(false);
+
+  const submitAgentShareCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agentShareCreate) return;
+    const { agent, name, path, desc } = agentShareCreate;
+    if (!name.trim() || !path.trim()) {
+      toast(t('أدخل اسم المشاركة والمسار المحلي على الوكيل'), 'error');
+      return;
+    }
+    if (!window.confirm(t(`إنشاء مشاركة SMB «${name.trim()}» → ${path.trim()} على ${agent.linked_asset?.name || agent.name || agent.hostname || agent.id.slice(0, 8)}؟`))) return;
+    setAgentShareCreateBusy(true);
+    try {
+      await apiV1.createJob({
+        agent_id: agent.id,
+        job_type: 'share.control',
+        payload: { action: 'create', name: name.trim(), path: path.trim(), description: desc.trim() },
+      });
+      toast(t('تم إرسال مهمة إنشاء المشاركة — ينفذ على الوكيل خلال ~15 ثانية.'), 'success');
+      setAgentShareCreate(null);
+      setTimeout(fetchFleetAgents, 20000);
+    } catch (err: any) {
+      toast(err.message || t('فشل إرسال مهمة إنشاء المشاركة'), 'error');
+    } finally {
+      setAgentShareCreateBusy(false);
+    }
+  };
+
   const [newShareDesc, setNewShareDesc] = useState('');
   const [submittingShare, setSubmittingShare] = useState(false);
 
@@ -428,7 +458,7 @@ export function NetworkStoragePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Share2 size={18} style={{ color: 'var(--accent)' }} />
               <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('مشاركات وكلاء أساس')}</h3>
-              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('shares.list + حذف مشاركات موقّع')}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('shares.list + إنشاء/حذف مشاركات موقّع')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
               {t('إدارة الوكلاء')} ←
@@ -443,8 +473,18 @@ export function NetworkStoragePage() {
                     {ag.status}
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
-                  {ag.hostname || ag.linked_asset?.hostname || ag.id.slice(0, 8)}{ag.shareRows.length ? ` · ${ag.shareRows.length} ${t('مشاركة')}` : ''}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>
+                    {ag.hostname || ag.linked_asset?.hostname || ag.id.slice(0, 8)}{ag.shareRows.length ? ` · ${ag.shareRows.length} ${t('مشاركة')}` : ''}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={agentShareBusy !== null || agentShareCreateBusy}
+                    onClick={() => setAgentShareCreate({ agent: ag, name: '', path: '', desc: '' })}
+                    style={{ fontSize: 10, padding: '2px 10px', borderRadius: 999, cursor: 'pointer', border: '1px solid var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)', fontWeight: 700, whiteSpace: 'nowrap' }}
+                  >
+                    + {t('مشاركة')}
+                  </button>
                 </div>
                 {!ag.sharesEntry ? (
                   <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع المشاركات بعد — أرسله من صفحة الوكلاء.')}</div>
@@ -1217,6 +1257,31 @@ export function NetworkStoragePage() {
             <Button variant="primary" type="submit" disabled={submittingShare}>
               {submittingShare ? t('جارٍ الإنشاء...') : t('إنشاء المشاركة')}
             </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal: Create SMB Share on remote agent */}
+      <Modal open={agentShareCreate !== null} onClose={() => setAgentShareCreate(null)} title={t('إنشاء مشاركة SMB على وكيل')}>
+        <form onSubmit={submitAgentShareCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+            {agentShareCreate ? `${t('الوكيل: ')}${agentShareCreate.agent.linked_asset?.name || agentShareCreate.agent.name || agentShareCreate.agent.hostname || agentShareCreate.agent.id.slice(0, 8)}` : ''}
+          </p>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--text-2)' }}>
+            {t('اسم المشاركة')}
+            <TextInput value={agentShareCreate?.name ?? ''} onChange={(e) => setAgentShareCreate((c) => c ? { ...c, name: e.target.value } : c)} placeholder={t('مثال: ProjectsData')} required dir="ltr" />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--text-2)' }}>
+            {t('المسار المحلي على الوكيل')}
+            <TextInput value={agentShareCreate?.path ?? ''} onChange={(e) => setAgentShareCreate((c) => c ? { ...c, path: e.target.value } : c)} placeholder="C:\Shares\Data" required dir="ltr" />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--text-2)' }}>
+            {t('الوصف (اختياري)')}
+            <TextInput value={agentShareCreate?.desc ?? ''} onChange={(e) => setAgentShareCreate((c) => c ? { ...c, desc: e.target.value } : c)} placeholder={t('وصف المشاركة')} dir="auto" />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <Button variant="ghost" type="button" onClick={() => setAgentShareCreate(null)}>{t('إلغاء')}</Button>
+            <Button variant="primary" type="submit" loading={agentShareCreateBusy}>{t('إنشاء المشاركة')}</Button>
           </div>
         </form>
       </Modal>
