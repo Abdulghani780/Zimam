@@ -32,6 +32,25 @@ export function ContainersPage() {
   const [fleetVms, setFleetVms] = useState<any[]>([]);
   const [vmBusy, setVmBusy] = useState<string | null>(null);
 
+  // Remote agent Docker containers — docker.containers collector + docker.container jobs.
+  const [fleetDocker, setFleetDocker] = useState<any[]>([]);
+  const [ctrBusy, setCtrBusy] = useState<string | null>(null);
+
+  // Signed agent write job: start/stop/restart/pause/unpause a container.
+  const queueContainerAction = async (agentId: string, container: string, hostName: string, action: 'start' | 'stop' | 'restart' | 'pause' | 'unpause') => {
+    const key = `${agentId}:${container}:${action}`;
+    if (!window.confirm(t(`تنفيذ ${action} على الحاوية ${container} في ${hostName}؟`))) return;
+    setCtrBusy(key);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'docker.container', payload: { container, action } });
+      toast(t('تم إرسال أمر الحاوية — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setCtrBusy(null);
+    }
+  };
+
   // Signed agent write job: power action on a Hyper-V VM.
   const queueVmPower = async (agentId: string, vmName: string, hostName: string, action: 'start' | 'stop' | 'restart') => {
     const key = `${agentId}:${vmName}:${action}`;
@@ -59,10 +78,16 @@ export function ContainersPage() {
           const raw = entry && !entry.error ? entry.result : null;
           const src = Array.isArray(raw) ? raw : ((raw as any)?.vms ?? (raw as any)?.items ?? []);
           if (Array.isArray(src)) arr = src.filter((x) => x && typeof x === 'object');
-          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, vms: arr };
+          const dEntry = r?.results?.['docker.containers'] ?? null;
+          let dArr: any[] = [];
+          const dRaw = dEntry && !dEntry.error ? dEntry.result : null;
+          const dSrc = Array.isArray(dRaw) ? dRaw : ((dRaw as any)?.containers ?? (dRaw as any)?.items ?? []);
+          if (Array.isArray(dSrc)) dArr = dSrc.filter((x) => x && typeof x === 'object');
+          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, vms: arr, dEntry, containers: dArr };
         }),
       );
       setFleetVms(detailed);
+      setFleetDocker(detailed);
     } catch {
       setFleetVms([]);
     }
@@ -239,6 +264,97 @@ export function ContainersPage() {
           </Card>
         </div>
       )}
+
+          {/* ASAAS remote agent Docker containers — docker.containers + docker.container jobs */}
+          {fleetDocker.length > 0 && (
+            <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Boxes size={18} style={{ color: 'var(--accent)' }} />
+                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('حاويات وكلاء أساس')}</h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('docker.containers + أوامر حاويات موقعة (start/stop/restart/pause/unpause)')}</span>
+                </div>
+                <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+                  {t('إدارة الوكلاء')} ←
+                </NavLink>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+                {fleetDocker.map((ag) => {
+                  const entry = ag.dEntry;
+                  const ctrs = entry && !entry.error ? ag.containers : [];
+                  return (
+                    <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Bot size={15} style={{ color: 'var(--accent)' }} />
+                          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                          {ag.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                        {ag.hostname || ag.id.slice(0, 8)}{ctrs.length ? ` · ${ctrs.length} ${t('حاوية')}` : ''}
+                      </div>
+                      {!entry ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الحاويات بعد — أرسله من صفحة الوكلاء (docker.containers).')}</div>
+                      ) : entry.error ? (
+                        <div className="text-status-danger" style={{ fontSize: 11 }}>{entry.error}</div>
+                      ) : ctrs.length === 0 ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا حاويات أو Docker CLI غير متاح على هذا الوكيل.')}</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto' }}>
+                          {ctrs.slice(0, 30).map((c: any, i: number) => {
+                            const cname = String(c.Names ?? c.names ?? c.Name ?? c.name ?? '?').replace(/^\//, '');
+                            const cimg = String(c.Image ?? c.image ?? '');
+                            const cstatus = String(c.Status ?? c.status ?? '');
+                            const cstate = String(c.State ?? c.state ?? '');
+                            const cports = String(c.Ports ?? c.ports ?? '');
+                            const running = /^(running|up)/i.test(cstate) || /up/i.test(cstatus);
+                            const paused = /paused/i.test(cstate) || /paused/i.test(cstatus);
+                            const ctrKey = `${ag.id}:${cname}`;
+                            const btn = (action: 'start' | 'stop' | 'restart' | 'pause' | 'unpause', label: string) => (
+                              <button
+                                key={action}
+                                type="button"
+                                disabled={ctrBusy !== null}
+                                onClick={() => void queueContainerAction(ag.id, cname, ag.name || ag.hostname || ag.id.slice(0, 8), action)}
+                                style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: ctrBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--accent)' }}
+                              >
+                                {ctrBusy === `${ctrKey}:${action}` ? '…' : label}
+                              </button>
+                            );
+                            return (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                                <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left', flex: 1 }} title={`${cname} → ${cimg}`}>
+                                  {cname}
+                                </span>
+                                <span style={{ display: 'flex', gap: 4, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                  {cports && <span style={{ fontSize: 9 }}>{cports}</span>}
+                                  <span style={{ color: running && !paused ? 'var(--paid)' : 'var(--text-3)' }}>
+                                    {paused ? t('موقوفة') : running ? t('تعمل') : t('متوقفة')}
+                                  </span>
+                                  {running && !paused && btn('pause', t('إيقاف مؤقت'))}
+                                  {paused && btn('unpause', t('استئناف'))}
+                                  {!running && btn('start', t('تشغيل'))}
+                                  {running && btn('stop', t('إيقاف'))}
+                                  {running && btn('restart', t('إعادة'))}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {ctrs.length > 30 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ctrs.length - 30} {t('حاوية أخرى')}</div>}
+                          {entry.completed_at && (
+                            <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(entry.completed_at).toLocaleString('ar-SA')}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
 
       {/* Tab 2: Hyper-V */}
       {activeTab === 'hyperv' && (

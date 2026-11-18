@@ -536,3 +536,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `firewall.rules` + `firewall.rule` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `SecurityPage` بطاقات «درع أساس عن بُعد» — قسم «قواعد جدار الحماية» لكل وكيل (قائمة + تفعيل/تعطيل/حذف مع confirm + نموذج إضافة قاعدة) → `apiV1.createJob('firewall.rule')`؛ `AgentsPage` أضيف `firewall.rules` لقائمة المهام ومجموعة «قياسات» (COLLECTOR_JOB_TYPES).
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج agent مُعاد نشره بالجديد.
+
+### 12.14 ثامن agent write job — `docker.container` (+ جامع `docker.containers`)
+
+- **Agent**: `docker.containers` (قراءة) في `AllowedJobs` — `docker ps -a --format '{{json .}}'` → ID/Names/Image/Status/State/Ports (فشل CLI/daemon يظهر كخطأ job بصدق). `docker.container` (كتابة) في `AllowedJobs` + `DockerContainerControl(payload)` — `{container, action: start|stop|restart|pause|unpause}` عبر `docker <verb>` ثم `docker inspect --format '{{.State.Status}}'` للتأكيد؛ تحقق من اسم الحاوية.
+- **Control plane**: `docker.containers` + `docker.container` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `ContainersPage` تبويب Docker — بطاقة «حاويات وكلاء أساس» لكل وكيل (قائمة + أزرار تشغيل/إيقاف/إعادة/إيقاف مؤقت/استئناف حسب الحالة، مع confirm) → `apiV1.createJob('docker.container')`؛ `AgentsPage` أضيف `docker.containers` للقائمتين.
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج docker CLI على الوكيل + agent مُعاد نشره.

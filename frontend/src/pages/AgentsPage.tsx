@@ -24,7 +24,8 @@ const JOB_TYPES = [
   { value: 'ports.list', label: t('المنافذ المستمعة') },
   { value: 'startup.programs', label: t('برامج بدء التشغيل') },
   { value: 'hyperv.vms', label: t('آلات Hyper-V الافتراضية') },
-  { value: 'firewall.rules', label: t('قواعد جدار الحماية') }
+  { value: 'firewall.rules', label: t('قواعد جدار الحماية') },
+  { value: 'docker.containers', label: t('حاويات Docker') }
 ];
 
 // Read-only collector set dispatched by the "collect all" action.
@@ -34,7 +35,7 @@ const COLLECTOR_JOB_TYPES = [
   'inventory.collect', 'session.list', 'network.info',
   'eventlog.tail', 'software.list', 'firewall.state',
   'windows.features', 'scheduled.tasks', 'local.users',
-  'shares.list', 'hotfix.list', 'ports.list', 'startup.programs', 'hyperv.vms', 'firewall.rules',
+  'shares.list', 'hotfix.list', 'ports.list', 'startup.programs', 'hyperv.vms', 'firewall.rules', 'docker.containers',
 ];
 
 const asArray = <T,>(res: unknown): T[] =>

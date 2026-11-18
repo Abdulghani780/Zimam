@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -300,6 +300,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "software.list" => SoftwareProbe.ListInstalled(),
         "firewall.state" => FirewallProbe.State(),
         "firewall.rules" => PsProbe.Run("Get-NetFirewallRule | Sort-Object DisplayName | Select-Object -First 500 Name,DisplayName,Direction,Action,Enabled,Profile | ConvertTo-Json -Compress -Depth 3"),
+        "docker.containers" => PsProbe.Run("docker ps -a --format '{{json .}}' | ForEach-Object { $_ | ConvertFrom-Json } | Select-Object ID,Names,Image,Status,State,Ports | ConvertTo-Json -Compress -Depth 3"),
         "inventory.collect" => new
         {
             hostname = Environment.MachineName,
@@ -324,6 +325,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "share.control" => ShareControl(payload),
         "feature.toggle" => FeatureToggle(payload),
         "firewall.rule" => FirewallRuleControl(payload),
+        "docker.container" => DockerContainerControl(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -560,6 +562,31 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         }
 
         throw new InvalidOperationException("firewall.rule action must be add|remove|enable|disable");
+    }
+
+    // Signed write job: start/stop/restart/pause/unpause a Docker container.
+    // payload: {"container": "name-or-id", "action": "start"|"stop"|"restart"|"pause"|"unpause"}
+    // Requires the docker CLI on the agent host; failure is reported honestly.
+    private static object DockerContainerControl(JsonElement payload)
+    {
+        var container = payload.TryGetProperty("container", out var c) ? c.GetString() : null;
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        if (string.IsNullOrWhiteSpace(container))
+            throw new InvalidOperationException("docker.container requires payload.container");
+        if (container.Any(ch => !(char.IsLetterOrDigit(ch) || ch is '_' or '-' or '.')))
+            throw new InvalidOperationException("container name contains invalid characters");
+        var verb = action switch
+        {
+            "start" => "start",
+            "stop" => "stop",
+            "restart" => "restart",
+            "pause" => "pause",
+            "unpause" => "unpause",
+            _ => throw new InvalidOperationException("docker.container action must be start|stop|restart|pause|unpause")
+        };
+        var escaped = container.Replace("'", "''");
+        PsProbe.Run($"docker {verb} '{escaped}'; docker inspect '{escaped}' --format '{{{{.State.Status}}}}'");
+        return new { container, action, executed = true };
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,

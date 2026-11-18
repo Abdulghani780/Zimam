@@ -126,7 +126,7 @@ class MfaVerifyRequest(BaseModel):
 # Read-only collectors plus one reviewed write job (session.logoff, which
 # requires an explicit session_id payload). Everything else stays behind the
 # legacy ActionEngine until a reviewed allowlist and confirmation flow exist.
-ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect", "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update", "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms", "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle", "firewall.rules", "firewall.rule"}
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect", "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update", "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms", "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle", "firewall.rules", "firewall.rule", "docker.containers", "docker.container"}
 
 
 class JobCreateRequest(BaseModel):
