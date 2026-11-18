@@ -498,3 +498,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `process.kill` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `ControlPage` بطاقات عمليات الوكلاء — زر «إنهاء» لكل صف PID صالح (>4) مع `confirm` → `apiV1.createJob`.
 - **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.
+
+### 12.9 ثالث agent write job — `task.control`
+
+- **Agent**: `task.control` في `AllowedJobs` + `TaskControl(payload)` — `{task_name, task_path?, action: run|enable|disable}` عبر `Start-ScheduledTask`/`Enable-ScheduledTask`/`Disable-ScheduledTask` ثم `Get-ScheduledTask` للتأكيد؛ تحقق من الاسم/المسار.
+- **Control plane**: `task.control` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `InfrastructurePage` tasks tab — عمود «إجراءات» (تشغيل/تفعيل/تعطيل) لكل مهمة → `apiV1.createJob`.
+- **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.

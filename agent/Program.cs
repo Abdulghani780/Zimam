@@ -160,7 +160,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
-        "service.control", "process.kill"
+        "service.control", "process.kill", "task.control"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -317,8 +317,33 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "hyperv.vms" => PsProbe.Run("if(-not (Get-Command Get-VM -ErrorAction SilentlyContinue)){ throw 'Hyper-V PowerShell module not available on this host' }; Get-VM | ForEach-Object { [pscustomobject]@{ name=$_.Name; state=[string]$_.State; cpu_usage=$_.ProcessorUsage; memory_assigned_gb=[math]::Round($_.MemoryAssigned/1GB,2); memory_startup_gb=[math]::Round($_.MemoryStartup/1GB,2); uptime=$_.Uptime.ToString(); version=$_.Version.ToString() } } | ConvertTo-Json -Compress -Depth 4"),
         "service.control" => ServiceControl(payload),
         "process.kill" => ProcessKill(payload),
+        "task.control" => TaskControl(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
+
+    // Signed write job: run/enable/disable a scheduled task.
+    // payload: {"task_name": "...", "task_path": "\\" (optional), "action": "run"|"enable"|"disable"}
+    private static object TaskControl(JsonElement payload)
+    {
+        var name = payload.TryGetProperty("task_name", out var n) ? n.GetString() : null;
+        var path = payload.TryGetProperty("task_path", out var p) ? p.GetString() : "\\";
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("task.control requires payload.task_name");
+        if (name.Any(c => !(char.IsLetterOrDigit(c) || c is '_' or '-' or '.' or ' ' or '(' or ')')))
+            throw new InvalidOperationException("task name contains invalid characters");
+        var escapedName = name.Replace("'", "''");
+        var escapedPath = (string.IsNullOrWhiteSpace(path) ? "\\" : path).Replace("'", "''");
+        var ps = action switch
+        {
+            "run" => $"Start-ScheduledTask -TaskName '{escapedName}' -TaskPath '{escapedPath}'",
+            "enable" => $"Enable-ScheduledTask -TaskName '{escapedName}' -TaskPath '{escapedPath}' | Out-Null",
+            "disable" => $"Disable-ScheduledTask -TaskName '{escapedName}' -TaskPath '{escapedPath}' | Out-Null",
+            _ => throw new InvalidOperationException("task.control action must be run|enable|disable")
+        };
+        PsProbe.Run($"{ps}; Get-ScheduledTask -TaskName '{escapedName}' -TaskPath '{escapedPath}' | Select-Object TaskName,State | ConvertTo-Json -Compress");
+        return new { task_name = name, task_path = path, action, executed = true };
+    }
 
     // Signed write job: terminate a process by PID.
     // payload: {"pid": 1234} — refuses PID 0/4/System/own process.

@@ -162,7 +162,7 @@ function agentRef(ag: FleetNetAgent): AgentRef {
 
 interface ServiceFleetRow extends RemoteService { agent: AgentRef; agentId: string; completedAt: string | null }
 interface FeatureFleetRow { agent: AgentRef; completedAt: string | null; name: string; state: string; installed: boolean; available: boolean }
-interface TaskFleetRow { agent: AgentRef; completedAt: string | null; name: string; path: string; state: string }
+interface TaskFleetRow { agent: AgentRef; agentId: string; completedAt: string | null; name: string; path: string; state: string }
 interface HotfixFleetRow { agent: AgentRef; completedAt: string | null; id: string; description: string; installedOn: string }
 
 const isServiceRunning = (status: string) => /run|active|started/i.test(status);
@@ -183,6 +183,7 @@ export function InfrastructurePage() {
   const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
   const [tasksSearch, setTasksSearch] = useState('');
   const [svcBusy, setSvcBusy] = useState<string | null>(null);
+  const [taskBusy, setTaskBusy] = useState<string | null>(null);
 
   // Certificates still come from the legacy local-server API.
   const [certs, setCerts] = useState<any[]>([]);
@@ -224,6 +225,24 @@ export function InfrastructurePage() {
       toast(err?.message || t('فشل إرسال أمر الخدمة'), 'error');
     } finally {
       setSvcBusy(null);
+    }
+  };
+
+  // Signed agent write job: run/enable/disable a scheduled task on its host agent.
+  const queueTaskControl = async (tk: TaskFleetRow, action: 'run' | 'enable' | 'disable') => {
+    const key = `${tk.agentId}:${tk.name}:${action}`;
+    setTaskBusy(key);
+    try {
+      await apiV1.createJob({
+        agent_id: tk.agentId,
+        job_type: 'task.control',
+        payload: { task_name: tk.name, task_path: tk.path || '\\', action },
+      });
+      toast(t('تم إرسال أمر المهمة — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال أمر المهمة'), 'error');
+    } finally {
+      setTaskBusy(null);
     }
   };
 
@@ -284,6 +303,7 @@ export function InfrastructurePage() {
     if (!entry || entry.error) return [];
     return asItemArray(entry.result, 'tasks', 'items').map((tk) => ({
       agent: agentRef(ag),
+      agentId: ag.id,
       completedAt: entry.completed_at,
       name: String(pickField(tk, 'TaskName', 'name', 'taskName') || '?'),
       path: String(pickField(tk, 'TaskPath', 'path') || ''),
@@ -973,6 +993,7 @@ export function InfrastructurePage() {
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المسار في Task Scheduler')}</th>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('إجراءات')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -990,6 +1011,28 @@ export function InfrastructurePage() {
                             </span>
                           </td>
                           {agentCell(tk.agent, tk.completedAt)}
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {(['run', 'enable', 'disable'] as const).map((action) => {
+                                const key = `${tk.agentId}:${tk.name}:${action}`;
+                                const busy = taskBusy === key;
+                                return (
+                                  <button
+                                    key={action}
+                                    type="button"
+                                    disabled={taskBusy !== null}
+                                    onClick={() => queueTaskControl(tk, action)}
+                                    style={{
+                                      fontSize: 11, padding: '4px 8px', borderRadius: 6, cursor: taskBusy ? 'wait' : 'pointer',
+                                      border: '1px solid var(--glass-rim)', background: 'var(--surface-card)', color: 'var(--text-2)',
+                                    }}
+                                  >
+                                    {busy ? '…' : action === 'run' ? t('تشغيل') : action === 'enable' ? t('تفعيل') : t('تعطيل')}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
