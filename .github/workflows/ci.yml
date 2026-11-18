@@ -55,7 +55,7 @@ jobs:
           cur = conn.cursor()
           # init_db intentionally ships zero credentials — the control plane
           # is the identity authority. Verify the schema exists instead.
-          cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+          cur.execute('SELECT name FROM sqlite_master WHERE type=\'table\'')
           tables = {r[0] for r in cur.fetchall()}
           required = {'app_users', 'app_sessions', 'bastion_assets', 'security_audit_events', 'port_reservations'}
           missing = required - tables
