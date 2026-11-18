@@ -13,7 +13,7 @@ implemented **and** the consuming page has been switched over.
 | `/api/auth/login`, `/logout`, `/me` | `/api/v1/auth/login`, `/logout`, `/me` (+TOTP MFA) | ✅ **login page prefers v1**; bridge below carries the session to legacy endpoints |
 | `/api/auth/users*` (create/delete/role/password) | `/api/v1/users` + `/users/{u}/role|password|status` | ✅ **unified in v1** — see identity section |
 | `/api/metrics`, `/metrics/history`, `/snapshot`, `/governor/*` | agent `heartbeat` inventory | 🟡 telemetry pipeline not wired to UI |
-| `/api/sessions`, `/sessions/disconnect|logoff|shadow` | `/api/v1/sessions`, `POST /sessions/{id}/terminate` | 🟡 terminate returns 501 until gateway lands |
+| `/api/sessions`, `/sessions/disconnect|logoff|shadow` | `/api/v1/sessions`, `POST /sessions/terminate` + `/sessions/disconnect` | 🟡 agent-backed list + signed `session.logoff`/`session.disconnect` jobs (202 queued); shadow stays legacy (local mstsc); ControlPage fleet rows actionable |
 | `/api/users`, `/api/domain/*`, `/api/users/*` (Windows accounts) | `/api/v1/users`, `/api/v1/groups`, `/api/v1/directory/sync` | 🟡 AD/LDAP sync is an open release gate |
 | `/api/vault/accounts*` | `/api/v1/assets` + `/api/v1/accounts` (+`/reveal`, `DELETE`) | ✅ **VaultPage migrated** — secrets re-encrypted under control-plane vault; reveal is admin-only + audited |
 | `/api/servers*`, `/api/server-groups*` | `/api/v1/assets`, `/api/v1/asset-nodes` | 🟡 **stays legacy for now** — legacy "servers" carry live telemetry (cpu/ram/roles/health) that the v1 Asset model does not; revisit when agent inventory lands |
