@@ -249,7 +249,7 @@ powershell tools/build-release.ps1   # binaries → release/
 4. Job dispatch for UI-triggered actions: `POST /api/v1/jobs` (JobCreateRequest, allowlist `ALLOWED_JOB_TYPES` api.py:123)
 
 ### Next concrete steps (in order)
-1. **Verify agent compiles** — `session.disconnect` C# is UNVERIFIED (no .NET 10 SDK locally; `dotnet --list-sdks` empty). Needs build on machine with SDK before release.
+1. ~~Verify agent compiles~~ ✅ DONE — user-local SDK 10.0.402 at `%LOCALAPPDATA%\Microsoft\dotnet\dotnet.exe` builds `agent/` clean (0 warnings). NOTE: system `C:\Program Files\dotnet` has runtime only, no SDK.
 2. Migrate `InfrastructurePage` tabs to fleet collectors: services→`service.list`, tasks→`scheduled.tasks`, roles→`windows.features`, updates→`hotfix.list`. Page uses `api.getRoles/getServicesList/getTasksList/getUpdates` (lines ~195-231).
 3. Migrate `SecurityPage` firewall state → `firewall.state` collector.
 4. `NetworkStoragePage` disks → `disk.list`; ports → `ports.list`.
@@ -257,6 +257,7 @@ powershell tools/build-release.ps1   # binaries → release/
 6. P6 remainder: Inno Setup build (`packaging/asaas.iss` via ISCC), agent-as-service install test, clean VM install test.
 
 ### Known issues
+- ~~agent C# unverified~~ resolved above
 - enterprise_v25/v30 tests fail: need live server + `admin@asaas2026` (stale fixture vs live DB password).
 - `frontend/ui-audit.mjs` unused `vh`; `AssetsPage.tsx` unnecessary `?? {}` — oxlint warnings.
 - Login throttle `_login_attempts` is in-memory per-process (fine for single worker).
