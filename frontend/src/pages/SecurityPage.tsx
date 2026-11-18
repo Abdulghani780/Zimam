@@ -130,6 +130,7 @@ export function SecurityPage() {
   const [checkingCmd, setCheckingCmd] = useState(false);
   const [fleetSec, setFleetSec] = useState<FleetSecAgent[]>([]);
   const [fwRuleBusy, setFwRuleBusy] = useState<string | null>(null);
+  const [startupBusy, setStartupBusy] = useState<string | null>(null);
   const [fwAddAgent, setFwAddAgent] = useState<string | null>(null);
   const [fwForm, setFwForm] = useState({ display_name: '', direction: 'inbound', rule_action: 'allow', protocol: 'any', local_port: '', profile: 'any' });
 
@@ -239,6 +240,20 @@ export function SecurityPage() {
       toast(err?.message || t('فشل إرسال الأمر'), 'error');
     } finally {
       setFwRuleBusy(null);
+    }
+  };
+
+  // Signed agent write job: remove a Run/RunOnce autostart value.
+  const queueStartupRemove = async (ag: FleetSecAgent, key: string, name: string) => {
+    const busyKey = `${ag.id}:${key}:${name}`;
+    setStartupBusy(busyKey);
+    try {
+      await apiV1.createJob({ agent_id: ag.id, job_type: 'startup.program.remove', payload: { key, name } });
+      toast(t('تم إرسال أمر إزالة برنامج بدء التشغيل — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setStartupBusy(null);
     }
   };
 
@@ -629,8 +644,25 @@ export function SecurityPage() {
                                   {String(r.hive ?? '')}{String(r.key ?? '').includes('RunOnce') ? ' · RunOnce' : ''}
                                 </span>
                               </div>
-                              <div style={{ fontSize: 9, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
-                                {String(r.command ?? r.Command ?? '')}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                <div style={{ fontSize: 9, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', wordBreak: 'break-all', whiteSpace: 'pre-wrap', flex: 1 }}>
+                                  {String(r.command ?? r.Command ?? '')}
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={startupBusy !== null}
+                                  onClick={() => {
+                                    const rk = String(r.key ?? '');
+                                    const rn = String(r.name ?? r.Name ?? '');
+                                    if (!rk || !rn) return;
+                                    if (window.confirm(t(`إزالة «${rn}» من مفاتيح بدء التشغيل على ${ag.linked_asset?.name || ag.name || ag.hostname || ag.id.slice(0, 8)}؟`))) {
+                                      void queueStartupRemove(ag, rk, rn);
+                                    }
+                                  }}
+                                  style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: startupBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--status-danger)', flexShrink: 0 }}
+                                >
+                                  {startupBusy === `${ag.id}:${String(r.key ?? '')}:${String(r.name ?? r.Name ?? '')}` ? '…' : t('إزالة')}
+                                </button>
                               </div>
                             </div>
                           ))}

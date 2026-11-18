@@ -562,3 +562,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `hotfix.install` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `InfrastructurePage` بطاقة «أدوار ومهام مجدولة وتحديثات وكلاء أساس» — داخل قسم «آخر التحديثات المثبتة» حقل مسار `.msu` + زر «تثبيت .msu» مع confirm → `apiV1.createJob('hotfix.install')`.
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب وسم الملف من طرف المشغّل (الوكيل لا يحمّل من الإنترنت) + agent مُعاد نشره.
+### 12.18 ثاني عشر agent write job — `startup.program.remove`
+
+- **Agent**: `startup.program.remove` في `AllowedJobs` + `StartupProgramRemove(payload)` — `{key, name}`؛ `key` مقيّد بقائمة بيضاء من 5 مفاتيح Run/RunOnce (HKLM Run/RunOnce/WOW6432Node Run + HKCU Run/RunOnce) و`name` اسم قيمة الريجستري (حتى 512 حرف، مع escaping للفواصل) → `Remove-ItemProperty` ثم تأكيد بالغياب عبر `GetValueNames()`.
+- **Control plane**: `startup.program.remove` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `SecurityPage` قسم «برامج بدء التشغيل (Run keys)» — زر «إزالة» أحمر لكل صف مع confirm → `apiV1.createJob('startup.program.remove', {key, name})`.
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب agent مُعاد نشره.

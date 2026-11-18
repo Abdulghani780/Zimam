@@ -83,7 +83,7 @@
 1. auth ✅ (منجزة — login يفضّل v1 + bridge)
 2. assets/accounts/policies → tokens → sessions → governor/telemetry
 3. كل شريحة: endpoint حي + صفحة محوّلة + حذف legacy بنفس الـ commit
-4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` + `feature.toggle` + `firewall.rule` (+ `firewall.rules` collector) + `docker.container` (+ `docker.containers` collector) + `cert.remove` (+ `cert.list` collector) + `disk.state` (+ `disk.physical` collector) + `hotfix.install` ✅ end-to-end؛ ~4 domains remain (startup.program.remove, local.users, software uninstall, share create UI)
+4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` + `feature.toggle` + `firewall.rule` (+ `firewall.rules` collector) + `docker.container` (+ `docker.containers` collector) + `cert.remove` (+ `cert.list` collector) + `disk.state` (+ `disk.physical` collector) + `hotfix.install` + `startup.program.remove` ✅ end-to-end؛ ~3 domains remain (local.users, software uninstall, share create UI)
 
 ### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:

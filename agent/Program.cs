@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -331,6 +331,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "cert.remove" => CertRemove(payload),
         "disk.state" => DiskState(payload),
         "hotfix.install" => HotfixInstall(payload),
+        "startup.program.remove" => StartupProgramRemove(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -663,6 +664,31 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         if (code != 0 && code != 3010)
             throw new InvalidOperationException($"wusa exited {code}: {(stderr.Trim().Length > 300 ? stderr.Trim()[..300] : stderr.Trim())}");
         return new { path, exit_code = code, reboot_required = code == 3010, executed = true };
+    }
+
+    // Signed write job: remove a value from a Run/RunOnce autostart key.
+    // payload: {"key": "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run", "name": "OneDrive"}
+    // Only the exact whitelisted autostart keys may be targeted.
+    private static object StartupProgramRemove(JsonElement payload)
+    {
+        var key = payload.TryGetProperty("key", out var k) ? k.GetString() : null;
+        var name = payload.TryGetProperty("name", out var n) ? n.GetString() : null;
+        var allowedKeys = new[]
+        {
+            @"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            @"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+            @"HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
+            @"HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            @"HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+        };
+        if (key == null || !allowedKeys.Contains(key))
+            throw new InvalidOperationException("startup.program.remove key must be one of the whitelisted Run/RunOnce keys");
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 512)
+            throw new InvalidOperationException("startup.program.remove requires payload.name (registry value name)");
+        var escKey = key.Replace("'", "''");
+        var escName = name.Replace("'", "''");
+        PsProbe.Run($"Remove-ItemProperty -LiteralPath '{escKey}' -Name '{escName}' -ErrorAction Stop; if((Get-Item -LiteralPath '{escKey}').GetValueNames() -contains '{escName}'){{ throw 'value still present after removal' }}");
+        return new { key, name, executed = true };
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,
