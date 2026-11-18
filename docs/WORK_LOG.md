@@ -631,3 +631,7 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 
 - **oxlint**: `npx oxlint src` = صفر تحذيرات (أُزيل `?? {}` الزائد في AssetsPage:179 و`vh` غير المستخدم في ui-audit.mjs).
 - **مراجعة control_plane modules**: mtls (CA ECDSA + إصدار/تدوير)، replication (file/sftp/s3 عبر paramiko+boto3 lazy)، sftp (paramiko sessions + TTL GC)، recording (jsonl + replay stream)، directory (ldap3 connector) — كلها تنفيذ حقيقي، لا stubs؛ `pass` الوحيدة في مسارات cleanup مشروعة.
+
+### 12.29 runbook التحقق على VM نظيف — `docs/CLEAN_VM_VALIDATION.md`
+
+- دليل خطوة-بخطوة لبوابة Phase 6: تثبيت → `validate-clean-vm.ps1` → إعادة تشغيل → wizard/دخول → تسجيل وكيل + مهمة `system.info` موقعة → (اختياري) mTLS/SFTP/recording/uninstall. كل خطوة بمعيار PASS واضح وقائمة sign-off نهائية.
