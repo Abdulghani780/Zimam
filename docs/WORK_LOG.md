@@ -453,3 +453,12 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - Endpoints (admin فقط): `GET /pki/status`، `POST /pki/ca`، `POST /pki/ca/rotate` (أرشفة القديمة)، `GET /pki/ca.crt`، `POST /agents/{id}/cert` → PEM bundle + حفظ على القرص + audit.
 - **تحقق**: `ensure_ca` + `issue_client_cert` جُرّبتا فعلياً (serial/expiry صحيحان)؛ 10/10 control_plane tests ✅.
 - **متبقٍ كنشر**: إنفاذ client-cert على الـ TLS terminator (proxy/uvicorn) + تحميل الوكيل لشهادته — موثق في CONTROL_PLANE.md.
+
+### 12.3 SSH/SFTP proxy data path
+
+- SSH الطرفي كان يعمل عبر guacd gateway. **SFTP data path** نُفّذ:
+  - `asaas_control/sftp.py`: جلسات paramiko server-side (in-memory، TTL 15 دقيقة، lazy import — بدون paramiko يرجع 503).
+  - Endpoints `/api/v1/sftp/*`: `POST /session` (يفتح paramiko SFTP ببيانات الاعتماد من الـ vault — لا تصل للمتصفح) + list/stat/download/upload/mkdir/rename/delete + `DELETE /session/{id}`.
+  - الصلاحيات: فتح الجلسة يتطلب policy بـ action `connect`؛ عمليات الملفات تتطلب action `sftp` (list/stat/download/upload/mkdir/rename/delete)؛ admin يتجاوز كالمعتاد؛ audit على الفتح/الفشل.
+  - `paramiko>=3.4,<4` في requirements + ثُبّت في `.venv` (3.5.1).
+- **تحقق**: `py_compile` + `import asaas_control.api` ✅ في venv؛ session manager (get/wrong-user/close) ✅؛ 10/10 control_plane tests ✅. اختبار SFTP حي على سيرفر SSH حقيقي متبقٍ.

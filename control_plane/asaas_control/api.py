@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
@@ -24,6 +24,7 @@ from .connection_tokens import ConnectionTokenStore
 from .gateway import DEFAULT_PORTS, SUPPORTED_PROTOCOLS, enabled as gateway_enabled, open_session, parse_instruction
 from .identity import verify_legacy_password
 from .license import LicenseError, activate_license, deactivate_license, get_license_state
+from . import sftp as sftp_path
 from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, JitGrantRow, User
 from .mtls import ca_cert_pem, ca_status, ensure_ca, issue_client_cert, rotate_ca
 from .permissions import AccessContext, AccessPolicy, PermissionEngine
@@ -1351,3 +1352,179 @@ def verify_audit(_: User = Depends(_current_user)) -> dict:
         records.append(AuditRecord(row.sequence, row.created_at, row.actor_id, row.action, row.target_id, json.loads(row.payload_json), row.previous_hash, row.event_hash))
     result = chain.verify(records)
     return {"chain_intact": result.intact, "failed_index": result.failed_index, "root_signature": result.root_signature}
+
+
+# --- SFTP data path (paramiko sessions; credentials stay server-side) -------
+
+
+class SftpOpenRequest(BaseModel):
+    asset_id: str
+    account_id: str
+
+
+class SftpPathRequest(BaseModel):
+    path: str
+
+
+class SftpRenameRequest(BaseModel):
+    old_path: str
+    new_path: str
+
+
+def _load_policies(db) -> list[AccessPolicy]:
+    policies = []
+    for row in db.scalars(select(AccessPolicyRow)):
+        policies.append(AccessPolicy(frozenset(json.loads(row.subject_ids)), frozenset(json.loads(row.asset_ids)), frozenset(json.loads(row.account_ids)), frozenset(json.loads(row.protocols)), frozenset(json.loads(row.actions)), row.valid_from, row.valid_until, row.effect))
+    return policies
+
+
+def _authorize_file_access(user: User, asset_id: str, account_id: str, action: str) -> None:
+    """Admins bypass; others need an allow policy matching action 'sftp'."""
+    if user.is_admin:
+        return
+    with db_session() as db:
+        context = AccessContext(user.id, frozenset(), asset_id, account_id, "sftp", action, datetime.now(UTC))
+        if not PermissionEngine(_load_policies(db)).is_allowed(context):
+            raise HTTPException(status_code=403, detail="Access policy denied")
+
+
+def _sftp_session_or_404(sid: str, user: User):
+    try:
+        return sftp_path.get_session(sid, user_id=user.id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="SFTP session not found or expired") from exc
+
+
+@router.post("/sftp/session", status_code=201)
+def sftp_open(payload: SftpOpenRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    with db_session() as db:
+        account = db.get(Account, payload.account_id)
+        asset = db.get(Asset, payload.asset_id)
+        if not account or not asset or account.asset_id != asset.id or account.protocol not in ("ssh", "sftp"):
+            raise HTTPException(status_code=404, detail="SSH account/asset binding not found")
+        if not account.secret_blob:
+            raise HTTPException(status_code=409, detail="Account has no stored credential")
+        context = AccessContext(user.id, frozenset(), asset.id, account.id, "sftp", "connect", datetime.now(UTC))
+        if not user.is_admin and not PermissionEngine(_load_policies(db)).is_allowed(context):
+            raise HTTPException(status_code=403, detail="Access policy denied")
+        try:
+            secret = EnvelopeVault(settings.vault_key()).open(
+                EnvelopeVault.loads(account.secret_blob), account_id=asset.id
+            ).decode("utf-8")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail="Unable to decrypt stored secret") from exc
+        append_audit(db, actor_id=user.id, action="sftp.session_open", target_id=asset.id, payload={"account_id": account.id, "account": account.username})
+    try:
+        sess = sftp_path.open_session(
+            user_id=user.id,
+            asset_id=asset.id,
+            account_id=account.id,
+            hostname=asset.hostname,
+            port=asset.port or 22,
+            username=account.username,
+            password=secret,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        with db_session() as db:
+            append_audit(db, actor_id=user.id, action="sftp.session_failed", target_id=asset.id, payload={"error": str(exc)[:200]})
+        raise HTTPException(status_code=502, detail=f"SFTP connect failed: {exc}") from exc
+    return {"session_id": sess.sid, "asset_id": asset.id, "account": account.username, "ttl_seconds": sftp_path.SESSION_TTL_SECONDS}
+
+
+@router.get("/sftp/session/{sid}/list")
+def sftp_list(sid: str, path: str = "/", user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    sess = _sftp_session_or_404(sid, user)
+    _authorize_file_access(user, sess.asset_id, sess.account_id, "list")
+    try:
+        return {"path": path, "entries": sftp_path.list_dir(sess, path)}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SFTP list failed: {exc}") from exc
+
+
+@router.get("/sftp/session/{sid}/stat")
+def sftp_stat(sid: str, path: str, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    sess = _sftp_session_or_404(sid, user)
+    _authorize_file_access(user, sess.asset_id, sess.account_id, "stat")
+    try:
+        return sftp_path.stat_path(sess, path)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SFTP stat failed: {exc}") from exc
+
+
+@router.get("/sftp/session/{sid}/download")
+def sftp_download(sid: str, path: str, user: User = Depends(_current_user)) -> StreamingResponse:
+    _require_writer(user)
+    sess = _sftp_session_or_404(sid, user)
+    _authorize_file_access(user, sess.asset_id, sess.account_id, "download")
+    try:
+        fh = sftp_path.open_download(sess, path)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SFTP download failed: {exc}") from exc
+    filename = path.rsplit("/", 1)[-1] or "download"
+    return StreamingResponse(fh, media_type="application/octet-stream", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.post("/sftp/session/{sid}/upload", status_code=201)
+async def sftp_upload(sid: str, path: str, request: Request, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    sess = _sftp_session_or_404(sid, user)
+    _authorize_file_access(user, sess.asset_id, sess.account_id, "upload")
+    body = await request.body()
+    try:
+        with sftp_path.open_upload(sess, path) as fh:
+            fh.write(body)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SFTP upload failed: {exc}") from exc
+    return {"uploaded": path, "bytes": len(body)}
+
+
+@router.post("/sftp/session/{sid}/mkdir", status_code=201)
+def sftp_mkdir(sid: str, payload: SftpPathRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    sess = _sftp_session_or_404(sid, user)
+    _authorize_file_access(user, sess.asset_id, sess.account_id, "mkdir")
+    try:
+        sftp_path.mkdir(sess, payload.path)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SFTP mkdir failed: {exc}") from exc
+    return {"created": payload.path}
+
+
+@router.post("/sftp/session/{sid}/rename")
+def sftp_rename(sid: str, payload: SftpRenameRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    sess = _sftp_session_or_404(sid, user)
+    _authorize_file_access(user, sess.asset_id, sess.account_id, "rename")
+    try:
+        sftp_path.rename(sess, payload.old_path, payload.new_path)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SFTP rename failed: {exc}") from exc
+    return {"renamed": payload.old_path, "to": payload.new_path}
+
+
+@router.post("/sftp/session/{sid}/delete")
+def sftp_delete(sid: str, payload: SftpPathRequest, user: User = Depends(_current_user)) -> dict:
+    _require_writer(user)
+    sess = _sftp_session_or_404(sid, user)
+    _authorize_file_access(user, sess.asset_id, sess.account_id, "delete")
+    try:
+        info = sftp_path.stat_path(sess, payload.path)
+        if info["is_dir"]:
+            sftp_path.rmdir(sess, payload.path)
+        else:
+            sftp_path.remove(sess, payload.path)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"SFTP delete failed: {exc}") from exc
+    return {"deleted": payload.path}
+
+
+@router.delete("/sftp/session/{sid}", status_code=204)
+def sftp_close(sid: str, user: User = Depends(_current_user)) -> Response:
+    _require_writer(user)
+    sftp_path.close_session(sid, user_id=user.id)
+    return Response(status_code=204)

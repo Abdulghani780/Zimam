@@ -87,7 +87,7 @@
 
 ### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:
-- SSH/SFTP proxy data path
+- ~~SSH/SFTP proxy data path~~ ✅ SSH عبر guacd gateway؛ SFTP عبر `asaas_control/sftp.py` (paramiko sessions + `/api/v1/sftp/*` — list/stat/download/upload/mkdir/rename/delete)
 - ~~Redis-backed token consumption (multi-worker)~~ ✅ `ASAAS_REDIS_URL` → atomic `SET NX EX` في `ConnectionTokenStore`؛ fallback ذاكرة للـ single-worker
 - ~~live session terminate~~ ✅ (signed `session.logoff`/`session.disconnect` agent jobs via `/api/v1/sessions/*`)
 - screen/terminal recording + replay
