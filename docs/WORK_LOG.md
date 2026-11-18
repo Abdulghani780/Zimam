@@ -543,3 +543,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `docker.containers` + `docker.container` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `ContainersPage` تبويب Docker — بطاقة «حاويات وكلاء أساس» لكل وكيل (قائمة + أزرار تشغيل/إيقاف/إعادة/إيقاف مؤقت/استئناف حسب الحالة، مع confirm) → `apiV1.createJob('docker.container')`؛ `AgentsPage` أضيف `docker.containers` للقائمتين.
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج docker CLI على الوكيل + agent مُعاد نشره.
+
+### 12.15 تاسع agent write job — `cert.remove` (+ جامع `cert.list`)
+
+- **Agent**: `cert.list` (قراءة) في `AllowedJobs` — `Get-ChildItem Cert:\LocalMachine\My` (أول 200 شهادة: subject/issuer/thumbprint/تواريخ/has_private_key/friendly_name). `cert.remove` (كتابة) في `AllowedJobs` + `CertRemove(payload)` — `{thumbprint (40|64 hex), store?}` عبر `Get-Item`/`Remove-Item Cert:\LocalMachine\<store>\<thumb>` ثم تأكيد بالغياب؛ قائمة بيضاء للمخازن (My/Root/CA/TrustedPeople/...).
+- **Control plane**: `cert.list` + `cert.remove` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `InfrastructurePage` تبويب الشهادات — بطاقة «شهادات وكلاء أساس» لكل وكيل (قائمة + شارة «منتهية» + زر حذف مع confirm) → `apiV1.createJob('cert.remove')`؛ الجدول القديم (local server) بقي أسفله. `AgentsPage` أضيف `cert.list` للقائمتين.
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج agent مُعاد نشره.

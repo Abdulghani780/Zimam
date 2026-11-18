@@ -64,6 +64,7 @@ interface FleetNetAgent {
   features: ResultEntry | null;
   tasks: ResultEntry | null;
   hotfixes: ResultEntry | null;
+  certs: ResultEntry | null;
 }
 
 // Generic row extraction for agent collector payloads (array or {items|...}).
@@ -185,6 +186,7 @@ export function InfrastructurePage() {
   const [svcBusy, setSvcBusy] = useState<string | null>(null);
   const [taskBusy, setTaskBusy] = useState<string | null>(null);
   const [featBusy, setFeatBusy] = useState<string | null>(null);
+  const [certBusy, setCertBusy] = useState<string | null>(null);
 
   // Certificates still come from the legacy local-server API.
   const [certs, setCerts] = useState<any[]>([]);
@@ -200,13 +202,15 @@ export function InfrastructurePage() {
           let features: ResultEntry | null = null;
           let tasks: ResultEntry | null = null;
           let hotfixes: ResultEntry | null = null;
+          let certs: ResultEntry | null = null;
           const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
           net = r?.results?.['network.info'] ?? null;
           services = r?.results?.['service.list'] ?? null;
           features = r?.results?.['windows.features'] ?? null;
           tasks = r?.results?.['scheduled.tasks'] ?? null;
           hotfixes = r?.results?.['hotfix.list'] ?? null;
-          return { ...ag, net, services, features, tasks, hotfixes };
+          certs = r?.results?.['cert.list'] ?? null;
+          return { ...ag, net, services, features, tasks, hotfixes, certs };
         }),
       );
       setFleetNet(detailed);
@@ -259,6 +263,21 @@ export function InfrastructurePage() {
       toast(err?.message || t('فشل إرسال الأمر'), 'error');
     } finally {
       setFeatBusy(null);
+    }
+  };
+
+  // Signed agent write job: remove a certificate from LocalMachine\My by thumbprint.
+  const queueCertRemove = async (agentId: string, thumbprint: string, subject: string, hostName: string) => {
+    const key = `${agentId}:${thumbprint}`;
+    if (!window.confirm(t(`حذف الشهادة «${subject}» من ${hostName}؟ لا يمكن التراجع.`))) return;
+    setCertBusy(key);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'cert.remove', payload: { thumbprint, store: 'My' } });
+      toast(t('تم إرسال أمر حذف الشهادة — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setCertBusy(null);
     }
   };
 
@@ -1125,8 +1144,90 @@ export function InfrastructurePage() {
         </div>
       )}
 
-      {/* Tab 5: Certificates (legacy local-server API — no fleet collector yet) */}
+      {/* Tab 5: Certificates — fleet cert.list collector + cert.remove write jobs, plus legacy local store */}
       {activeTab === 'certs' && (
+        <>
+          {fleetNet.length > 0 && (
+            <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <ShieldCheck size={18} style={{ color: 'var(--accent)' }} />
+                  <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('شهادات وكلاء أساس')}</h3>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('cert.list + حذف شهادات موقّع (cert.remove)')}</span>
+                </div>
+                <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+                  {t('إدارة الوكلاء')} ←
+                </NavLink>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+                {fleetNet.map((ag) => {
+                  const entry = ag.certs;
+                  const rows = entry && !entry.error ? asItemArray(entry.result, 'certificates', 'items', 'certs') : [];
+                  const ref = agentRef(ag);
+                  return (
+                    <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Bot size={15} style={{ color: 'var(--accent)' }} />
+                          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ref.label}</span>
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                          {ag.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                        {ref.hostname}{rows.length ? ` · ${rows.length} ${t('شهادة')}` : ''}
+                      </div>
+                      {!entry ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الشهادات بعد — أرسله من صفحة الوكلاء (cert.list).')}</div>
+                      ) : entry.error ? (
+                        <div className="text-status-danger" style={{ fontSize: 11 }}>{entry.error}</div>
+                      ) : rows.length === 0 ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا شهادات في مخزن LocalMachine\\My.')}</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto' }}>
+                          {rows.slice(0, 20).map((c: any, i: number) => {
+                            const subject = String(pickField(c, 'subject', 'Subject', 'friendly_name', 'FriendlyName') || '?');
+                            const issuer = String(pickField(c, 'issuer', 'Issuer') || '');
+                            const thumb = String(pickField(c, 'thumbprint', 'Thumbprint') || '');
+                            const notAfter = String(pickField(c, 'not_after', 'NotAfter') || '');
+                            const expired = notAfter ? new Date(notAfter) < new Date() : false;
+                            const key = `${ag.id}:${thumb || i}`;
+                            return (
+                              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                                <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left', flex: 1 }} title={`${subject} — ${issuer}`}>
+                                  {subject}
+                                </span>
+                                <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                  {notAfter && <span style={{ color: expired ? 'var(--unpaid)' : 'var(--text-3)' }}>{notAfter}</span>}
+                                  {expired && <span style={{ color: 'var(--unpaid)', fontWeight: 700 }}>{t('منتهية')}</span>}
+                                  {thumb && (
+                                    <button
+                                      type="button"
+                                      disabled={certBusy !== null}
+                                      onClick={() => void queueCertRemove(ag.id, thumb, subject, ref.label)}
+                                      style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: certBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--status-danger, #dc2626)' }}
+                                    >
+                                      {certBusy === key ? '…' : t('حذف')}
+                                    </button>
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {rows.length > 20 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{rows.length - 20} {t('شهادة أخرى')}</div>}
+                          {entry.completed_at && (
+                            <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(entry.completed_at).toLocaleString('ar-SA')}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
             {t('شهادات الأمان المحلية')} (LocalMachine\My Store)
@@ -1162,6 +1263,7 @@ export function InfrastructurePage() {
             </table>
           </div>
         </Card>
+        </>
       )}
     </div>
   );

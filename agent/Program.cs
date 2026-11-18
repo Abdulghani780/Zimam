@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule", "docker.containers", "docker.container"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -301,6 +301,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "firewall.state" => FirewallProbe.State(),
         "firewall.rules" => PsProbe.Run("Get-NetFirewallRule | Sort-Object DisplayName | Select-Object -First 500 Name,DisplayName,Direction,Action,Enabled,Profile | ConvertTo-Json -Compress -Depth 3"),
         "docker.containers" => PsProbe.Run("docker ps -a --format '{{json .}}' | ForEach-Object { $_ | ConvertFrom-Json } | Select-Object ID,Names,Image,Status,State,Ports | ConvertTo-Json -Compress -Depth 3"),
+        "cert.list" => PsProbe.Run("Get-ChildItem Cert:\\LocalMachine\\My -ErrorAction SilentlyContinue | Sort-Object NotAfter | Select-Object -First 200 Subject,Issuer,Thumbprint,NotAfter,NotBefore,HasPrivateKey,FriendlyName | ForEach-Object { [pscustomobject]@{ subject=$_.Subject; issuer=$_.Issuer; thumbprint=$_.Thumbprint; not_after=$_.NotAfter.ToString('yyyy-MM-dd'); not_before=$_.NotBefore.ToString('yyyy-MM-dd'); has_private_key=$_.HasPrivateKey; friendly_name=$_.FriendlyName } } | ConvertTo-Json -Compress -Depth 3"),
         "inventory.collect" => new
         {
             hostname = Environment.MachineName,
@@ -326,6 +327,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "feature.toggle" => FeatureToggle(payload),
         "firewall.rule" => FirewallRuleControl(payload),
         "docker.container" => DockerContainerControl(payload),
+        "cert.remove" => CertRemove(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -587,6 +589,26 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         var escaped = container.Replace("'", "''");
         PsProbe.Run($"docker {verb} '{escaped}'; docker inspect '{escaped}' --format '{{{{.State.Status}}}}'");
         return new { container, action, executed = true };
+    }
+
+    // Signed write job: remove a certificate from a LocalMachine store by thumbprint.
+    // payload: {"thumbprint": "<40|64 hex>", "store": "My"|"Root"|"CA"|"TrustedPeople"|"TrustedPublisher"|"WebHosting"|"Disallowed"|"AddressBook"|"TrustedDevices"}
+    private static object CertRemove(JsonElement payload)
+    {
+        var thumb = payload.TryGetProperty("thumbprint", out var t) ? t.GetString() : null;
+        var store = payload.TryGetProperty("store", out var st) && !string.IsNullOrWhiteSpace(st.GetString()) ? st.GetString()! : "My";
+        if (string.IsNullOrWhiteSpace(thumb))
+            throw new InvalidOperationException("cert.remove requires payload.thumbprint");
+        var clean = thumb.Replace(" ", "").Replace(":", "").ToUpperInvariant();
+        if (clean.Length is not (40 or 64) || clean.Any(c => !Uri.IsHexDigit(c)))
+            throw new InvalidOperationException("thumbprint must be 40 or 64 hex characters");
+        var allowedStores = new[] { "My", "Root", "CA", "TrustedPeople", "TrustedPublisher", "WebHosting", "Disallowed", "AddressBook", "TrustedDevices" };
+        if (!allowedStores.Contains(store, StringComparer.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"cert.remove store must be one of: {string.Join(", ", allowedStores)}");
+        var storeName = allowedStores.First(s2 => s2.Equals(store, StringComparison.OrdinalIgnoreCase));
+        var path = $"Cert:\\LocalMachine\\{storeName}\\{clean}";
+        PsProbe.Run($"Get-Item '{path}' -ErrorAction Stop | Out-Null; Remove-Item '{path}' -Force; Get-Item '{path}' -ErrorAction SilentlyContinue | Select-Object Thumbprint | ConvertTo-Json -Compress");
+        return new { thumbprint = clean, store = storeName, executed = true };
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,
