@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - AI Port Isolation Guard Service.
+"""ASAAS v2.5 - AI Port Isolation Guard Service.
 
 Guarantees zero port collision between concurrent users, automatically binding
 ports to specific user sessions and suggesting alternate free ports.
@@ -66,7 +66,7 @@ KNOWN_PORT_SERVICES: Dict[int, str] = {
     6379: 'Redis In-Memory Cache',
     8080: 'HTTP Alternate / Web Proxy',
     8443: 'HTTPS Alternate',
-    8765: 'ASAAS Server Control Hub',
+    8765: 'ASAAS Hub',
     9000: 'SonarQube / Web Console',
     9090: 'Prometheus / Cockpit',
     27017: 'MongoDB Database',
@@ -380,6 +380,11 @@ class PortIsolationService:
             'project_name': project_name or f'Project on {assigned}',
             'claimed_at': time.time(),
         }
+        try:
+            from ..infrastructure.db import db_set_reservation
+            db_set_reservation(assigned, username, project_name or '')
+        except Exception:
+            pass
 
         return {
             'ok': True,
@@ -393,6 +398,12 @@ class PortIsolationService:
     @classmethod
     def release_port(cls, port: int, username: str = '') -> Dict[str, Any]:
         """Releases an explicit port reservation."""
+        try:
+            from ..infrastructure.db import db_remove_reservation
+            db_remove_reservation(port)
+        except Exception:
+            pass
+
         if port in cls._claims:
             del cls._claims[port]
             return {'ok': True, 'port': port, 'message': f'تم إلغاء حجز المنفذ {port} وإتاحته للجميع.'}

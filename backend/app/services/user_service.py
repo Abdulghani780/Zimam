@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2 - Local Windows User & Access Management Service.
+"""ASAAS v2 - Local Windows User & Access Management Service.
 
 Lists Windows user accounts, administrator rights, RDP access permissions, and session associations.
 """
@@ -17,6 +17,21 @@ from ..infrastructure.win32_wts import Win32WtsService
 
 class UserService:
     """Service for querying and managing local Windows user accounts and permissions."""
+
+    @staticmethod
+    def _password_policy_error(password: str) -> str | None:
+        """Enforces minimum length plus composition complexity for Windows account passwords."""
+        if not password or len(password) < 8:
+            return 'كلمة المرور قصيرة جداً (الحد الأدنى 8 رموز).'
+        classes = sum([
+            bool(re.search(r'[a-z]', password)),
+            bool(re.search(r'[A-Z]', password)),
+            bool(re.search(r'\d', password)),
+            bool(re.search(r'[^a-zA-Z0-9]', password)),
+        ])
+        if classes < 3:
+            return 'كلمة المرور ضعيفة: استخدم 3 أنواع على الأقل من (أحرف صغيرة، كبيرة، أرقام، رموز).'
+        return None
 
     @staticmethod
     def _get_group_members(group_name: str) -> Set[str]:
@@ -155,23 +170,72 @@ class UserService:
 
         return sorted(users, key=lambda x: (not x.enabled, x.username))
 
+    # --- Netapi32 user provisioning (keeps passwords out of the process list) ---
+
+    class _USER_INFO_1(ctypes.Structure):
+        _fields_ = [
+            ('usri1_name', wintypes.LPWSTR),
+            ('usri1_password', wintypes.LPWSTR),
+            ('usri1_password_age', wintypes.DWORD),
+            ('usri1_priv', wintypes.DWORD),
+            ('usri1_home_dir', wintypes.LPWSTR),
+            ('usri1_comment', wintypes.LPWSTR),
+            ('usri1_flags', wintypes.DWORD),
+            ('usri1_script_path', wintypes.LPWSTR),
+        ]
+
+    class _USER_INFO_1003(ctypes.Structure):
+        _fields_ = [('usri1003_password', wintypes.LPWSTR)]
+
+    _NERR_MESSAGES = {
+        5: 'تم رفض الوصول (Access Denied). يتطلب ذلك تشغيل السيرفر كمسؤول.',
+        2224: 'اسم المستخدم موجود مسبقاً على هذا الجهاز.',
+        2227: 'حساب المستخدم غير موجود.',
+        2245: 'كلمة المرور لا تستوفي سياسة التعقيد في هذا الجهاز.',
+    }
+
+    @classmethod
+    def _netapi_error(cls, code: int) -> str:
+        return cls._NERR_MESSAGES.get(code, f'فشلت عملية حساب المستخدم (رمز الخطأ NetApi: {code}).')
+
+    @staticmethod
+    def _net_user_add(username: str, password: str, comment: str = '') -> int:
+        """Creates a local account via NetUserAdd — the password never touches a command line."""
+        netapi32 = ctypes.WinDLL('netapi32', use_last_error=True)
+        ui = UserService._USER_INFO_1()
+        ui.usri1_name = username
+        ui.usri1_password = password
+        ui.usri1_priv = 1  # USER_PRIV_USER
+        ui.usri1_home_dir = None
+        ui.usri1_comment = comment or None
+        ui.usri1_flags = 0x0200  # UF_NORMAL_ACCOUNT
+        ui.usri1_script_path = None
+        parm_err = wintypes.DWORD()
+        return netapi32.NetUserAdd(None, 1, ctypes.byref(ui), ctypes.byref(parm_err))
+
+    @staticmethod
+    def _net_user_set_password(username: str, password: str) -> int:
+        """Sets a local account password via NetUserSetInfo level 1003."""
+        netapi32 = ctypes.WinDLL('netapi32', use_last_error=True)
+        ui = UserService._USER_INFO_1003()
+        ui.usri1003_password = password
+        return netapi32.NetUserSetInfo(None, username, 1003, ctypes.byref(ui), None)
+
     @staticmethod
     def create_user(username: str, password: str, full_name: str = '', is_rdp: bool = True, is_admin: bool = False) -> Dict[str, Any]:
         """Creates a local Windows user and assigns requested group privileges."""
         clean_user = username.strip()
         if not clean_user or not re.match(r'^[a-zA-Z0-9_\-\.]{2,30}$', clean_user):
             return {'ok': False, 'error': 'اسم المستخدم غير صالح. استخدم أحرف إنجليزية وأرقام فقط.'}
-        if not password or len(password) < 4:
-            return {'ok': False, 'error': 'كلمة المرور قصيرة جداً.'}
+        pw_error = UserService._password_policy_error(password)
+        if pw_error:
+            return {'ok': False, 'error': pw_error}
 
         try:
-            # 1. Create user
-            cmd = ['net', 'user', clean_user, password, '/add']
-            if full_name:
-                cmd.extend(['/comment:' + full_name.strip()])
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, creationflags=0x08000000)
-            if res.returncode != 0:
-                return {'ok': False, 'error': res.stderr.strip() or res.stdout.strip() or 'فشل إنشاء المستخدم.'}
+            # 1. Create user (password stays inside the process, never in argv)
+            code = UserService._net_user_add(clean_user, password, full_name.strip())
+            if code != 0:
+                return {'ok': False, 'error': UserService._netapi_error(code)}
 
             # 2. Add to Remote Desktop Users if requested
             if is_rdp:
@@ -232,14 +296,13 @@ class UserService:
         clean_user = username.strip()
         if not clean_user or not new_password:
             return {'ok': False, 'error': 'اسم المستخدم وكلمة المرور الجديدة مطلوبان.'}
+        pw_error = UserService._password_policy_error(new_password)
+        if pw_error:
+            return {'ok': False, 'error': pw_error}
         try:
-            cmd = ['net', 'user', clean_user, new_password]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10, creationflags=0x08000000)
-            if res.returncode != 0:
-                err_text = res.stderr.strip() or res.stdout.strip()
-                if 'Access is denied' in err_text or '5' in err_text:
-                    return {'ok': False, 'error': 'تم رفض الوصول (Access Denied). يتطلب تغيير كلمة مرور مستخدمي ويندوز تشغيل السيرفر كمسؤول (Run as Administrator).'}
-                return {'ok': False, 'error': err_text or 'فشل تغيير كلمة مرور المستخدم.'}
+            code = UserService._net_user_set_password(clean_user, new_password)
+            if code != 0:
+                return {'ok': False, 'error': UserService._netapi_error(code)}
             return {'ok': True, 'username': clean_user, 'message': f'تم تغيير كلمة مرور مستخدم ويندوز {clean_user} بنجاح.'}
         except Exception as exc:
             return {'ok': False, 'error': str(exc)}

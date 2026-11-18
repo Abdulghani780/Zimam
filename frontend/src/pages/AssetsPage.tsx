@@ -1,5 +1,5 @@
 /**
- * ASAAS Server Control v2.5 - Screens _11 & _13 & PAM
+ * ASAAS v2.5 - Screens _11 & _13 & PAM
  * دليل الخوادم والبنية التحتية السيادية + بطاقة الفحص الميداني وتفاصيل الخادم
  * Strict implementation of Stitch Prototypes _11 & _13
  */
@@ -7,6 +7,8 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, Field, TextInput, Glass, useToast } from '../asaas-ui';
 import { api, type AssetItem } from '../lib/api';
+import { apiV1, type V1Asset, type V1Account, type V1Agent } from '../lib/apiV1';
+import { RemoteSession } from '../components/RemoteSession';
 import {
   Server,
   Plus,
@@ -16,7 +18,22 @@ import {
   Zap,
   X,
   RefreshCw,
+  MonitorPlay,
+  KeyRound,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
+
+const toAssetItem = (a: V1Asset): AssetItem => ({
+  id: a.id,
+  name: a.name,
+  host: a.hostname,
+  type: String(a.metadata?.asset_type || a.platform || '—'),
+  port: a.port ?? 0,
+  protocol: a.protocol ?? undefined,
+  status: a.status || 'unknown',
+  latency_ms: 0,
+  last_check: '—',
+});
 
 export function AssetsPage() {
   const toast = useToast();
@@ -35,60 +52,24 @@ export function AssetsPage() {
   const [port, setPort] = useState(3389);
   const [submitting, setSubmitting] = useState(false);
 
-  const defaultMockServers: AssetItem[] = [
-    {
-      id: 'srv-01',
-      name: 'SRV-PROD-ASAAS-01',
-      host: '10.0.1.10',
-      type: 'Windows Server 2025',
-      port: 3389,
-      status: 'online',
-      latency_ms: 0.8,
-      last_check: 'الآن',
-    },
-    {
-      id: 'srv-02',
-      name: 'SRV-APP-LINUX-02',
-      host: '10.0.1.15',
-      type: 'Ubuntu Linux 24.04',
-      port: 22,
-      status: 'online',
-      latency_ms: 1.4,
-      last_check: 'الآن',
-    },
-    {
-      id: 'srv-03',
-      name: 'SRV-DB-POSTGRES-01',
-      host: '10.0.1.20',
-      type: 'Debian 12 (PostgreSQL)',
-      port: 5432,
-      status: 'online',
-      latency_ms: 1.1,
-      last_check: 'الآن',
-    },
-    {
-      id: 'srv-04',
-      name: 'SRV-BACKUP-COLD-01',
-      host: '10.0.1.99',
-      type: 'Windows Server 2022',
-      port: 3389,
-      status: 'online',
-      latency_ms: 2.1,
-      last_check: 'الآن',
-    },
-  ];
+  // Direct remote session (guacd gateway) state
+  const [sessionAsset, setSessionAsset] = useState<AssetItem | null>(null);
+  const [sessionAccounts, setSessionAccounts] = useState<V1Account[]>([]);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [sessionProtocol, setSessionProtocol] = useState<string>('rdp');
+
+  // Agent telemetry linked to the open drawer asset (matched by hostname)
+  const [drawerAgent, setDrawerAgent] = useState<V1Agent | null>(null);
+  const [drawerResults, setDrawerResults] = useState<Record<string, { completed_at: string | null; result: unknown; error: string | null }>>({});
+  const [drawerResultsLoading, setDrawerResultsLoading] = useState(false);
 
   const fetchAssets = async () => {
     try {
-      const list = await api.getAssets();
-      const raw = Array.isArray(list) ? list : (list as any)?.assets || [];
-      if (raw.length === 0) {
-        setAssets(defaultMockServers);
-      } else {
-        setAssets(raw);
-      }
+      const res = await apiV1.assets();
+      const raw = Array.isArray(res) ? res : (res as { assets?: V1Asset[] })?.assets || [];
+      setAssets(raw.map(toAssetItem));
     } catch {
-      setAssets(defaultMockServers);
+      setAssets([]);
     }
   };
 
@@ -97,8 +78,55 @@ export function AssetsPage() {
   }, []);
 
   const handleConnectBastion = (a: AssetItem) => {
-    toast(`جاري فتح جلسة اتصال مشفرة عبر بوابة PAM Bastion للخادم [${a.name}]...`, 'success');
-    window.open(`/api/bastion/connect?host=${encodeURIComponent(a.host)}&port=${a.port}&name=${encodeURIComponent(a.name)}`, '_blank');
+    const protocol = (a.protocol || 'RDP').toUpperCase();
+    const port = a.port || (protocol === 'RDP' ? 3389 : 22);
+    const url = `/api/bastion/connect?host=${encodeURIComponent(a.host)}&port=${encodeURIComponent(String(port))}&name=${encodeURIComponent(a.name)}&username=Administrator&protocol=${encodeURIComponent(protocol)}`;
+    window.open(url, '_blank');
+    toast(`${t('تم إرسال طلب جلسة ')}${protocol}${t(' للأصل [')}${a.name}${t('] عبر بوابة الحصن.')}`, 'success');
+  };
+
+  const handleDirectSession = async (a: AssetItem) => {
+    try {
+      const res = await apiV1.accounts();
+      const all = Array.isArray(res) ? res : (res as { accounts?: V1Account[] })?.accounts || [];
+      const matches = all.filter(
+        (acc) => acc.asset_id === a.id && ['rdp', 'ssh', 'telnet', 'vnc'].includes(String(acc.protocol || '').toLowerCase()),
+      );
+      if (matches.length === 0) {
+        toast(t('لا توجد حسابات مرتبطة بهذا الأصل — أضف حساباً من صفحة الخزنة أولاً.'), 'error');
+        return;
+      }
+      setSessionAsset(a);
+      setSessionAccounts(matches);
+      setSessionToken(null);
+    } catch {
+      toast(t('تعذّر تحميل الحسابات المرتبطة بالأصل.'), 'error');
+    }
+  };
+
+  const startSession = async (account: V1Account) => {
+    if (!sessionAsset) return;
+    const protocol = String(account.protocol || 'rdp').toLowerCase();
+    try {
+      const res = await apiV1.createConnectionToken({
+        asset_id: sessionAsset.id,
+        account_id: account.id,
+        protocol: protocol as 'rdp' | 'ssh' | 'telnet' | 'vnc',
+        actions: ['connect'],
+      });
+      const token = res?.token;
+      if (!token) throw new Error('no token');
+      setSessionProtocol(protocol);
+      setSessionToken(token);
+    } catch (err: any) {
+      toast(err?.message || t('فشل إصدار رمز الجلسة — تحقق من سياسات الوصول والبوابة.'), 'error');
+    }
+  };
+
+  const closeSession = () => {
+    setSessionAsset(null);
+    setSessionAccounts([]);
+    setSessionToken(null);
   };
 
   const handleTrimServer = async (a: AssetItem) => {
@@ -107,60 +135,109 @@ export function AssetsPage() {
       if (res && res.ok) {
         const rec = res.reclaimed_mb ?? (res as any)?.result?.reclaimed_mb ?? 0;
         if (rec > 0) {
-          toast(`تم تفريغ ذاكرة الخادم [${a.name}] بنجاح — تم استرداد ${rec} MB.`, 'success');
+          toast(`${t('تم تفريغ ذاكرة الخادم [')}${a.name}${t('] بنجاح — تم استرداد ')}${rec} MB.`, 'success');
         } else {
-          toast(res.message || `ذاكرة الخادم [${a.name}] محسنة بالكامل بالفعل.`, 'success');
+          toast(res.message || `${t('ذاكرة الخادم [')}${a.name}${t('] محسنة بالكامل بالفعل.')}`, 'success');
         }
       } else {
-        toast((res as any)?.error || 'فشل تفريغ ذاكرة الخادم.', 'error');
+        toast((res as any)?.error || t('فشل تفريغ ذاكرة الخادم.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تنفيذ تفريغ الذاكرة', 'error');
+      toast(err.message || t('خطأ أثناء تنفيذ تفريغ الذاكرة'), 'error');
     }
   };
 
-  const openServerDrawer = (a: AssetItem) => {
+  const uninstallSoftware = async (programName: string) => {
+    if (!drawerAgent) return;
+    if (!window.confirm(`${t('إلغاء تثبيت «')}${programName}${t('» على الوكيل (إلغاء صامت). متابعة؟')}`)) return;
+    try {
+      await apiV1.createJob({ agent_id: drawerAgent.id, job_type: 'software.uninstall', payload: { name: programName } });
+      toast(t('تم إرسال مهمة إلغاء التثبيت — ينفذ على الوكيل خلال ~15 ثانية.'), 'success');
+    } catch (err: any) {
+      toast(err.message || t('فشل إرسال مهمة إلغاء التثبيت'), 'error');
+    }
+  };
+
+  const openServerDrawer = async (a: AssetItem) => {
     setSelectedServer(a);
     setDrawerOpen(true);
+    setDrawerAgent(null);
+    setDrawerResults({});
+    setDrawerResultsLoading(true);
+    try {
+      const agentsRes = await apiV1.agents();
+      const all = Array.isArray(agentsRes) ? agentsRes : (agentsRes as { agents?: V1Agent[] })?.agents || [];
+      const host = a.host.toLowerCase();
+      const match = all.find((ag) => {
+        const inv = (ag.inventory || {}) as Record<string, unknown>;
+        const hn = String(inv.hostname || '').toLowerCase();
+        return hn && (hn === host || host.includes(hn) || hn.includes(host));
+      });
+      if (match) {
+        setDrawerAgent(match);
+        const res = await apiV1.agentLatestResults(match.id);
+        const rr = { ...res.results };
+        // Normalize software.list payloads ({software:[...]}|{programs:[...]}) to a bare array for the table renderer.
+        const sw = rr['software.list'];
+        if (sw && !Array.isArray(sw.result) && sw.result && typeof sw.result === 'object') {
+          const inner = (sw.result as Record<string, unknown>).software ?? (sw.result as Record<string, unknown>).programs ?? (sw.result as Record<string, unknown>).items;
+          if (Array.isArray(inner)) rr['software.list'] = { ...sw, result: inner };
+        }
+        setDrawerResults(rr);
+      }
+    } catch {
+      // telemetry is best-effort; the drawer still shows honest empty states
+    } finally {
+      setDrawerResultsLoading(false);
+    }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.addAsset({ name, host, type, port: Number(port) });
-      toast('تم تسجيل الخادم الجديد بنجاح.', 'success');
+      await apiV1.createAsset({
+        name,
+        hostname: host,
+        platform: type.toLowerCase().includes('windows') ? 'windows' : 'linux',
+        port: Number(port) || null,
+        protocol: type.toLowerCase().includes('windows') ? 'rdp' : 'ssh',
+        metadata: { asset_type: type },
+      });
+      toast(t('تم تسجيل الخادم الجديد بنجاح.'), 'success');
       setModalOpen(false);
       setName('');
       setHost('');
       fetchAssets();
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const filteredAssets = assets.filter((a) => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'windows') return a.type.toLowerCase().includes('windows');
-    if (activeTab === 'linux') return a.type.toLowerCase().includes('ubuntu') || a.type.toLowerCase().includes('debian') || a.type.toLowerCase().includes('linux');
-    if (activeTab === 'db') return a.type.toLowerCase().includes('postgres') || a.type.toLowerCase().includes('sql') || a.port === 5432 || a.port === 1433;
-    if (activeTab === 'k8s') return a.type.toLowerCase().includes('k8s') || a.type.toLowerCase().includes('container');
+  const matchesTab = (a: AssetItem, tab: 'all' | 'windows' | 'linux' | 'db' | 'k8s') => {
+    if (tab === 'all') return true;
+    if (tab === 'windows') return a.type.toLowerCase().includes('windows');
+    if (tab === 'linux') return a.type.toLowerCase().includes('ubuntu') || a.type.toLowerCase().includes('debian') || a.type.toLowerCase().includes('linux');
+    if (tab === 'db') return a.type.toLowerCase().includes('postgres') || a.type.toLowerCase().includes('sql') || a.port === 5432 || a.port === 1433;
+    if (tab === 'k8s') return a.type.toLowerCase().includes('k8s') || a.type.toLowerCase().includes('container');
     return true;
-  });
+  };
+
+  const filteredAssets = assets.filter((a) => matchesTab(a, activeTab));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Sovereign Infrastructure Header (Stitch _11 Top) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -174,35 +251,34 @@ export function AssetsPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999, whiteSpace: 'nowrap',
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
               >
                 <CheckCircle2 size={13} />
-                كافة العقد تعمل بكفاءة 99.98% Uptime
+                {assets.length ? `${assets.length}${t(' أصل مسجل من Control Plane')}` : t('لا توجد أصول مسجلة بعد')}
               </span>
               <span
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999, whiteSpace: 'nowrap',
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
                 }}
               >
-                PAM JumpServer Sovereign Mesh
+                Control Plane / Agent heartbeat
               </span>
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              دليل وإدارة قائمة الخوادم ومؤشرات النبض (Servers &amp; Assets Directory)
+              {t('دليل وإدارة قائمة الخوادم ومؤشرات النبض')} (Servers &amp; Assets Directory)
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              مراقبة حية للبنية التحتية، فحص مؤشرات النبض (Heartbeat Telemetry)، والاتصال الفوري المباشر عبر بوابات PAM
-              المؤمنة دون كشف كلمات السر لشبكة الإنترنت.
+              {t('مراقبة حالة الأصول المسجلة عبر Agent heartbeat، مع تجهيز الاتصال لرموز جلسات قصيرة العمر دون كشف كلمات السر للمتصفح.')}
             </p>
           </div>
 
@@ -214,7 +290,7 @@ export function AssetsPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <RefreshCw size={13} />
-              <span>إعادة الفحص الميداني</span>
+              <span>{t('إعادة الفحص الميداني')}</span>
             </Button>
             <Button
               size="sm"
@@ -223,20 +299,20 @@ export function AssetsPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Plus size={14} />
-              <span>إضافة خادم جديد</span>
+              <span>{t('إضافة خادم جديد')}</span>
             </Button>
           </div>
         </div>
       </div>
 
       {/* 2. Filter Tabs (Stitch _11 L10-L15) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(212, 160, 23, 0.18)', paddingBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--accent-soft)', paddingBottom: 12 }}>
         {[
-          { key: 'all', label: `الكل (${assets.length})` },
-          { key: 'windows', label: 'خوادم ويندوز (3)' },
-          { key: 'linux', label: 'خوادم لينكس (4)' },
-          { key: 'db', label: 'قواعد البيانات (1)' },
-          { key: 'k8s', label: 'حاويات K8s (2)' },
+          { key: 'all', label: `${t('الكل (')}${assets.length})` },
+          { key: 'windows', label: `${t('خوادم ويندوز (')}${assets.filter((a) => matchesTab(a, 'windows')).length})` },
+          { key: 'linux', label: `${t('خوادم لينكس (')}${assets.filter((a) => matchesTab(a, 'linux')).length})` },
+          { key: 'db', label: `${t('قواعد البيانات (')}${assets.filter((a) => matchesTab(a, 'db')).length})` },
+          { key: 'k8s', label: `${t('حاويات K8s (')}${assets.filter((a) => matchesTab(a, 'k8s')).length})` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -249,7 +325,7 @@ export function AssetsPage() {
               fontWeight: 700,
               cursor: 'pointer',
               border: activeTab === tab.key ? '1px solid var(--accent)' : '1px solid transparent',
-              background: activeTab === tab.key ? 'rgba(212, 160, 23, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+              background: activeTab === tab.key ? 'var(--accent-soft)' : 'var(--glass-rim-low)',
               color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-3)',
               transition: 'all 0.2s',
             }}
@@ -269,7 +345,7 @@ export function AssetsPage() {
               display: 'flex',
               flexDirection: 'column',
               gap: 14,
-              border: '1px solid rgba(212, 160, 23, 0.2)',
+              border: '1px solid var(--accent-soft)',
             }}
           >
             {/* Header row */}
@@ -280,8 +356,8 @@ export function AssetsPage() {
                     width: 38,
                     height: 38,
                     borderRadius: 10,
-                    background: 'rgba(212, 160, 23, 0.15)',
-                    border: '1px solid rgba(212, 160, 23, 0.3)',
+                    background: 'var(--accent-soft)',
+                    border: '1px solid var(--accent-soft)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -307,50 +383,37 @@ export function AssetsPage() {
                   gap: 5,
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#22c55e',
-                  background: 'rgba(34, 197, 94, 0.12)',
+                  color: a.status === 'online' ? 'var(--paid)' : 'var(--unpaid)',
+                  background: a.status === 'online' ? 'var(--paid-bg)' : 'var(--unpaid-bg)',
                   padding: '3px 8px',
                   borderRadius: 9999, whiteSpace: 'nowrap',
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
-                <span dir="ltr">نشط (Pulse 1s)</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: a.status === 'online' ? 'var(--paid)' : 'var(--unpaid)' }} />
+                <span dir="ltr">{a.status || 'unknown'}</span>
               </span>
             </div>
 
-            {/* Telemetry Metrics */}
+            {/* Real asset state reported by the backend */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* CPU load */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span style={{ color: 'var(--text-3)' }}>حمل المعالج CPU:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }}>32%</span>
-                </div>
-                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                  <div style={{ width: '32%', height: '100%', background: 'var(--accent)' }} />
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                <span style={{ color: 'var(--text-3)' }}>{t('حالة الأصل:')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }} dir="ltr">{a.status || 'unknown'}</span>
               </div>
-
-              {/* RAM load */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span style={{ color: 'var(--text-3)' }}>الذاكرة المستخدمة RAM:</span>
-                  <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }}><span dir="ltr">49% (31.5 GB)</span></span>
-                </div>
-                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                  <div style={{ width: '49%', height: '100%', background: '#38bdf8' }} />
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                <span style={{ color: 'var(--text-3)' }}>{t('آخر فحص مسجل:')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-1)', fontFamily: 'var(--font)' }} dir="ltr">{a.last_check || '—'}</span>
               </div>
             </div>
 
             {/* System Info */}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-3)' }}>
-              <span>النظام: <strong style={{ color: 'var(--text-2)' }}>{a.type}</strong></span>
-              <span>الاستجابة: <strong style={{ color: '#22c55e', fontFamily: 'var(--font)' }}><span dir="ltr">{a.latency_ms || 1.1} ms</span></strong></span>
+              <span>{t('النظام:')} <strong style={{ color: 'var(--text-2)' }}>{a.type}</strong></span>
+              <span>{t('الاستجابة:')} <strong style={{ color: 'var(--paid)', fontFamily: 'var(--font)' }}><span dir="ltr">{a.latency_ms > 0 ? `${a.latency_ms} ms` : t('غير متاح')}</span></strong></span>
             </div>
 
             {/* Action buttons (Stitch _11) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto', paddingTop: 8, borderTop: '1px solid var(--glass-rim-low)' }}>
               <Button
                 size="sm"
                 variant="primary"
@@ -358,25 +421,34 @@ export function AssetsPage() {
                 style={{ flex: 1, padding: '4px 8px', fontSize: 11 }}
               >
                 <Zap size={12} />
-                <span>اتصال Bastion</span>
+                <span>{t('اتصال Bastion')}</span>
               </Button>
               <Button
                 size="sm"
                 variant="glass"
                 onClick={() => handleTrimServer(a)}
                 style={{ padding: '4px 8px', fontSize: 11 }}
-                title="تفريغ ذاكرة الخادم"
+                title={t('تفريغ ذاكرة الخادم')}
               >
-                <span>تفريغ Trim</span>
+                <span>{t('تفريغ Trim')}</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="glass"
+                onClick={() => handleDirectSession(a)}
+                style={{ padding: '4px 8px', fontSize: 11 }}
+                title={t('جلسة عن بُعد عبر البوابة')}
+              >
+                <MonitorPlay size={12} />
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => openServerDrawer(a)}
                 style={{ padding: '4px 8px', fontSize: 11 }}
-                title="بطاقة الفحص الميداني"
+                title={t('بطاقة الفحص الميداني')}
               >
-                <span>فحص ميداني</span>
+                <span>{t('فحص ميداني')}</span>
               </Button>
             </div>
           </Glass>
@@ -389,7 +461,7 @@ export function AssetsPage() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
+            background: 'var(--shadow-soft)',
             backdropFilter: 'blur(8px)',
             zIndex: 1000,
             display: 'flex',
@@ -402,7 +474,7 @@ export function AssetsPage() {
               width: '100%',
               maxHeight: '85vh',
               overflowY: 'auto',
-              background: '#131315',
+              background: 'var(--surface-ground)',
               borderTop: '2px solid var(--accent)',
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
@@ -410,16 +482,16 @@ export function AssetsPage() {
               display: 'flex',
               flexDirection: 'column',
               gap: 20,
-              boxShadow: '0 -10px 40px rgba(0,0,0,0.8)',
+              boxShadow: '0 -10px 40px var(--shadow-soft)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>نافذة تفاصيل الخادم المنبثقة السفلية</span>
+                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('نافذة تفاصيل الخادم المنبثقة السفلية')}</span>
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-                  بطاقة الفحص الميداني وتفاصيل الخادم:
+                  {t('بطاقة الفحص الميداني وتفاصيل الخادم:')}
                   <span style={{ color: 'var(--accent)', fontFamily: 'var(--font)', display: 'block', fontSize: 18 }}>
                     {selectedServer.name}
                   </span>
@@ -429,7 +501,7 @@ export function AssetsPage() {
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
+                  background: 'var(--glass-rim-low)',
                   border: 'none',
                   borderRadius: '50%',
                   width: 36,
@@ -445,54 +517,99 @@ export function AssetsPage() {
               </button>
             </div>
 
-            {/* Telemetry Grid */}
+            {/* Telemetry Grid — no agent-linked metrics exist yet, show honest state */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>المعالج والأنوية</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>8 أنوية حقيقية</div>
-                <span style={{ fontSize: 11, color: '#22c55e' }}>الحمل الإجمالي: 32.1%</span>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>الذاكرة المادية RAM</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>31.5 / 63.8 GB</div>
-                <span style={{ fontSize: 11, color: '#38bdf8' }}>49.5% مستخدم</span>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>التخزين NVMe C:\</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>338 / 475 GB</div>
-                <span style={{ fontSize: 11, color: 'var(--accent)' }}>71.1% مستخدم</span>
-              </div>
-              <div style={{ padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(212, 160, 23, 0.2)' }}>
-                <span style={{ fontSize: 11, color: 'var(--text-3)' }}>حركة الشبكة والكمون</span>
-                <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>0.8 ms</div>
-                <span style={{ fontSize: 11, color: '#22c55e' }}>10 Gbps Sovereign Mesh</span>
-              </div>
+              {[
+                { label: t('المعالج والأنوية'), value: '—' },
+                { label: t('الذاكرة المادية RAM'), value: '—' },
+                { label: t('التخزين'), value: '—' },
+                { label: t('حركة الشبكة والكمون'), value: selectedServer.latency_ms > 0 ? `${selectedServer.latency_ms} ms` : '—' },
+              ].map((m) => (
+                <div key={m.label} style={{ padding: 14, borderRadius: 10, background: 'var(--glass-rim-low)', border: '1px solid var(--accent-soft)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{m.label}</span>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', marginTop: 4 }}>{m.value}</div>
+                  <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا تتوفر قياسات — تتطلب وكيلاً مرتبطاً بالأصل')}</span>
+                </div>
+              ))}
             </div>
 
-            {/* Core Services Section */}
+            {/* Agent-collected telemetry (real job results, hostname-matched) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                الخدمات الحيوية النشطة (Core Services) — 4 قيد التشغيل
+                {t('قياسات الوكيل المجمّعة')}
+                {drawerAgent && (
+                  <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 600, marginInlineStart: 8 }} dir="ltr">
+                    {drawerAgent.name}
+                  </span>
+                )}
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 10 }}>
-                {['TermService (RDP)', 'MSSQLSERVER (Database)', 'W3SVC (IIS Web)', 'WinDefend (Security)'].map((s, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: 8,
-                      background: 'rgba(0,0,0,0.3)',
-                      border: '1px solid rgba(34, 197, 94, 0.25)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e' }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>{s}</span>
-                  </div>
-                ))}
-              </div>
+              {drawerResultsLoading ? (
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>{t('جارٍ تحميل قياسات الوكيل...')}</p>
+              ) : !drawerAgent ? (
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                  {t('لا يوجد وكيل ASAAS مطابق لاسم المضيف — ثبّت وكيلاً على هذا الخادم لتظهر القياسات الحقيقية هنا.')}
+                </p>
+              ) : Object.keys(drawerResults).length === 0 ? (
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                  {t('الوكيل مرتبط لكن لا توجد نتائج مهام بعد — أرسل مهام جمع من صفحة الوكلاء.')}
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+                  {Object.entries(drawerResults).map(([jobType, entry]) => (
+                    <details key={jobType} style={{ border: '1px solid var(--accent-soft)', borderRadius: 10, padding: '10px 12px', background: 'var(--glass-rim-low)' }}>
+                      <summary style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-1)', cursor: 'pointer', fontFamily: 'var(--font-telemetry)' }} dir="ltr">
+                        {jobType}
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400, marginInlineStart: 8 }}>
+                          {entry.completed_at ? new Date(entry.completed_at).toLocaleString('ar-SA') : ''}
+                        </span>
+                      </summary>
+                      {entry.error ? (
+                        <span className="text-status-danger" style={{ fontSize: 11, display: 'block', marginTop: 6 }}>{entry.error}</span>
+                      ) : jobType === 'software.list' && Array.isArray(entry.result) ? (
+                        <div style={{ marginTop: 8, maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {(entry.result as any[]).slice(0, 60).map((sw: any, i: number) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 10, padding: '4px 6px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {String(sw?.name || sw?.Name || sw?.DisplayName || '?')}
+                              </span>
+                              <span style={{ color: 'var(--text-3)', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }} dir="ltr">
+                                {String(sw?.version || sw?.Version || '')}{sw?.publisher || sw?.Publisher ? ` · ${String(sw.publisher || sw.Publisher).slice(0, 30)}` : ''}
+                                {drawerAgent && (
+                                  <button
+                                    type="button"
+                                    onClick={() => uninstallSoftware(String(sw?.name || sw?.Name || sw?.DisplayName || ''))}
+                                    title={t('إلغاء تثبيت')}
+                                    style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, border: '1px solid var(--status-danger, #e5484d)', background: 'transparent', color: 'var(--status-danger, #e5484d)', cursor: 'pointer', fontWeight: 700 }}
+                                  >
+                                    {t('إلغاء')}
+                                  </button>
+                                )}
+                              </span>
+                            </div>
+                          ))}
+                          {(entry.result as any[]).length > 60 && (
+                            <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{(entry.result as any[]).length - 60} {t('برنامج آخر')}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 180, overflowY: 'auto' }}>
+                          {JSON.stringify(entry.result, null, 2)}
+                        </pre>
+                      )}
+                    </details>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Core Services Section — not collected yet */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+                {t('الخدمات النشطة — غير متاحة')}
+              </h4>
+              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                {t('لا تُجمع بيانات الخدمات بعد. عندما يرتبط وكيلاً ASAAS بهذا الأصل عبر /api/v1/agents وتُنفَّذ مهمة service.list موقعة ستظهر النتائج الحقيقية هنا.')}
+              </p>
             </div>
 
             {/* Actions Toolbar */}
@@ -504,7 +621,7 @@ export function AssetsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Zap size={14} />
-                <span>فتح جلسة اتصال Bastion PAM</span>
+                <span>{t('طلب جلسة عبر السياسة')}</span>
               </Button>
               <Button
                 size="sm"
@@ -513,7 +630,7 @@ export function AssetsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Cpu size={14} />
-                <span>تفريغ خمول الذاكرة Working Set Trim</span>
+                <span>{t('تفريغ خمول الذاكرة Working Set Trim')}</span>
               </Button>
               <Button
                 size="sm"
@@ -524,7 +641,7 @@ export function AssetsPage() {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Radio size={14} />
-                <span>فحص المنافذ Scan Ports</span>
+                <span>{t('فحص المنافذ Scan Ports')}</span>
               </Button>
               <Button
                 size="sm"
@@ -532,7 +649,7 @@ export function AssetsPage() {
                 onClick={() => setDrawerOpen(false)}
                 style={{ marginInlineStart: 'auto' }}
               >
-                إغلاق النافذة
+                {t('إغلاق النافذة')}
               </Button>
             </div>
           </div>
@@ -541,33 +658,33 @@ export function AssetsPage() {
 
       {/* Modal: Add New Asset */}
       {modalOpen && (
-        <Modal onClose={() => setModalOpen(false)} title="إضافة خادم جديد للبنية التحتية السيادية">
+        <Modal onClose={() => setModalOpen(false)} title={t('إضافة خادم جديد للبنية التحتية السيادية')}>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="اسم الخادم (Server Hostname)">
+            <Field label={t('اسم الخادم (Server Hostname)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="مثال: SRV-APP-PROD-03"
+                  placeholder={t('مثال: SRV-APP-PROD-03')}
                   required
                 />
               )}
             </Field>
 
-            <Field label="عنوان IP أو اسم النطاق (IP / FQDN)">
+            <Field label={t('عنوان IP أو اسم النطاق (IP / FQDN)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
-                  placeholder="مثال: 10.0.1.50"
+                  placeholder={t('مثال: 10.0.1.50')}
                   required
                 />
               )}
             </Field>
 
-            <Field label="نوع نظام التشغيل">
+            <Field label={t('نوع نظام التشغيل')}>
               {() => (
                 <select
                   value={type}
@@ -584,14 +701,14 @@ export function AssetsPage() {
               )}
             </Field>
 
-            <Field label="المنفذ الرئيسي (Port)">
+            <Field label={t('المنفذ الرئيسي (Port)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   type="number"
                   value={String(port)}
                   onChange={(e) => setPort(Number(e.target.value))}
-                  placeholder="3389 أو 22"
+                  placeholder={t('3389 أو 22')}
                   required
                 />
               )}
@@ -599,14 +716,96 @@ export function AssetsPage() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button type="submit" variant="primary" loading={submitting}>
-                تسجيل الخادم
+                {t('تسجيل الخادم')}
               </Button>
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Direct remote session overlay: account picker → live guacd session */}
+      {sessionAsset && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1200,
+            background: 'var(--surface-ground)',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: 20,
+            gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
+                {t('جلسة عن بُعد —')}{' '}
+                <span style={{ color: 'var(--accent)' }}>{sessionAsset.name}</span>
+              </h2>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }} dir="ltr">
+                {sessionAsset.host}:{sessionAsset.port}
+              </span>
+            </div>
+            <Button size="sm" variant="ghost" onClick={closeSession}>
+              <X size={16} /> {t('إنهاء الجلسة')}
+            </Button>
+          </div>
+
+          {!sessionToken ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Glass thick style={{ padding: 28, maxWidth: 520, width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <KeyRound size={20} style={{ color: 'var(--accent)' }} />
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
+                    {t('اختر الحساب لبدء الجلسة')}
+                  </h3>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
+                  {t('سيُصدر رمز اتصال لمرة واحدة قصير العمر — بيانات الاعتماد لا تغادر الخادم.')}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {sessionAccounts.map((acc) => (
+                    <button
+                      key={acc.id}
+                      type="button"
+                      onClick={() => startSession(acc)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        padding: '12px 16px',
+                        borderRadius: 12,
+                        border: '1px solid var(--accent-soft)',
+                        background: 'var(--glass-rim-low)',
+                        color: 'var(--text-1)',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textAlign: 'start',
+                      }}
+                    >
+                      <span>{acc.name || acc.username}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-3)' }} dir="ltr">{acc.protocol}</span>
+                    </button>
+                  ))}
+                </div>
+              </Glass>
+            </div>
+          ) : (
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <RemoteSession
+                protocol={sessionProtocol}
+                token={sessionToken}
+                onClose={closeSession}
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

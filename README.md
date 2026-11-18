@@ -1,4 +1,4 @@
-# منظومة ASAAS Server Control & Resource Governor Enterprise v2.5
+# منظومة ASAAS & Resource Governor Enterprise v2.5
 
 منظومة الجيل الثاني المتطورة لمراقبة وإدارة خوادم **Windows Server 2025 / 2022** وجلسات سطح المكتب البعيد (**RDP / Terminal Services**)، وحصن النفاذ الموحد (**JumpServer PAM Bastion**)، وحاكم الموارد الذكي المتقدم بنمط **Clean Architecture & OOP**.
 
@@ -26,20 +26,20 @@ ASAAS-Server-Control-v2/
 │   │   │   ├── governor_service.py       # تفريغ خمول الرام (Working Set Trim)
 │   │   │   ├── port_isolation_service.py # درع عزل وحجز المنافذ الآلي
 │   │   │   ├── bastion_service.py        # حصن النفاذ الموحد وفلتر الأوامر ACL
-│   │   │   └── stitch_service.py         # فهرسة وربط شاشات Google Stitch الـ 20
 │   │   └── api/
 │   │       └── router.py          # موزع الـ REST API وبث SSE وملفات الـ SPA
 │   └── main.py                    # خادم التشغيل المتعدد الخيوط (Port 8765)
 │
 ├── frontend/                      # واجهة React 19 + TypeScript + Vite
 │   ├── src/
-│   │   ├── asaas-ui/              # مكتبة ورموز وهوية أساس الملكية وخطوط ثمانية
+│   │   ├── asaas-ui/              # مكتبة المكونات والهوية البصرية وخطوط ثمانية
 │   │   ├── components/            # مكونات الواجهة ومخطط الأنوية التموجي
-│   │   ├── pages/                 # صفحات المنظومة (Overview, Bastion, Stitch Gallery...)
+│   │   ├── pages/                 # صفحات المنظومة (Overview, Bastion, Governor...)
 │   │   └── lib/                   # عميل API الآمن ومطابقة الأنواع
 │   └── public/                    # خطوط ثمانية الأصلية وشعارات أساس
 │
-├── stitch_asaas_server_control_v2.5/ # تصاميم Google Stitch السيادية (20 شاشة بدقة كاملة)
+├── control_plane/                 # مستوى التحكم المؤسسي /api/v1 (FastAPI)
+├── agent/                         # وكيل ويندوز C# للاتصال الصادر
 ├── launcher/
 │   └── launch.vbs                 # المشغل المباشر لسطح المكتب بدون نوافذ سوداء
 └── start-server.bat               # مشغل كونسول المطورين
@@ -49,9 +49,9 @@ ASAAS-Server-Control-v2/
 
 ## 💎 أبرز المزايا المحققة في v2
 
-1. **معرض تصاميم Google Stitch السيادية (20 شاشة كاملة)**:
-   * تصفح ومعاينة حية تفاعلية لكافة الشاشات المصممة من قبل Google Stitch مباشرة عبر مسار `/stitch`.
-   * إمكانية فتح أي شاشة في نافذة مستقلة بدقة كاملة مع تصميم الفخامة السيبرانية الزجاجية (Cyber Dark Luxury Glassmorphism).
+1. **هوية أساس البصرية الرسمية الكاملة (Asaas UI Kit)**:
+   * مكتبة `src/asaas-ui/` متزامنة مع القالب الرسمي من `AI-ASAAS/skills`: خط Thmanyah (Sans + Serif Display + Serif Text)، رموز الذهبي/الرمل، أسطح الزجاج السائل، ثيم فاتح وداكن، وواجهة عربية RTL أولاً.
+   * متجاوبة بالكامل: شريط تنقل سفلي وقائمة للهواتف ≤900px، وجداول أفقية التمرير، وأهداف لمس ≥44px.
 
 2. **حصن الوصول الموحد JumpServer PAM Bastion (`/bastion`)**:
    * دعم 8 بروتوكولات سيادية للوصول عن بُعد: `RDP`, `SSH`, `SFTP`, `VNC`, `Telnet`, `WinRM`, `Database SQL Web Client`, `Kubernetes Pods`.
@@ -66,7 +66,7 @@ ASAAS-Server-Control-v2/
    * عدم ظهور أو وميض أي نافذة كونسول على الإطلاق أثناء عمل السيرفر.
 
 5. **حل مشكلة الصلاحيات ورفض الوصول `Access Denied Error 5`**:
-   * التحقق الآلي من الصلاحيات وطلب الترقية كمسؤول بسلاسة عبر اختصار سطح المكتب `ASAAS Server Control v2.lnk`.
+   * التحقق الآلي من الصلاحيات وطلب الترقية كمسؤول بسلاسة عبر اختصار سطح المكتب `ASAAS v2.lnk`.
    * زر ترقية فوري `/api/system/elevate` يرفع السيرفر دون إيقاف الخدمات.
 
 6. **خوارزمية عزل وحجز المنافذ الآلية (Port Isolation Engine)**:
@@ -78,7 +78,7 @@ ASAAS-Server-Control-v2/
 ## 🚀 طريقة التشغيل
 
 ### تشغيل سطح المكتب (موصى به للمستخدم النهائي):
-* النقر المزدوج على اختصار سطح المكتب: **`ASAAS Server Control v2.lnk`**.
+* النقر المزدوج على اختصار سطح المكتب: **`ASAAS v2.lnk`**.
 * يفتح التطبيق مباشرة في نافذة مخصصة بحجم كامل دون شريط عناوين المتصفح.
 
 ### تشغيل المطورين (Developer Console):
@@ -91,5 +91,11 @@ cd backend
 python main.py
 ```
 ثم فتح المتصفح على: `http://127.0.0.1:8765/`
-ومعرض تصاميم Stitch على: `http://127.0.0.1:8765/stitch`
-وحصن الوصول على: `http://127.0.0.1:8765/bastion`
+* لوحة القيادة الرئيسية: `http://127.0.0.1:8765/`
+* حصن الوصول على: `http://127.0.0.1:8765/bastion`
+
+### Control Plane المؤسسي (`/api/v1`):
+```powershell
+.\run_asaas.ps1
+```
+يشغّل الواجهة على `http://127.0.0.1:8876/` مع جسر بروكسي للـ API القديم — راجع `CONTROL_PLANE.md`.

@@ -28,7 +28,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         <div className="toast-stack" role="status" aria-live="polite">
           {items.map((t) => (
             <Glass key={t.id} thick pill className={`toast toast--${t.tone}`}>
-              <Icon name={t.tone === 'success' ? 'checkCircle' : 'alert'} />
+              <Icon name={t.tone === 'success' ? 'checkCircle' : t.tone === 'error' ? 'alert' : t.tone === 'warn' ? 'clock' : 'dashboard'} />
               {t.message}
             </Glass>
           ))}

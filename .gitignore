@@ -18,6 +18,7 @@ ENV/
 # Temporary, Scratch & Audit Workspace
 .audit_workspace/
 scratch/
+scratch_*.py
 tmp/
 *.tmp
 
@@ -27,6 +28,9 @@ playwright-report/
 blob-report/
 playwright/.cache/
 
+# Frontend build output (vite outDir -> ../dist)
+dist/
+
 # Runtime Data, Logs & Local Database Files
 data/*.db
 data/*.db-journal
@@ -34,6 +38,8 @@ data/*.db-wal
 data/*.db-shm
 data/*.log
 data/.session_token
+data/.vault_master.key
+data/control-plane-vault.key
 data/browser_profile/
 !data/.gitkeep
 
@@ -51,3 +57,43 @@ Thumbs.db
 
 # Cloned external skills
 unslop/
+
+# Claude Code local settings (machine-specific gateway config)
+.claude/
+stitch_asaas_server_control_v2.5.zip
+
+# .NET agent build output
+agent/bin/
+agent/obj/
+
+data/mtls/
+data/agent-signing.key
+
+data/backups/
+
+# Packaged release artifacts
+dist-py/
+build-py/
+release/
+agent/publish/
+agent/publish-single/
+
+data/license-signing.key
+data/license.json
+data/license-pubkey.hex
+data/.first_boot
+# Any key/cert material dropped under data/ stays out of source control.
+data/*.key
+data/*.pem
+data/*.pfx
+data/*.p12
+data/tls/
+control-plane.env
+
+installer-out/
+
+data/i18n-*.json
+data/i18n-*.txt
+
+launcher/bin/
+launcher/obj/

@@ -1,34 +1,60 @@
-/**
- * ASAAS Server Control v2 - Mobile Navigation & Bottom TabBar.
- * Implements Stitch Screen _10 mobile ergonomics with glassmorphism and slide-over menu.
- */
-
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Server,
   Cpu,
+  Monitor,
   ShieldCheck,
-  Radio,
-  Menu,
-  X,
-  HardDrive,
+  Network,
+  Settings2,
+  Shield,
+  Wifi,
   Users,
-  KeyRound,
-  ShieldAlert,
   ScrollText,
   Settings,
-  Server,
+  Menu,
+  X,
   User,
-  Shield,
-  Film,
-  Sparkles,
-  Lock,
+  Code2,
+  Container,
+  Database,
+  Vault,
+  HardDrive,
+  Timer,
+  History,
+  Globe,
+  Bot,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface MobileNavigationProps {
   isAdmin?: boolean;
 }
+
+const DRAWER_LINKS = [
+  { to: '/', label: 'لوحة القيادة', icon: LayoutDashboard, end: true },
+  { to: '/servers', label: 'إدارة السيرفرات', icon: Server },
+  { to: '/governor', label: 'حاكم الموارد', icon: Cpu },
+  { to: '/control', label: 'جلسات سطح المكتب (RDP)', icon: Monitor },
+  { to: '/bastion', label: 'بوابة الوصول الآمن (PAM)', icon: ShieldCheck },
+  { to: '/ports', label: 'عزل المنافذ', icon: Network },
+  { to: '/infrastructure', label: 'إدارة العمليات والخدمات', icon: Settings2 },
+  { to: '/development', label: 'مساحات المطورين', icon: Code2 },
+  { to: '/containers', label: 'الحاويات', icon: Container },
+  { to: '/databases', label: 'قواعد البيانات', icon: Database },
+  { to: '/assets', label: 'الأصول والعناوين', icon: Globe },
+  { to: '/vault', label: 'الخزنة الآمنة', icon: Vault },
+  { to: '/agents', label: 'وكلاء الأصول', icon: Bot },
+  { to: '/storage', label: 'التحكم بالتخزين', icon: HardDrive },
+  { to: '/security', label: 'مركز الحماية', icon: Shield },
+  { to: '/network-storage', label: 'مراقبة الشبكة', icon: Wifi },
+  { to: '/users', label: 'المستخدمون والصلاحيات', icon: Users },
+  { to: '/jit', label: 'الترقية المؤقتة (JIT)', icon: Timer },
+  { to: '/replay', label: 'إعادة تشغيل الجلسات', icon: History },
+  { to: '/audit', label: 'السجلات والتدقيق', icon: ScrollText },
+  { to: '/settings', label: 'إعدادات المنظومة', icon: Settings },
+];
 
 export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 900);
@@ -50,52 +76,30 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
 
   return (
     <>
-      {/* Mobile Fixed Bottom TabBar (Visible <= 900px) */}
-      <nav className="mobile-tabbar" aria-label="شريط التنقل السفلي للجوال">
-        <NavLink
-          to="/"
-          end
-          onClick={closeDrawer}
-          className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}
-        >
+      <nav className="mobile-tabbar" aria-label={t('شريط التنقل السفلي للجوال')}>
+        <NavLink to="/" end onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
           <LayoutDashboard size={20} />
-          <span>الرئيسية</span>
+          <span>{t('الرئيسية')}</span>
         </NavLink>
 
-        <NavLink
-          to="/control"
-          onClick={closeDrawer}
-          className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}
-        >
+        <NavLink to="/control" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
+          <Monitor size={20} />
+          <span>{t('الجلسات')}</span>
+        </NavLink>
+
+        <NavLink to="/governor" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
           <Cpu size={20} />
-          <span>الحاكم</span>
+          <span>{t('الموارد')}</span>
         </NavLink>
 
-        <NavLink
-          to="/security"
-          onClick={closeDrawer}
-          className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}
-        >
-          <ShieldCheck size={20} />
-          <span>الأمان</span>
+        <NavLink to="/ports" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
+          <Network size={20} />
+          <span>{t('المنافذ')}</span>
         </NavLink>
 
-        <NavLink
-          to="/ports"
-          onClick={closeDrawer}
-          className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}
-        >
-          <Radio size={20} />
-          <span>المنافذ</span>
-        </NavLink>
-
-        <NavLink
-          to="/users"
-          onClick={closeDrawer}
-          className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}
-        >
-          <Users size={20} />
-          <span>المستخدمين</span>
+        <NavLink to="/security" onClick={closeDrawer} className={({ isActive }) => `mobile-tabbar__item ${isActive ? 'active' : ''}`}>
+          <Shield size={20} />
+          <span>{t('الحماية')}</span>
         </NavLink>
 
         <button
@@ -103,14 +107,13 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
           onClick={() => setDrawerOpen(!drawerOpen)}
           className={`mobile-tabbar__item ${drawerOpen ? 'active' : ''}`}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-          aria-label="المزيد من القوائم"
+          aria-label={t('المزيد من القوائم')}
         >
           {drawerOpen ? <X size={20} /> : <Menu size={20} />}
-          <span>المزيد</span>
+          <span>{t('المزيد')}</span>
         </button>
       </nav>
 
-      {/* Slide-over Full Mobile Navigation Drawer */}
       {drawerOpen && (
         <div className="mobile-drawer-backdrop" onClick={closeDrawer}>
           <div
@@ -118,110 +121,46 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="قائمة التنقل الموسعة"
+            aria-label={t('قائمة التنقل الموسعة')}
           >
-            {/* Drawer Header */}
             <div className="mobile-drawer__header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <img
-                  src="/logo-light.png"
-                  alt=""
-                  width="28"
-                  height="28"
-                  style={{ objectFit: 'contain' }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
+                <img src="/logo-light.png" alt="" width="28" height="28" style={{ objectFit: 'contain' }} />
                 <div>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>ASAAS أساس</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)', display: 'block' }}>SERVER CONTROL v2.5</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>ASAAS</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)', display: 'block' }}>{t('بوابة التحكم الآمن')}</span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={closeDrawer}
-                className="mobile-drawer__close"
-                aria-label="إغلاق القائمة"
-              >
+              <button type="button" onClick={closeDrawer} className="mobile-drawer__close" aria-label={t('إغلاق القائمة')}>
                 <X size={20} />
               </button>
             </div>
 
-            {/* User Status Bar */}
             <div className="mobile-drawer__user">
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-fill)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-accent)' }}>
                 <User size={18} />
               </div>
               <div style={{ flex: 1 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Administrator</span>
                 <span style={{ fontSize: 11, color: isAdmin ? 'var(--paid)' : 'var(--accent)', display: 'block' }}>
-                  {isAdmin ? 'صلاحيات مسؤول كاملة (Elevated)' : 'مستخدم قياسي (غير مرفع)'}
+                  {isAdmin ? t('صلاحيات مسؤول كاملة') : t('مستخدم قياسي')}
                 </span>
               </div>
             </div>
 
-            {/* Links Grid */}
             <div className="mobile-drawer__nav">
-              <span className="mobile-drawer__section-title">إدارة الأصول والخوادم</span>
-              <NavLink to="/assets" onClick={closeDrawer} className="mobile-drawer__link">
-                <Server size={18} />
-                <span>دليل الأصول والخوادم</span>
-              </NavLink>
-              <NavLink to="/vault" onClick={closeDrawer} className="mobile-drawer__link">
-                <KeyRound size={18} />
-                <span>خزنة الحسابات المشفرة</span>
-              </NavLink>
-
-              <span className="mobile-drawer__section-title">الأمان والشبكة</span>
-              <NavLink to="/security" onClick={closeDrawer} className="mobile-drawer__link">
-                <ShieldAlert size={18} />
-                <span>مركز الدفاع والأمان (Fail2Ban)</span>
-              </NavLink>
-              <NavLink to="/ports" onClick={closeDrawer} className="mobile-drawer__link">
-                <Radio size={18} />
-                <span>درع عزل المنافذ PORT-GUARD</span>
-              </NavLink>
-
-              <span className="mobile-drawer__section-title">النظام والامتثال</span>
-              <NavLink to="/storage" onClick={closeDrawer} className="mobile-drawer__link">
-                <HardDrive size={18} />
-                <span>إدارة التخزين وفك الملفات</span>
-              </NavLink>
-              <NavLink to="/users" onClick={closeDrawer} className="mobile-drawer__link">
-                <Users size={18} />
-                <span>حوكمة المستخدمين وجلسات RDP</span>
-              </NavLink>
-              <NavLink to="/audit" onClick={closeDrawer} className="mobile-drawer__link">
-                <ScrollText size={18} />
-                <span>سجل التدقيق والامتثال الجنائي</span>
-              </NavLink>
-              <NavLink to="/settings" onClick={closeDrawer} className="mobile-drawer__link">
-                <Settings size={18} />
-                <span>إعدادات النظام والإنذارات</span>
-              </NavLink>
-
-              <span className="mobile-drawer__section-title">البوابات السيادية والامتيازات</span>
-              <NavLink to="/jit" onClick={closeDrawer} className="mobile-drawer__link">
-                <Shield size={18} />
-                <span>ترقية الصلاحيات JIT v2.5</span>
-              </NavLink>
-              <NavLink to="/replay" onClick={closeDrawer} className="mobile-drawer__link">
-                <Film size={18} />
-                <span>التحقيق واسترجاع الجلسات</span>
-              </NavLink>
-              <NavLink to="/login" onClick={closeDrawer} className="mobile-drawer__link">
-                <Lock size={18} />
-                <span>بوابة الدخول Zero-Trust SSO</span>
-              </NavLink>
-              <NavLink to="/lockout" onClick={closeDrawer} className="mobile-drawer__link">
-                <ShieldAlert size={18} />
-                <span>درع المحيط Perimeter Lockout</span>
-              </NavLink>
-              <NavLink to="/gallery" onClick={closeDrawer} className="mobile-drawer__link">
-                <Sparkles size={18} />
-                <span>معرض واجهات Stitch (20)</span>
-              </NavLink>
+              {DRAWER_LINKS.map(({ to, label, icon: Icon, end }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  onClick={closeDrawer}
+                  className={({ isActive }) => `mobile-drawer__link ${isActive ? 'active' : ''}`}
+                >
+                  <Icon size={18} />
+                  <span>{t(label)}</span>
+                </NavLink>
+              ))}
             </div>
           </div>
         </div>

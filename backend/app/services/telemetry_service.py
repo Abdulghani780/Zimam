@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2 - Telemetry & System Monitoring Service.
+"""ASAAS v2 - Telemetry & System Monitoring Service.
 
 Provides instant system metrics, per-core utilization history, and active sessions.
 Uses native Win32 APIs and psutil for zero-subprocess, low-overhead performance.
@@ -64,6 +64,12 @@ class TelemetryService:
         self._current_disk_read_rate = 0.0
         self._current_disk_write_rate = 0.0
         self._db_counter = 0
+
+        # Live process/service inventory cache (kept short so SSE stays fresh
+        # without re-enumerating the SCM on every frame).
+        self._inventory_lock = threading.Lock()
+        self._inventory_ts = 0.0
+        self._inventory_cache: Dict[str, Any] = {'processes': [], 'services': []}
         self._cleanup_counter = 0
 
         # Boot & Initialization
@@ -142,12 +148,13 @@ class TelemetryService:
                         from .alert_service import AlertService
                         disk_usage = psutil.disk_usage('C:\\')
                         avg_cpu = sum(per_core) / max(1, len(per_core))
+                        sess_count = max(1, len(Win32WtsService.list_active_sessions()))
                         db_record_metric(
                             cpu=avg_cpu,
                             ram=mem_pct,
                             ram_used_gb=(mem.total - mem.available) / (1024 ** 3),
                             disk_used_gb=disk_usage.used / (1024 ** 3),
-                            active_sessions=1,
+                            active_sessions=sess_count,
                         )
                         AlertService.evaluate_telemetry_thresholds(avg_cpu, mem_pct, disk_usage.percent)
                     except Exception:
@@ -223,6 +230,93 @@ class TelemetryService:
             disk_free_gb=disk_free_gb,
             disk_percent=disk_pct,
         )
+
+    def get_live_inventory(self, force: bool = False) -> Dict[str, Any]:
+        """Returns the live top-process and service inventory used by snapshot/SSE.
+
+        The SCM enumeration is cached for two seconds to keep the one-second
+        SSE cadence cheap while still reflecting real state changes quickly.
+        """
+        now = time.time()
+        with self._inventory_lock:
+            if (
+                not force
+                and self._inventory_ts > 0
+                and (now - self._inventory_ts) < 2.0
+                and (self._inventory_cache.get('processes') or self._inventory_cache.get('services'))
+            ):
+                return {
+                    'processes': list(self._inventory_cache.get('processes', [])),
+                    'services': list(self._inventory_cache.get('services', [])),
+                }
+
+        processes: List[Dict[str, Any]] = []
+        services: List[Dict[str, Any]] = []
+
+        try:
+            _, _, top_procs = Win32WtsService.list_processes_and_session_stats()
+            processes = list(top_procs or [])[:30]
+        except Exception:
+            processes = []
+
+        if not processes:
+            try:
+                proc_rows = []
+                for proc in psutil.process_iter(['pid', 'name', 'username', 'memory_info']):
+                    try:
+                        info = proc.info
+                        mem_mb = (info.get('memory_info').rss if info.get('memory_info') else 0) / (1024 * 1024)
+                        if mem_mb <= 25:
+                            continue
+                        proc_rows.append({
+                            'pid': info.get('pid', 0),
+                            'name': info.get('name') or 'process',
+                            'user': info.get('username') or 'system',
+                            'cpu': 0.0,
+                            'ram_mb': round(mem_mb, 1),
+                            'ram': round(mem_mb / 1024, 2),
+                            'session': 0,
+                        })
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                proc_rows.sort(key=lambda item: item['ram_mb'], reverse=True)
+                processes = proc_rows[:30]
+            except Exception:
+                processes = []
+
+        try:
+            raw_services = []
+            if hasattr(psutil, 'win_service_iter'):
+                for svc in list(psutil.win_service_iter())[:160]:
+                    try:
+                        info = svc.as_dict()
+                        raw_services.append({
+                            'name': info.get('name', ''),
+                            'display': info.get('display_name') or info.get('name', ''),
+                            'status': 'Running' if info.get('status') == 'running' else 'Stopped',
+                            'startup': info.get('start_type', 'Automatic'),
+                            'category': 'System',
+                            'critical': info.get('name', '').lower() in (
+                                'rpcss', 'dcomlaunch', 'termservice', 'lanmanserver',
+                                'wuauserv', 'mpssvc', 'eventlog',
+                            ),
+                        })
+                    except Exception:
+                        continue
+            raw_services.sort(key=lambda svc: (
+                0 if svc['critical'] and svc['status'] == 'Running' else
+                1 if svc['status'] == 'Running' else 2,
+                svc['display'].lower(),
+            ))
+            services = raw_services[:40]
+        except Exception:
+            services = []
+
+        with self._inventory_lock:
+            self._inventory_cache = {'processes': processes, 'services': services}
+            self._inventory_ts = time.time()
+        return {'processes': processes, 'services': services}
+
 
     def get_system_history(self) -> Dict[str, Any]:
         """Returns full 4-panel system history for real-time oscilloscope graphs."""

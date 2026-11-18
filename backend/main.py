@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - Master Backend Server Entrypoint.
+"""ASAAS v2.5 - Master Backend Server Entrypoint.
 
 Starts ThreadingHTTPServer on port 8765 with zero-subprocess architecture,
 clean service orchestration, LAN network binding, and optional TLS/HTTPS encryption.
@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import socket
 import ssl
 import sys
 import time
@@ -39,6 +40,18 @@ from app.core.config import SERVER_HOST, SERVER_PORT, DATA_DIR
 from app.infrastructure.win32_wts import Win32WtsService
 
 
+class DualStackServer(ThreadingHTTPServer):
+    """Dual-stack HTTP server supporting both IPv4 and IPv6 simultaneously."""
+    address_family = socket.AF_INET6
+
+    def server_bind(self):
+        try:
+            self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        except (AttributeError, OSError):
+            pass
+        super().server_bind()
+
+
 def generate_self_signed_cert(cert_path: Path, key_path: Path) -> bool:
     """Generates a self-signed TLS certificate for secure LAN deployment."""
     try:
@@ -53,8 +66,28 @@ def generate_self_signed_cert(cert_path: Path, key_path: Path) -> bool:
         return False
 
 
+def _exit_port_in_use(port: int, exc: OSError) -> None:
+    """Reports the conflicting listener (with PID when detectable) and exits."""
+    owner = ''
+    try:
+        import psutil
+        for conn in psutil.net_connections(kind='inet'):
+            if conn.laddr and conn.laddr.port == port and conn.status == 'LISTEN':
+                try:
+                    owner = f" (PID {conn.pid}: {psutil.Process(conn.pid).name()})"
+                except Exception:
+                    owner = f" (PID {conn.pid})"
+                break
+    except Exception:
+        pass
+    print(f"[X] Cannot bind port {port}: address already in use{owner}.")
+    print("    Another ASAAS instance is already running. Stop it first, or relaunch")
+    print("    via start-server.bat / the desktop shortcut (it terminates the old PID).")
+    sys.exit(1)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ASAAS Server Control v2.5 Backend")
+    parser = argparse.ArgumentParser(description="ASAAS v2.5 Backend")
     parser.add_argument('--replace-pid', type=int, default=None, help="Terminate old PID when elevating")
     parser.add_argument('--port', type=int, default=SERVER_PORT, help="Port to listen on")
     parser.add_argument('--host', type=str, default=SERVER_HOST, help="Host to bind to (e.g. 127.0.0.1 or 0.0.0.0)")
@@ -85,14 +118,40 @@ def main() -> None:
     protocol = "https" if use_ssl else "http"
 
     print("=" * 65)
-    print(" ASAAS Server Control v2.5 - Enterprise Architecture")
+    print(" ASAAS v2.5 - Enterprise Architecture")
     print(f" Status:    {status_role}")
     print(f" Protocol:  {protocol.upper()}")
     print(f" Address:   {protocol}://{args.host}:{args.port}")
     print("=" * 65)
 
-    ThreadingHTTPServer.allow_reuse_address = True
-    server = ThreadingHTTPServer((args.host, args.port), AsaasApiHandler)
+    server_cls = ThreadingHTTPServer
+    bind_addr = (args.host, args.port)
+
+    # Use dual-stack server when binding to all interfaces or default host
+    if args.host in ('0.0.0.0', '::', ''):
+        try:
+            server_cls = DualStackServer
+            bind_addr = ('::', args.port)
+        except Exception:
+            server_cls = ThreadingHTTPServer
+            bind_addr = ('0.0.0.0', args.port)
+
+    # allow_reuse_address must stay False: on Windows SO_REUSEADDR permits a
+    # second process to bind the same port, which previously let a stale
+    # instance and a new one serve requests interchangeably (split-brain).
+    server_cls.allow_reuse_address = False
+    try:
+        server = server_cls(bind_addr, AsaasApiHandler)
+    except OSError as exc:
+        # Fallback to standard IPv4 if dual-stack fails on older environments
+        if server_cls is DualStackServer:
+            print(f"[!] Dual-stack bind notice ({exc}), falling back to IPv4...")
+            try:
+                server = ThreadingHTTPServer(('0.0.0.0', args.port), AsaasApiHandler)
+            except OSError as exc2:
+                _exit_port_in_use(args.port, exc2)
+        else:
+            _exit_port_in_use(args.port, exc)
 
     if use_ssl:
         ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -103,7 +162,7 @@ def main() -> None:
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n[!] ASAAS Server Control v2.5 shutting down gracefully...")
+        print("\n[!] ASAAS v2.5 shutting down gracefully...")
     finally:
         server.server_close()
 

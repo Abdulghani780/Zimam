@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Button, Field, TextInput, PasswordInput, useToast } from '../asaas-ui';
 import { api, type AppUser } from '../lib/api';
 import { User, LogIn, LogOut } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface UserAccountModalProps {
   open: boolean;
@@ -12,52 +13,41 @@ interface UserAccountModalProps {
 
 export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: UserAccountModalProps) {
   const toast = useToast();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin@asaas2026');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
-  const handleLogin = async (e?: React.FormEvent, customUser?: string, customPass?: string) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const u = customUser || username;
-    const p = customPass || password;
 
     setLoading(true);
     try {
-      const res = await api.login(u, p);
+      const res = await api.login(username, password);
       if (res.ok) {
-        toast(`تم تسجيل الدخول بنجاح كـ ${res.user.full_name} (${res.user.role}).`, 'success');
+        toast(`${t('تم تسجيل الدخول بنجاح كـ ')}${res.user.full_name} (${res.user.role}).`, 'success');
         onUserChanged(res.user);
         onClose();
       } else {
-        toast('فشل تسجيل الدخول: بيانات الاعتماد غير صحيحة.', 'error');
+        toast(t('فشل تسجيل الدخول: بيانات الاعتماد غير صحيحة.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء تسجيل الدخول', 'error');
+      toast(err.message || t('خطأ أثناء تسجيل الدخول'), 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQuickSwitch = (role: 'admin' | 'operator' | 'viewer') => {
-    const creds = {
-      admin: { u: 'admin', p: 'admin@asaas2026' },
-      operator: { u: 'operator', p: 'operator@asaas2026' },
-      viewer: { u: 'viewer', p: 'viewer@asaas2026' },
-    }[role];
-    handleLogin(undefined, creds.u, creds.p);
-  };
-
   const handleLogout = async () => {
     await api.logout();
-    toast('تم تسجيل الخروج بنجاح.', 'success');
+    toast(t('تم تسجيل الخروج بنجاح.'), 'success');
     onUserChanged(null);
   };
 
   return (
     <Modal
-      title="إدارة الحسابات وصلاحيات الوصول (Multi-User RBAC)"
+      title={t('إدارة الحسابات وصلاحيات الوصول (Multi-User RBAC)')}
       onClose={onClose}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -79,25 +69,25 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                background: currentUser?.role === 'admin' ? 'rgba(34, 197, 94, 0.15)' : currentUser?.role === 'operator' ? 'rgba(212, 160, 23, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                border: `1px solid ${currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent)' : '#3b82f6'}`,
+                background: currentUser?.role === 'admin' ? 'var(--paid-bg)' : currentUser?.role === 'operator' ? 'var(--accent-soft)' : 'var(--status-info-surface)',
+                border: `1px solid ${currentUser?.role === 'admin' ? 'var(--paid)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--chart-out)'}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent)' : '#3b82f6',
+                color: currentUser?.role === 'admin' ? 'var(--paid)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--chart-out)',
               }}
             >
               <User size={22} />
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-1)' }}>
-                {currentUser?.full_name || 'حساب غير محدد'}
+                {currentUser?.full_name || t('حساب غير محدد')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                <span>اسم المستخدم: <strong style={{ color: 'var(--text-2)' }}>{currentUser?.username || '—'}</strong></span>
+                <span>{t('اسم المستخدم:')} <strong style={{ color: 'var(--text-2)' }}>{currentUser?.username || '—'}</strong></span>
                 <span>•</span>
-                <span style={{ color: currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent)' : '#3b82f6', fontWeight: 600 }}>
-                  {currentUser?.role === 'admin' ? 'مدير نظام كامل الصلاحيات' : currentUser?.role === 'operator' ? 'مشغل عمليات' : 'مراجع للقراءة فقط'}
+                <span style={{ color: currentUser?.role === 'admin' ? 'var(--paid)' : currentUser?.role === 'operator' ? 'var(--accent)' : 'var(--chart-out)', fontWeight: 600 }}>
+                  {currentUser?.role === 'admin' ? t('مدير نظام كامل الصلاحيات') : currentUser?.role === 'operator' ? t('مشغل عمليات') : t('مراجع للقراءة فقط')}
                 </span>
               </div>
             </div>
@@ -106,73 +96,34 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
           {currentUser && (
             <Button size="sm" variant="ghost" onClick={handleLogout} style={{ color: 'var(--danger)' }}>
               <LogOut size={14} />
-              <span>خروج</span>
+              <span>{t('خروج')}</span>
             </Button>
           )}
         </div>
 
-        {/* Quick Role Switcher for Testing (Story 1 verification) */}
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-3)', marginBottom: 8 }}>
-            التبديل السريع بين الأدوار لاختبار صلاحيات RBAC:
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <Button
-              size="sm"
-              variant={currentUser?.role === 'admin' ? 'primary' : 'ghost'}
-              onClick={() => handleQuickSwitch('admin')}
-              disabled={loading}
-              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 6px', height: 'auto' }}
-            >
-              <span style={{ fontWeight: 700 }}>Admin (مدير)</span>
-              <span style={{ fontSize: 10, opacity: 0.8 }}>صلاحيات كاملة</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant={currentUser?.role === 'operator' ? 'primary' : 'ghost'}
-              onClick={() => handleQuickSwitch('operator')}
-              disabled={loading}
-              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 6px', height: 'auto' }}
-            >
-              <span style={{ fontWeight: 700 }}>Operator (مشغل)</span>
-              <span style={{ fontSize: 10, opacity: 0.8 }}>تحكم تشغيلي</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant={currentUser?.role === 'viewer' ? 'primary' : 'ghost'}
-              onClick={() => handleQuickSwitch('viewer')}
-              disabled={loading}
-              style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '10px 6px', height: 'auto' }}
-            >
-              <span style={{ fontWeight: 700 }}>Viewer (مشاهدة)</span>
-              <span style={{ fontSize: 10, opacity: 0.8 }}>قراءة فقط (403)</span>
-            </Button>
-          </div>
-        </div>
-
         {/* Direct Login Form */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="اسم المستخدم">
+          <Field label={t('اسم المستخدم')}>
             {(id) => (
               <TextInput
                 id={id}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin / operator / viewer"
+                placeholder={t('اسم المستخدم المسجل في المنصة')}
+                autoComplete="username"
                 required
               />
             )}
           </Field>
 
-          <Field label="كلمة المرور">
+          <Field label={t('كلمة المرور')}>
             {(id) => (
               <PasswordInput
                 id={id}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
+                autoComplete="current-password"
                 required
               />
             )}
@@ -180,11 +131,11 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
             <Button type="button" variant="ghost" onClick={onClose}>
-              إلغاء
+              {t('إلغاء')}
             </Button>
             <Button type="submit" variant="primary" loading={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <LogIn size={15} />
-              <span>تسجيل الدخول</span>
+              <span>{t('تسجيل الدخول')}</span>
             </Button>
           </div>
         </form>

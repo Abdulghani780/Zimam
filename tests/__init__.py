@@ -1,1 +1,1 @@
-"""ASAAS Server Control v2 - Test Suite Package."""
+"""ASAAS v2 - Test Suite Package."""

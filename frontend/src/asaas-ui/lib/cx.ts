@@ -1,2 +1,2 @@
 /** Joins truthy class names. */
-export const cx = (...names: Array<any>) => names.filter(Boolean).join(' ');
+export const cx = (...names: Array<string | false | null | undefined>) => names.filter(Boolean).join(' ');

@@ -42,10 +42,10 @@
 /* ───────── Site header ───────── */
 .site-header {
   position: sticky;
-  z-index: 100;
+  z-index: 30;
   top: 0;
-  padding: 0;
-  background-color: #0e0d0d;
+  padding-block: 12px;
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
 }
 
 .site-header__bar {

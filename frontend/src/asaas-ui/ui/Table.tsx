@@ -22,9 +22,9 @@ export const TableContainer = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivE
           width: '100%',
           overflowX: 'auto',
           borderRadius: '12px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: '#141312',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
+          border: '1px solid var(--hairline)',
+          backgroundColor: 'var(--surface-container-low, var(--glass-tint))',
+          boxShadow: 'var(--glass-shadow)',
           scrollbarWidth: 'thin',
           ...style,
         }}
@@ -48,7 +48,7 @@ export const Table = forwardRef<HTMLTableElement, TableHTMLAttributes<HTMLTableE
           borderSpacing: 0,
           textAlign: 'start',
           fontSize: '13.5px',
-          color: '#d6d0c4',
+          color: 'var(--text)',
           ...style,
         }}
         {...props}
@@ -66,8 +66,8 @@ export const TableHeader = forwardRef<HTMLTableSectionElement, HTMLAttributes<HT
         ref={ref}
         className={cx('select-none', className)}
         style={{
-          backgroundColor: '#1b1918',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          backgroundColor: 'var(--surface-container-high, var(--glass-tint-strong))',
+          borderBottom: '1px solid var(--hairline)',
           userSelect: 'none',
           ...style,
         }}
@@ -102,9 +102,10 @@ export const TableFooter = forwardRef<HTMLTableSectionElement, HTMLAttributes<HT
     return (
       <tfoot
         ref={ref}
+        className={cx(className)}
         style={{
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          backgroundColor: '#171615',
+          borderTop: '1px solid var(--hairline)',
+          backgroundColor: 'var(--surface-container, var(--glass-tint))',
           fontWeight: 500,
           ...style,
         }}
@@ -131,9 +132,9 @@ export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
           className
         )}
         style={{
-          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          borderBottom: '1px solid var(--hairline)',
           transition: 'background-color 0.15s ease',
-          backgroundColor: selected ? 'rgba(212, 160, 23, 0.08)' : 'transparent',
+          backgroundColor: selected ? 'var(--accent-soft)' : 'transparent',
           ...style,
         }}
         {...props}
@@ -155,12 +156,12 @@ export const TableHead = forwardRef<HTMLTableCellElement, ThHTMLAttributes<HTMLT
           padding: '12px 16px',
           fontSize: '12px',
           fontWeight: 700,
-          color: '#8a8478',
+          color: 'var(--text-3)',
           letterSpacing: '0.03em',
           display: 'table-cell',
           textAlign: 'start',
           whiteSpace: 'nowrap',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          borderBottom: '1px solid var(--hairline)',
           ...style,
         }}
         {...props}
@@ -182,9 +183,9 @@ export const TableCell = forwardRef<HTMLTableCellElement, TdHTMLAttributes<HTMLT
           padding: '12px 16px',
           fontSize: '13.5px',
           verticalAlign: 'middle',
-          color: '#d6d0c4',
+          color: 'var(--text)',
           whiteSpace: 'nowrap',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+          borderBottom: '1px solid var(--hairline)',
           ...style,
         }}
         {...props}
@@ -218,7 +219,7 @@ export function TableEmpty({
         style={{
           padding: '48px 16px',
           textAlign: 'center',
-          color: '#8a8478',
+          color: 'var(--text-3)',
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -227,12 +228,12 @@ export function TableEmpty({
               width: 44,
               height: 44,
               borderRadius: '50%',
-              backgroundColor: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backgroundColor: 'var(--glass-inset)',
+              border: '1px solid var(--hairline)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#8a8478',
+              color: 'var(--text-3)',
             }}
           >
             {icon || <Inbox size={22} />}
@@ -255,7 +256,7 @@ export const TableCaption = forwardRef<HTMLTableCaptionElement, HTMLAttributes<H
           captionSide: 'bottom',
           padding: '8px 16px',
           textAlign: 'start',
-          color: '#8a8478',
+          color: 'var(--text-3)',
           fontSize: '12px',
           ...style,
         }}

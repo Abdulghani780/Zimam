@@ -1,6 +1,6 @@
 # TESTS.md — Test Assets and Required Test Points
 
-> This registry governs the test assets, verification gates, and regression protection for **ASAAS Server Control v2**.
+> This registry governs the test assets, verification gates, and regression protection for **ASAAS v2**.
 > Test code remains the executable truth; this document stores indexes, assessments, and verifiable evidence.
 
 ---
@@ -14,6 +14,8 @@
 | **Full Cross-Boundary End-to-End** | `python tests/test_api_contracts.py` | API contract changes | None (in-process mocks & models) |
 | **Security Risk Evaluator Test** | `python -m unittest tests/test_bastion_security.py` | Security / Bastion ACL updates | None |
 | **Port Isolation Guard Test** | `python -m unittest tests/test_port_isolation.py` | Networking & Port service changes | None |
+| **Control Plane v1 Suite** | `cd control_plane && python -m unittest` | Auth/agents/jobs/audit/vault/license changes | Python 3.10+ |
+| **Playwright E2E & Visual Matrix** | `cd frontend && npx playwright test` | UI/navigation/viewport changes | Live backend on :8765, `npx playwright install` |
 
 ---
 
@@ -129,7 +131,7 @@ Controlled purposes: `rule protection`, `critical path`, `regression protection`
 | Priority | TEST-ID or asset | Gap | Next action | State |
 |---|---|---|---|---|
 | **P1** | `TEST-WTS-007` | Automated mock for interactive Win32 desktop popups (`WTSSendMessageW`) | Add Win32 ctypes mock fixture for CI non-Windows environments | in progress |
-| **P2** | `TEST-E2E-008` | Automated Playwright headless UI smoke run in CI pipeline | Add `npm run test:e2e` Playwright script | in progress |
+| ~~**P2**~~ | `TEST-E2E-008` | Automated Playwright headless UI smoke run in CI pipeline | `frontend/e2e/smoke.spec.ts` + `e2e-smoke` job in `.github/workflows/ci.yml` (login, theme toggle, mobile overflow, governor console health) | done |
 
 ---
 

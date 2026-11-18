@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal, Button, Field, TextInput, TextArea, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { ShieldAlert, Send, AlertTriangle } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface BroadcastModalProps {
   open: boolean;
@@ -12,7 +13,7 @@ interface BroadcastModalProps {
 
 export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: BroadcastModalProps) {
   const toast = useToast();
-  const [title, setTitle] = useState('إشعار رسمي من إدارة السيرفر');
+  const [title, setTitle] = useState(t('إشعار رسمي من إدارة السيرفر'));
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [elevating, setElevating] = useState(false);
@@ -38,8 +39,8 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
       if (res.ok) {
         toast(
           isBroadcast
-            ? 'تم بث الإشعار بنجاح لجميع جلسات المستخدمين.'
-            : (res.message || ('تم تسليم الرسالة للمستخدم: ' + (targetUser || targetSessionId))),
+            ? t('تم بث الإشعار بنجاح لجميع جلسات المستخدمين.')
+            : (res.message || (t('تم تسليم الرسالة للمستخدم: ') + (targetUser || targetSessionId))),
           'success'
         );
         if (res.warning) {
@@ -52,11 +53,11 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
         if (res.error?.includes('Access Denied') || res.error?.includes('5')) {
           setAccessDeniedError(res.error);
         } else {
-          toast(res.error || 'حدث خطأ أثناء محاولة إرسال الرسالة.', 'error');
+          toast(res.error || t('حدث خطأ أثناء محاولة إرسال الرسالة.'), 'error');
         }
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ في الإرسال', 'error');
+      toast(err.message || t('خطأ في الإرسال'), 'error');
     } finally {
       setLoading(false);
     }
@@ -66,9 +67,9 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
     setElevating(true);
     try {
       const res = await api.requestElevation();
-      toast(res.message || 'تم إرسال طلب الترقية، يرجى الموافقة على نافذة UAC في شاشة السيرفر.', 'success');
+      toast(res.message || t('تم إرسال طلب الترقية، يرجى الموافقة على نافذة UAC في شاشة السيرفر.'), 'success');
     } catch (err: any) {
-      toast(err.message || 'فشلت الترقية', 'error');
+      toast(err.message || t('فشلت الترقية'), 'error');
     } finally {
       setElevating(false);
     }
@@ -77,10 +78,10 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
   return (
     <Modal
       onClose={onClose}
-      title={isBroadcast ? 'بث تنبيه فوري لجميع المستخدمين' : `إرسال رسالة للمستخدم: ${targetUser || targetSessionId}`}
+      title={isBroadcast ? t('بث تنبيه فوري لجميع المستخدمين') : `${t('إرسال رسالة للمستخدم: ')}${targetUser || targetSessionId}`}
     >
       <form onSubmit={handleSubmit} className="form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Field label="عنوان التنبيه">
+        <Field label={t('عنوان التنبيه')}>
           {(id) => (
             <TextInput
               id={id}
@@ -91,14 +92,14 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
           )}
         </Field>
 
-        <Field label="نص الرسالة" hint="ستظهر الرسالة كنافذة منبثقة مباشرة فوق شاشات سطح المكتب النشطة">
+        <Field label={t('نص الرسالة')} hint={t('ستظهر الرسالة كنافذة منبثقة مباشرة فوق شاشات سطح المكتب النشطة')}>
           {(id) => (
             <TextArea
               id={id}
               rows={4}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="أدخل نص الرسالة أو التنبيه للمستخدم..."
+              placeholder={t('أدخل نص الرسالة أو التنبيه للمستخدم...')}
               required
             />
           )}
@@ -109,21 +110,21 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
             style={{
               padding: 14,
               borderRadius: 10,
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: 'var(--unpaid-bg)',
+              border: '1px solid var(--unpaid-bg)',
               display: 'flex',
               flexDirection: 'column',
               gap: 8,
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <AlertTriangle size={16} color="#ef4444" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>
-                يتطلب إرسال التنبيهات بين الجلسات صلاحيات مسؤول (Elevated Administrator)
+              <AlertTriangle size={16} color="var(--unpaid)" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--unpaid)' }}>
+                {t('يتطلب إرسال التنبيهات بين الجلسات صلاحيات مسؤول (Elevated Administrator)')}
               </span>
             </div>
             <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0 }}>
-              السيرفر يعمل حالياً بصلاحيات المستخدم العادي. اضغط الزر بالأسفل لترقية السيرفر فوراً عبر UAC ثم إعادة إرسال التنبيه تلقائياً:
+              {t('السيرفر يعمل حالياً بصلاحيات المستخدم العادي. اضغط الزر بالأسفل لترقية السيرفر فوراً عبر UAC ثم إعادة إرسال التنبيه تلقائياً:')}
             </p>
             <Button
               type="button"
@@ -133,18 +134,18 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start' }}
             >
               <ShieldAlert size={14} />
-              <span>ترقية صلاحيات السيرفر كمسؤول وتكرار الإرسال</span>
+              <span>{t('ترقية صلاحيات السيرفر كمسؤول وتكرار الإرسال')}</span>
             </Button>
           </div>
         )}
 
         <div className="cluster" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
           <Button type="button" variant="ghost" onClick={onClose}>
-            إلغاء
+            {t('إلغاء')}
           </Button>
           <Button type="submit" variant="primary" loading={loading}>
             <Send size={13} />
-            <span>إرسال التنبيه الآن</span>
+            <span>{t('إرسال التنبيه الآن')}</span>
           </Button>
         </div>
       </form>

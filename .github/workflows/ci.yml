@@ -1,4 +1,4 @@
-name: ASAAS Server Control CI/CD
+name: ASAAS CI/CD
 
 on:
   push:
@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js 20.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: 'npm'
@@ -33,7 +33,7 @@ jobs:
           npm run build
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -53,8 +53,176 @@ jobs:
           assert os.path.exists(DB_PATH), 'Database was not created'
           conn = get_db_connection()
           cur = conn.cursor()
-          cur.execute('SELECT COUNT(*) FROM app_users')
-          users_cnt = cur.fetchone()[0]
-          print(f'Database initialized successfully with {users_cnt} default users.')
-          assert users_cnt >= 3, 'Default RBAC users missing'
+          # init_db intentionally ships zero credentials — the control plane
+          # is the identity authority. Verify the schema exists instead.
+          cur.execute('SELECT name FROM sqlite_master WHERE type=\'table\'')
+          tables = {r[0] for r in cur.fetchall()}
+          required = {'app_users', 'app_sessions', 'bastion_assets', 'security_audit_events', 'port_reservations'}
+          missing = required - tables
+          print(f'Database initialized with {len(tables)} tables.')
+          assert not missing, f'Missing required tables: {missing}'
           "
+
+      - name: Prepare Ephemeral Test Admin & Start Backend
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'backend')
+          from app.infrastructure.db import init_db, get_db_connection, hash_password
+          from datetime import datetime, timezone
+          init_db()
+          h, s = hash_password('admin@asaas2026')
+          conn = get_db_connection(); cur = conn.cursor()
+          cur.execute('SELECT id FROM app_users WHERE username = ?', ('admin',))
+          if not cur.fetchone():
+              cur.execute('''INSERT INTO app_users (username, password_hash, salt, role, full_name, is_active, created_at)
+                             VALUES (?, ?, ?, 'admin', 'CI Admin', 1, ?)''', ('admin', h, s, datetime.now(timezone.utc).isoformat()))
+              conn.commit()
+          print('test admin ready')
+          "
+          Start-Process -FilePath python -ArgumentList 'backend/main.py' -WindowStyle Hidden
+          Start-Sleep -Seconds 5
+
+      - name: Run Backend Unit & Contract Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Install Control Plane Dependencies
+        run: pip install -r control_plane/requirements.txt
+
+      - name: Run Control Plane Security Tests
+        env:
+          PYTHONPATH: control_plane
+        run: python -m unittest discover -s control_plane/tests -v
+
+  e2e-smoke:
+    name: Playwright Smoke (login + core journeys)
+    runs-on: windows-latest
+    needs: validate-and-build
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+          npx playwright install chromium
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Backend Dependency
+        run: pip install psutil>=7.0.0
+
+      - name: Bootstrap E2E Administrator
+        working-directory: backend
+        run: |
+          python -c "import sys; sys.path.insert(0,'.'); from app.infrastructure.db import init_db, get_db_connection, hash_password; from datetime import datetime, timezone; init_db(); h, s = hash_password('E2E!Smoke#Passw0rd2026!'); conn = get_db_connection(); cur = conn.cursor(); cur.execute('SELECT id FROM app_users WHERE username = ?', ('e2e-admin',)); row = cur.fetchone(); now = datetime.now(timezone.utc).isoformat();
+          if row:
+              cur.execute('UPDATE app_users SET password_hash = ?, salt = ?, role = \'admin\', is_active = 1 WHERE id = ?', (h, s, row['id']))
+          else:
+              cur.execute('INSERT INTO app_users (username, password_hash, salt, role, full_name, is_active, created_at) VALUES (?, ?, ?, \'admin\', \'E2E Admin\', 1, ?)', ('e2e-admin', h, s, now))
+          conn.commit(); print('e2e-admin ready')"
+
+      - name: Start ASAAS Backend
+        run: |
+          Start-Process -FilePath python -ArgumentList 'backend/main.py' -WindowStyle Hidden
+          # Wait for /api/health instead of a fixed sleep — cold init_db can
+          # exceed 5s and the first login POST then fails, leaving SMK-01 stuck.
+          $deadline = (Get-Date).AddSeconds(90)
+          do {
+            Start-Sleep -Seconds 2
+            try {
+              $r = Invoke-WebRequest -Uri 'http://127.0.0.1:8765/api/health' -UseBasicParsing -TimeoutSec 5
+              if ($r.StatusCode -eq 200) { break }
+            } catch { }
+          } while ((Get-Date) -lt $deadline)
+          if ((Get-Date) -ge $deadline) { throw 'Backend did not become healthy within 90s' }
+          # Verify credentials end-to-end before browser tests run.
+          $login = Invoke-RestMethod -Uri 'http://127.0.0.1:8765/api/auth/login' -Method Post -ContentType 'application/json' -Body (@{ username = 'e2e-admin'; password = 'E2E!Smoke#Passw0rd2026!' } | ConvertTo-Json)
+          if (-not $login.ok) { throw "E2E credential check failed: $($login | ConvertTo-Json -Compress)" }
+          Write-Host 'E2E login verified'
+
+      - name: Run Playwright Smoke Tests
+        working-directory: frontend
+        env:
+          E2E_USER: e2e-admin
+          E2E_PASS: E2E!Smoke#Passw0rd2026!
+        run: npx playwright test e2e/smoke.spec.ts --project="Desktop Chromium"
+
+  release-package:
+    name: Build Release Payload + Installer
+    runs-on: windows-latest
+    needs: validate-and-build
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 20.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Create build venv (backend + control plane + pyinstaller)
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt -r control_plane\requirements.txt pyinstaller
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build staged release payload
+        run: powershell -ExecutionPolicy Bypass -File tools\build-release.ps1
+
+      - name: Install Inno Setup 6
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        run: |
+          $iscc = Get-ChildItem "C:\Program Files (x86)\Inno Setup 6\ISCC.exe","$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $iscc) { $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source }
+          if (-not $iscc) { throw "ISCC.exe not found after choco install" }
+          & $iscc packaging\asaas.iss
+
+      - name: Verify installer artifact
+        run: |
+          $exe = Get-ChildItem installer-out\ASAAS-Setup-*.exe | Select-Object -First 1
+          if (-not $exe) { throw "Installer exe missing" }
+          if ($exe.Length -lt 10MB) { throw "Installer suspiciously small: $($exe.Length) bytes" }
+          Write-Host "Installer: $($exe.Name) ($([math]::Round($exe.Length/1MB,1)) MB)"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: asaas-server-control-setup
+          path: installer-out/*.exe
+          retention-days: 30

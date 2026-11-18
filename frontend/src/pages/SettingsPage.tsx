@@ -1,5 +1,5 @@
 /**
- * ASAAS Server Control v2.5 - Screens _4 & _12
+ * ASAAS v2.5 - Screens _4 & _12
  * إعدادات المنظومة وتنبيهات تيليجرام الفورية والربط السيبراني ومصفوفة الإنذارات
  * Strict implementation of Stitch Prototypes _4 & _12
  */
@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Glass, Field, TextInput, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import {
   Send,
   CheckCircle2,
@@ -14,6 +15,7 @@ import {
   Save,
   MessageSquare,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function SettingsPage() {
   const toast = useToast();
@@ -26,12 +28,13 @@ export function SettingsPage() {
   const [diskThreshold, setDiskThreshold] = useState('90');
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
 
   // Stitch _12 Alert Rules Matrix Toggles
-  const [ruleBruteForce] = useState(true);
-  const [ruleCommandRisk] = useState(true);
-  const [rulePortFlood] = useState(true);
-  const [ruleServiceCrash] = useState(true);
+  const [ruleBruteForce, setRuleBruteForce] = useState(true);
+  const [ruleCommandRisk, setRuleCommandRisk] = useState(true);
+  const [rulePortFlood, setRulePortFlood] = useState(true);
+  const [ruleServiceCrash, setRuleServiceCrash] = useState(true);
   
   const fetchSettings = async () => {
     try {
@@ -44,6 +47,10 @@ export function SettingsPage() {
         setCpuThreshold(String(cfg.config.cpu_threshold || 85));
         setRamThreshold(String(cfg.config.ram_threshold || 90));
         setDiskThreshold(String(cfg.config.disk_threshold || 90));
+        setRuleBruteForce(cfg.config.rule_brute_force ?? true);
+        setRuleCommandRisk(cfg.config.rule_command_risk ?? true);
+        setRulePortFlood(cfg.config.rule_port_flood ?? true);
+        setRuleServiceCrash(cfg.config.rule_service_crash ?? true);
       }
     } catch {
       // ignore
@@ -66,10 +73,14 @@ export function SettingsPage() {
         cpu_threshold: parseFloat(cpuThreshold) || 85,
         ram_threshold: parseFloat(ramThreshold) || 90,
         disk_threshold: parseFloat(diskThreshold) || 90,
+        rule_brute_force: ruleBruteForce,
+        rule_command_risk: ruleCommandRisk,
+        rule_port_flood: rulePortFlood,
+        rule_service_crash: ruleServiceCrash,
       } as any);
-      toast('تم حفظ وتطبيق إعدادات المنظومة ومصفوفة الإنذارات بنجاح.', 'success');
+      toast(t('تم حفظ وتطبيق إعدادات المنظومة ومصفوفة الإنذارات بنجاح.'), 'success');
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء الحفظ', 'error');
+      toast(err.message || t('خطأ أثناء الحفظ'), 'error');
     } finally {
       setSaving(false);
     }
@@ -78,30 +89,43 @@ export function SettingsPage() {
   const handleTestAlert = async () => {
     setTesting(true);
     try {
-      const res = await api.testAlert('اختبار إشعار فوري من لوحة تحكم سيرفرات أساس (ASAAS Server Control v2.5)');
+      const res = await api.testAlert(t('اختبار إشعار فوري من لوحة تحكم سيرفرات أساس (ASAAS v2.5)'));
       if (res.ok) {
-        toast('تم إرسال إشعار التجربة لهاتفك عبر تيليجرام بنجاح!', 'success');
+        toast(t('تم إرسال إشعار التجربة لهاتفك عبر تيليجرام بنجاح!'), 'success');
       } else {
-        toast(res.reason || res.error || 'فشل إرسال التجربة، تأكد من صحة الرمز ومعرف المحادثة.', 'error');
+        toast(res.reason || res.error || t('فشل إرسال التجربة، تأكد من صحة الرمز ومعرف المحادثة.'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء إرسال التجربة', 'error');
+      toast(err.message || t('خطأ أثناء إرسال التجربة'), 'error');
     } finally {
       setTesting(false);
     }
   };
 
+  const handleBackup = async () => {
+    setBackingUp(true);
+    try {
+      const res: any = await apiV1.backup();
+      const sizeKb = res?.size_bytes ? Math.round(res.size_bytes / 1024) : 0;
+      toast(`${t('تم إنشاء النسخة الاحتياطية')}: ${res?.file || ''} (${sizeKb} KB)`, 'success');
+    } catch (err: any) {
+      toast(err?.message || t('خطأ أثناء إنشاء النسخة الاحتياطية'), 'error');
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Executive Header (Stitch _4 & _12) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -115,20 +139,20 @@ export function SettingsPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
               >
                 <CheckCircle2 size={13} />
-                قنوات التنبيه الفوري مشفرة وجاهزة 24/7
+                {t('قنوات التنبيه الفوري مشفرة وجاهزة 24/7')}
               </span>
               <span
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -139,11 +163,10 @@ export function SettingsPage() {
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              إعدادات المنظومة وتنبيهات تيليجرام الفورية والربط السيبراني
+              {t('إعدادات المنظومة وتنبيهات تيليجرام الفورية والربط السيبراني')}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              ربط فوري بهواتف فريق العمليات عبر قنوات مشفرة لتلقي إشعارات انقطاع الخدمات، محاولات التسلل،
-              وتجاوز حدود استهلاك المعالج والذاكرة مع منع التكرار المزعج (Smart Cooldown).
+              {t('ربط فوري بهواتف فريق العمليات عبر قنوات مشفرة لتلقي إشعارات انقطاع الخدمات، محاولات التسلل، وتجاوز حدود استهلاك المعالج والذاكرة مع منع التكرار المزعج (Smart Cooldown).')}
             </p>
           </div>
 
@@ -156,7 +179,7 @@ export function SettingsPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Send size={13} color="var(--accent)" />
-              <span>إرسال تنبيه تجريبي</span>
+              <span>{t('إرسال تنبيه تجريبي')}</span>
             </Button>
             <Button
               size="sm"
@@ -166,7 +189,7 @@ export function SettingsPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Save size={13} />
-              <span>حفظ وتطبيق التغييرات فوراً</span>
+              <span>{t('حفظ وتطبيق التغييرات فوراً')}</span>
             </Button>
           </div>
         </div>
@@ -184,22 +207,22 @@ export function SettingsPage() {
                     width: 36,
                     height: 36,
                     borderRadius: 10,
-                    background: 'rgba(56, 189, 248, 0.15)',
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    background: 'var(--status-info-surface)',
+                    border: '1px solid var(--status-info-surface)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#38bdf8',
+                    color: 'var(--chart-out)',
                   }}
                 >
                   <MessageSquare size={20} />
                 </div>
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                    قنوات الإخطار والتسليم الفوري (Instant Delivery Channels)
+                    {t('قنوات الإخطار والتسليم الفوري (Instant Delivery Channels)')}
                   </h2>
                   <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                    تسليم التنبيهات الحرجة عبر بروتوكول HTTPS المشفر لهاتف المسؤول
+                    {t('تسليم التنبيهات الحرجة عبر بروتوكول HTTPS المشفر لهاتف المسؤول')}
                   </span>
                 </div>
               </div>
@@ -215,42 +238,42 @@ export function SettingsPage() {
             </div>
 
             <form onSubmit={handleSaveTelegram} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Field label="رمز البوت (Telegram Bot Token)" hint="رمز البوت الخاص بك من @BotFather (مشفر ومحمي)">
+              <Field label={t('رمز البوت (Telegram Bot Token)')} hint={t('رمز البوت الخاص بك من @BotFather (مشفر ومحمي)')}>
                 {(id) => (
                   <TextInput
                     id={id}
                     type="password"
                     value={botToken}
                     onChange={(e) => setBotToken(e.target.value)}
-                    placeholder="مثال: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                    placeholder={t('مثال: 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ')}
                   />
                 )}
               </Field>
 
-              <Field label="معرف المحادثة أو القناة (Telegram Chat ID)" hint="معرف حسابك أو قناة الإشعارات الخاصة بالسيرفر">
+              <Field label={t('معرف المحادثة أو القناة (Telegram Chat ID)')} hint={t('معرف حسابك أو قناة الإشعارات الخاصة بالسيرفر')}>
                 {(id) => (
                   <TextInput
                     id={id}
                     value={chatId}
                     onChange={(e) => setChatId(e.target.value)}
-                    placeholder="مثال: 987654321 أو -100123456789"
+                    placeholder={t('مثال: 987654321 أو -100123456789')}
                   />
                 )}
               </Field>
 
               {/* Delivery Channels status */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 4 }}>
-                <div style={{ padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(56, 189, 248, 0.25)' }}>
-                  <span style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, display: 'block' }}>● Telegram Bot</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>{telegramEnabled ? 'جاهز ومتصل' : 'معطّل'}</span>
+                <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--status-info-surface)' }}>
+                  <span style={{ fontSize: 10, color: 'var(--chart-out)', fontWeight: 700, display: 'block' }}>● Telegram Bot</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>{telegramEnabled ? t('جاهز ومتصل') : t('معطّل')}</span>
                 </div>
-                <div style={{ padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--glass-rim-low)' }}>
                   <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700, display: 'block' }}>● Windows Event Log</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>قيد التوثيق الحتمي</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>{t('قيد التوثيق الحتمي')}</span>
                 </div>
-                <div style={{ padding: 10, borderRadius: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, display: 'block' }}>● Forensic Audit Ledger</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>SHA-256 موثق</span>
+                <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--glass-rim-low)' }}>
+                  <span style={{ fontSize: 10, color: 'var(--paid)', fontWeight: 700, display: 'block' }}>● Forensic Audit Ledger</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>{t('SHA-256 موثق')}</span>
                 </div>
               </div>
             </form>
@@ -266,8 +289,8 @@ export function SettingsPage() {
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  background: 'rgba(212, 160, 23, 0.15)',
-                  border: '1px solid rgba(212, 160, 23, 0.3)',
+                  background: 'var(--accent-soft)',
+                  border: '1px solid var(--accent-soft)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -278,10 +301,10 @@ export function SettingsPage() {
               </div>
               <div>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-                  نافذة الهدوء والجدولة الذكية (Smart Cooldown)
+                  {t('نافذة الهدوء والجدولة الذكية (Smart Cooldown)')}
                 </h2>
                 <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                  منع تكرار الإشعارات المتطابقة لنفس الحدث خلال نافذة زمنية
+                  {t('منع تكرار الإشعارات المتطابقة لنفس الحدث خلال نافذة زمنية')}
                 </span>
               </div>
             </div>
@@ -301,11 +324,11 @@ export function SettingsPage() {
                     fontWeight: 700,
                     cursor: 'pointer',
                     border: cooldownMinutes === mins ? '1px solid var(--accent)' : '1px solid transparent',
-                    background: cooldownMinutes === mins ? 'rgba(212, 160, 23, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                    background: cooldownMinutes === mins ? 'var(--accent-soft)' : 'var(--glass-rim-low)',
                     color: cooldownMinutes === mins ? 'var(--accent)' : 'var(--text-3)',
                   }}
                 >
-                  {mins} دقيقة
+                  {mins} {t('دقيقة')}
                 </button>
               ))}
             </div>
@@ -314,7 +337,7 @@ export function SettingsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--text-2)' }}>عتبة إنذار المعالج CPU:</span>
+                  <span style={{ color: 'var(--text-2)' }}>{t('عتبة إنذار المعالج CPU:')}</span>
                   <strong style={{ color: 'var(--accent)', fontFamily: 'var(--font)' }}>{cpuThreshold}%</strong>
                 </div>
                 <input
@@ -323,6 +346,7 @@ export function SettingsPage() {
                   max="95"
                   step="5"
                   value={cpuThreshold}
+                  aria-label={t('عتبة إنذار المعالج CPU:')}
                   onChange={(e) => setCpuThreshold(e.target.value)}
                   style={{ width: '100%', accentColor: 'var(--accent)' }}
                 />
@@ -330,7 +354,7 @@ export function SettingsPage() {
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--text-2)' }}>عتبة إنذار الذاكرة RAM:</span>
+                  <span style={{ color: 'var(--text-2)' }}>{t('عتبة إنذار الذاكرة RAM:')}</span>
                   <strong style={{ color: 'var(--accent)', fontFamily: 'var(--font)' }}>{ramThreshold}%</strong>
                 </div>
                 <input
@@ -339,6 +363,7 @@ export function SettingsPage() {
                   max="98"
                   step="2"
                   value={ramThreshold}
+                  aria-label={t('عتبة إنذار الذاكرة RAM:')}
                   onChange={(e) => setRamThreshold(e.target.value)}
                   style={{ width: '100%', accentColor: 'var(--accent)' }}
                 />
@@ -346,7 +371,7 @@ export function SettingsPage() {
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--text-2)' }}>عتبة امتلاء القرص C:\:</span>
+                  <span style={{ color: 'var(--text-2)' }}>{t('عتبة امتلاء القرص')} C:\:</span>
                   <strong style={{ color: 'var(--accent)', fontFamily: 'var(--font)' }}>{diskThreshold}%</strong>
                 </div>
                 <input
@@ -355,6 +380,7 @@ export function SettingsPage() {
                   max="98"
                   step="2"
                   value={diskThreshold}
+                  aria-label={t('عتبة امتلاء القرص')}
                   onChange={(e) => setDiskThreshold(e.target.value)}
                   style={{ width: '100%', accentColor: 'var(--accent)' }}
                 />
@@ -366,11 +392,11 @@ export function SettingsPage() {
 
       {/* 3. Automated Security Alert Rules Matrix (Stitch _12 H2) */}
       <Card
-        title="مصفوفة قواعد الإنذار التلقائي (Automated Security Alert Rules Matrix)"
+        title={t('مصفوفة قواعد الإنذار التلقائي (Automated Security Alert Rules Matrix)')}
         icon="phone"
         actions={
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            مراقبة سيبرانية نشطة 24/7
+            {t('مراقبة سيبرانية نشطة 24/7')}
           </span>
         }
       >
@@ -380,8 +406,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -389,17 +415,17 @@ export function SettingsPage() {
           >
             <div>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', display: 'block' }}>
-                رصد هجمات التخمين (Brute Force Lockout)
+                {t('رصد هجمات التخمين (Brute Force Lockout)')}
               </span>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                إرسال إنذار فوري وحظر IP المعتدي بعد 5 محاولات فاشلة
+                {t('إرسال إنذار فوري وحظر IP المعتدي بعد 5 محاولات فاشلة')}
               </span>
             </div>
             <label className="toggle-switch">
               <input
                 type="checkbox"
                 checked={ruleBruteForce}
-                readOnly
+                onChange={(e) => setRuleBruteForce(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>
@@ -410,8 +436,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -419,17 +445,17 @@ export function SettingsPage() {
           >
             <div>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', display: 'block' }}>
-                محلل مخاطر الأوامر (Command Risk Guard)
+                {t('محلل مخاطر الأوامر (Command Risk Guard)')}
               </span>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                اعتراض أوامر PowerShell المقيدة وحقن السكربتات الخطيرة
+                {t('اعتراض أوامر PowerShell المقيدة وحقن السكربتات الخطيرة')}
               </span>
             </div>
             <label className="toggle-switch">
               <input
                 type="checkbox"
                 checked={ruleCommandRisk}
-                readOnly
+                onChange={(e) => setRuleCommandRisk(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>
@@ -440,8 +466,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -449,17 +475,17 @@ export function SettingsPage() {
           >
             <div>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', display: 'block' }}>
-                طوفان المنافذ والاتصالات (Port Flood &amp; SYN)
+                {t('طوفان المنافذ والاتصالات')} (Port Flood &amp; SYN)
               </span>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                عزل المنافذ المشبوهة وحماية RDP من محاولات الاستنزاف
+                {t('عزل المنافذ المشبوهة وحماية RDP من محاولات الاستنزاف')}
               </span>
             </div>
             <label className="toggle-switch">
               <input
                 type="checkbox"
                 checked={rulePortFlood}
-                readOnly
+                onChange={(e) => setRulePortFlood(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>
@@ -470,8 +496,8 @@ export function SettingsPage() {
             style={{
               padding: 16,
               borderRadius: 10,
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(212, 160, 23, 0.15)',
+              background: 'var(--glass-rim-low)',
+              border: '1px solid var(--accent-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -479,22 +505,37 @@ export function SettingsPage() {
           >
             <div>
               <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)', display: 'block' }}>
-                توقف خدمات النظام الحرجة (Critical Service Failure)
+                {t('توقف خدمات النظام الحرجة (Critical Service Failure)')}
               </span>
               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                إشعار فوري عند تعطل خدمات SQL Server أو TermService أو IIS
+                {t('إشعار فوري عند تعطل خدمات SQL Server أو TermService أو IIS')}
               </span>
             </div>
             <label className="toggle-switch">
               <input
                 type="checkbox"
                 checked={ruleServiceCrash}
-                readOnly
+                onChange={(e) => setRuleServiceCrash(e.target.checked)}
               />
               <span className="toggle-slider" />
             </label>
           </div>
         </div>
+      </Card>
+
+      {/* 4. Control Plane Backup (v1) */}
+      <Card
+        title={t('النسخ الاحتياطي لطبقة التحكم')}
+        icon="collect"
+        actions={
+          <Button variant="secondary" onClick={handleBackup} disabled={backingUp}>
+            {backingUp ? t('جارٍ الإنشاء...') : t('إنشاء نسخة احتياطية')}
+          </Button>
+        }
+      >
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-2)', lineHeight: 1.7 }}>
+          {t('ينشئ نسخة SQLite متسقة من قاعدة بيانات طبقة التحكم في مجلد data/backups مع بصمة SHA-256 وسجل تدقيق. متاح للمشرفين فقط.')}
+        </p>
       </Card>
     </div>
   );

@@ -1,558 +1,399 @@
-/**
- * ASAAS Server Control v2.5 - Screen _3
- * خزنة الحسابات والاعتمادات المشفرة (Hardware-bound DPAPI Vault)
- * Strict implementation of Stitch Prototype _3
- */
+import { useEffect, useState } from 'react';
+import { LockKeyhole, ShieldCheck, Plus, Trash2, Eye, Copy, RefreshCw, Key } from 'lucide-react';
+import { apiV1, type V1Account, type V1Asset } from '../lib/apiV1';
+import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { t } from '../lib/i18n';
 
-import { useState, useEffect } from 'react';
-import { Button, Modal, Field, TextInput, PasswordInput, Glass, useToast } from '../asaas-ui';
-import { api, type VaultAccount } from '../lib/api';
-import {
-  KeyRound,
-  Lock,
-  Plus,
-  Eye,
-  Copy,
-  Trash2,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
-} from 'lucide-react';
+interface VaultRow {
+  id: string;
+  asset_id: string;
+  asset_name: string;
+  username: string;
+  protocol: string;
+  created_at?: string;
+}
+
+const PROTOCOL_OPTIONS: { value: string; label: string }[] = [
+  { value: 'rdp', label: 'Remote Desktop (RDP - 3389)' },
+  { value: 'ssh', label: 'Secure Shell (SSH - 22)' },
+  { value: 'sftp', label: 'SFTP Transfer' },
+  { value: 'winrm', label: 'Windows Remote Management (WinRM - 5985)' },
+  { value: 'vnc', label: 'Virtual Network Computing (VNC)' },
+  { value: 'telnet', label: 'Telnet (legacy)' },
+];
 
 export function VaultPage() {
   const toast = useToast();
-  const [accounts, setAccounts] = useState<VaultAccount[]>([]);
-  const [activeTab, setActiveTab] = useState<'all' | 'rdp' | 'ssh' | 'db' | 'api'>('all');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [revealOpen, setRevealOpen] = useState(false);
-  const [targetId, setTargetId] = useState<string | null>(null);
-  const [masterKey, setMasterKey] = useState('');
-  const [revealedPwd, setRevealedPwd] = useState<string | null>(null);
-  const [revealing, setRevealing] = useState(false);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [isLocked, setIsLocked] = useState(false);
+  const [accounts, setAccounts] = useState<VaultRow[]>([]);
+  const [assets, setAssets] = useState<V1Asset[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [revealModalOpen, setRevealModalOpen] = useState(false);
+  const [revealedSecret, setRevealedSecret] = useState<{ username: string; secret: string; asset: string } | null>(null);
 
-  // New account form
-  const [assetId, setAssetId] = useState('SRV-PROD-ASAAS-01');
+  // Form states
+  const [assetName, setAssetName] = useState('');
   const [username, setUsername] = useState('');
+  const [protocol, setProtocol] = useState('rdp');
   const [password, setPassword] = useState('');
-  const [protocol, setProtocol] = useState('RDP');
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchVault = async () => {
+  const normalize = <T,>(res: T[] | { items?: T[] } | unknown): T[] =>
+    Array.isArray(res) ? res : Array.isArray((res as { items?: T[] })?.items) ? (res as { items: T[] }).items : [];
+
+  const fetchAccounts = async () => {
+    setLoading(true);
     try {
-      const accs = await api.getVaultAccounts();
-      setAccounts(Array.isArray(accs) ? accs : (accs as any)?.accounts || []);
+      const [assetRes, accountRes] = await Promise.all([apiV1.assets(), apiV1.accounts()]);
+      const assetList = normalize<V1Asset>(assetRes as V1Asset[] | { assets?: V1Asset[] });
+      const accountList = normalize<V1Account>(accountRes as V1Account[] | { accounts?: V1Account[] });
+      const assetNames = new Map(assetList.map((a) => [a.id, a.name]));
+      setAssets(assetList);
+      setAccounts(
+        accountList.map((a) => ({
+          id: a.id,
+          asset_id: a.asset_id,
+          asset_name: a.asset_name || assetNames.get(a.asset_id) || a.asset_id,
+          username: a.username,
+          protocol: a.protocol,
+          created_at: a.created_at,
+        })),
+      );
     } catch (err: any) {
-      toast(err.message || 'فشل جلب الحسابات المشفرة', 'error');
+      toast(err.message || t('فشل جلب اعتمادات الخزنة'), 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchVault();
+    fetchAccounts();
   }, []);
 
-  useEffect(() => {
-    let timer: any;
-    if (countdown !== null && countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    } else if (countdown === 0) {
-      setRevealedPwd(null);
-      setCountdown(null);
-      setRevealOpen(false);
-      toast('انتهت مهلة العرض (10 ثوانٍ) — تم إعادة إخفاء كلمة السر فورياً للأمان.', 'success');
-    }
-    return () => clearTimeout(timer);
-  }, [countdown]);
-
-  const handleReveal = async (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetId || !masterKey) return;
-    setRevealing(true);
-    try {
-      const res = await api.revealPassword(targetId, masterKey);
-      if (res.ok && res.password) {
-        setRevealedPwd(res.password);
-        setCountdown(10);
-        toast('تم فك التشفير بنجاح — سيتم حجب كلمة السر بعد 10 ثوانٍ.', 'success');
-      } else {
-        toast(res.error || 'المفتاح الرئيسي غير صحيح', 'error');
-      }
-    } catch (err: any) {
-      toast(err.message || 'خطأ في المصادقة', 'error');
-    } finally {
-      setRevealing(false);
+    if (!assetName || !username || !password) {
+      toast(t('يرجى ملء جميع الحقول المطلوبة'), 'error');
+      return;
     }
-  };
-
-  const handleCopySecure = (text: string, label: string) => {
-    navigator.clipboard?.writeText(text);
-    toast(`تم نسخ ${label} إلى الحافظة المشفرة بنجاح!`, 'success');
-  };
-
-  const handleLockVault = () => {
-    if (confirm('هل تريد بالتأكيد قفل خزنة الاعتمادات فوراً وتطهير مفاتيح التشفير من الذاكرة؟')) {
-      setIsLocked(true);
-      setRevealedPwd(null);
-      setRevealOpen(false);
-      toast('تم قفل الخزنة بنجاح. يلزم إدخال الماستر كي لإعادة الوصول.', 'success');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف بيانات هذا الحساب المشفر؟')) return;
-    try {
-      await api.deleteVaultAccount(id);
-      toast('تم حذف الحساب من الخزنة', 'success');
-      fetchVault();
-    } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
-    }
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
     setSubmitting(true);
     try {
-      await api.addVaultAccount({
-        asset_id: assetId || 'SRV-PROD-ASAAS-01',
-        username,
-        password,
-        protocol,
+      // Find-or-create the asset, then store the vault-bound account secret.
+      const wanted = assetName.trim();
+      let asset = assets.find((a) => a.name.trim().toLowerCase() === wanted.toLowerCase())
+        || assets.find((a) => a.hostname.trim().toLowerCase() === wanted.toLowerCase());
+      if (!asset) {
+        asset = await apiV1.createAsset({ name: wanted, hostname: wanted });
+        setAssets((prev) => [...prev, asset as V1Asset]);
+      }
+      await apiV1.createAccount({
+        asset_id: asset.id,
+        name: username.trim(),
+        username: username.trim(),
+        protocol: protocol as 'rdp' | 'ssh' | 'sftp' | 'winrm' | 'vnc' | 'telnet',
+        secret: password,
       });
-      toast('تم التشفير والحفظ في الخزنة بنجاح', 'success');
-      setModalOpen(false);
+      toast(`${t('تم تشفير وحفظ اعتماد [')}${username}${t('] بنجاح بواسطة AES-256-GCM')}`, 'success');
+      setAddModalOpen(false);
+      setAssetName('');
       setUsername('');
       setPassword('');
-      fetchVault();
+      fetchAccounts();
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('فشل إضافة الاعتماد'), 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const filteredAccounts = accounts.filter((acc) => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'rdp') return acc.protocol?.toUpperCase().includes('RDP') || acc.username.toLowerCase().includes('admin');
-    if (activeTab === 'ssh') return acc.protocol?.toUpperCase().includes('SSH') || acc.username.toLowerCase().includes('deploy');
-    if (activeTab === 'db') return acc.protocol?.toUpperCase().includes('SQL') || acc.username.toLowerCase().includes('sql') || acc.username.toLowerCase().includes('postgres');
-    if (activeTab === 'api') return acc.protocol?.toUpperCase().includes('TOKEN') || acc.username.toLowerCase().includes('token');
-    return true;
-  });
+  const handleReveal = async (id: string, name: string) => {
+    try {
+      const res = await apiV1.revealAccountSecret(id);
+      if (res?.secret) {
+        setRevealedSecret({
+          username: res.username || '',
+          secret: res.secret,
+          asset: res.asset_name || name,
+        });
+        setRevealModalOpen(true);
+      } else {
+        toast(t('تعذّر كشف كلمة المرور'), 'error');
+      }
+    } catch (err: any) {
+      toast(err.message || t('فشل استرجاع السر'), 'error');
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`${t('هل أنت متأكد من حذف الاعتماد المشفّر لـ [')}${name}${t(']؟')}`)) return;
+    try {
+      await apiV1.deleteAccount(id);
+      toast(t('تم حذف الاعتماد من الخزنة بنجاح'), 'success');
+      fetchAccounts();
+    } catch (err: any) {
+      toast(err.message || t('فشل حذف الاعتماد'), 'error');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast(t('تم نسخ كلمة المرور إلى الحافظة بنجاح'), 'success');
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Executive Ambient Header (Stitch _3 Top) */}
-      <div
+    <div dir="rtl" className="page" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Hero Header */}
+      <section
         style={{
-          position: 'relative',
-          overflow: 'hidden',
+          padding: 24,
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
-          padding: '24px 28px',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong), var(--surface-ground))',
+          border: '1px solid var(--accent-soft)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '4px 12px',
-                  borderRadius: 9999,
-                  background: isLocked ? 'rgba(239, 68, 68, 0.12)' : 'rgba(34, 197, 94, 0.12)',
-                  color: isLocked ? '#ef4444' : '#22c55e',
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                {isLocked ? <Lock size={13} /> : <CheckCircle2 size={13} />}
-                {isLocked ? 'الخزنة مقفلة ومؤمنة عتادياً' : 'الخزنة نشطة ومقترنة بحماية DPAPI'}
-              </span>
-              <span
-                style={{
-                  padding: '3px 10px',
-                  borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
-                  color: 'var(--accent)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                }}
-              >
-                Hardware TPM 2.0 Enclave Sealed
-              </span>
-            </div>
-
-            <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              خزنة الحسابات والاعتمادات المشفرة (Hardware-bound DPAPI Vault)
-            </h1>
-            <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              تشفير أظرفي عتادي (Envelope Encryption) باستخدام مفاتيح DPAPI و AES-256-GCM.
-              حماية كلمات مرور سيرفرات RDP، قواعد البيانات، ومفاتيح السحابة دون تخزين أي نص صريح.
-            </p>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--paid)', fontWeight: 700, fontSize: 13 }}>
+            <ShieldCheck size={16} /> {t('خزنة السيادة المركزية (Sovereign Encrypted Vault)')}
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleLockVault}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#ef4444' }}
-            >
-              <Lock size={13} />
-              <span>قفل الخزنة فوراً</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => setModalOpen(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <Plus size={14} />
-              <span>إضافة اعتماد جديد +</span>
-            </Button>
-          </div>
+          <h1 style={{ margin: '8px 0 6px', fontSize: 24, color: 'var(--text-1)' }}>{t('حسابات الأصول والاعتمادات المشفرة')}</h1>
+          <p style={{ margin: 0, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 860, fontSize: 14 }}>
+            {t('إدارة مركزية لكلمات مرور Windows Server، جلسات RDP، مفاتيح SSH، وسجلات Docker المشفرة بمفتاح AES-256-GCM المستقل ومراقبة بسجل Merkle.')}
+          </p>
         </div>
-      </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button
+            variant="ghost"
+            label={t('تحديث')}
+            iconNode={<RefreshCw size={15} className={loading ? 'spin' : ''} />}
+            onClick={fetchAccounts}
+          />
+          <Button
+            variant="primary"
+            label={t('إضافة اعتماد مشفر')}
+            iconNode={<Plus size={15} />}
+            onClick={() => setAddModalOpen(true)}
+          />
+        </div>
+      </section>
 
-      {/* 2. Filter Tabs (Stitch _3 L47-L51) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(212, 160, 23, 0.18)', paddingBottom: 12 }}>
-        {[
-          { key: 'all', label: `الكل (${accounts.length})` },
-          { key: 'rdp', label: 'ويندوز RDP' },
-          { key: 'ssh', label: 'مفاتيح SSH' },
-          { key: 'db', label: 'قواعد بيانات' },
-          { key: 'api', label: 'رموز API / Tokens' },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key as any)}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 9999,
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              border: activeTab === tab.key ? '1px solid var(--accent)' : '1px solid transparent',
-              background: activeTab === tab.key ? 'rgba(212, 160, 23, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-              color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-3)',
-              transition: 'all 0.2s',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Accounts List Card */}
+      <Card
+        title={`${t('الاعتمادات المسجلة في الخزنة (')}${accounts.length})`}
+      >
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-2)' }}>
+          {t('كافة الأسرار مشفرة في قاعدة البيانات بواسطة AES-256-GCM وتتطلب صلاحية مسؤول لكشفها أو استخدامها')}
+        </p>
+        {accounts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-2)' }}>
+            <Key size={36} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+            <p>{t('لا توجد اعتمادات مسجلة حالياً في الخزنة.')}</p>
+            <Button
+              variant="outline"
+              label={t('إضافة الاعتماد الأول')}
+              onClick={() => setAddModalOpen(true)}
+              style={{ marginTop: 10 }}
+            />
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--glass-rim)', textAlign: 'right' }}>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('الأصل / الخادم')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('اسم الحساب')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('البروتوكول')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('خوارزمية التشفير')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('آخر تحديث')}</th>
+                  <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13, textAlign: 'center' }}>{t('الإجراءات')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.map((acc) => (
+                  <tr key={acc.id} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
+                    <td style={{ padding: '14px', fontWeight: 600, color: 'var(--text-1)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <LockKeyhole size={15} color="var(--accent)" />
+                        {acc.asset_name || acc.asset_id}
+                      </div>
+                    </td>
+                    <td style={{ padding: '14px', direction: 'ltr', textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-1)' }}>
+                      {acc.username}
+                    </td>
+                    <td style={{ padding: '14px' }}>
+                      <span className="badge badge--info" style={{ fontWeight: 700, fontSize: 11 }}>
+                        {acc.protocol?.toUpperCase() || 'RDP'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px', color: 'var(--paid)', fontSize: 12, fontWeight: 600 }}>
+                      AES-256-GCM
+                    </td>
+                    <td style={{ padding: '14px', color: 'var(--text-2)', fontSize: 12 }}>
+                      {acc.created_at ? acc.created_at.split('T')[0] : '—'}
+                    </td>
+                    <td style={{ padding: '14px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          iconNode={<Eye size={14} />}
+                          label={t('كشف')}
+                          onClick={() => handleReveal(acc.id, acc.asset_name || acc.username)}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          iconNode={<Trash2 size={14} color="var(--status-danger)" />}
+                          label={t('حذف')}
+                          onClick={() => handleDelete(acc.id, acc.asset_name || acc.username)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
-      {/* 3. Credentials Cards Grid (Stitch _3) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
-        {filteredAccounts.map((acc) => (
-          <Glass
-            key={acc.id}
-            style={{
-              padding: 20,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-              border: '1px solid rgba(212, 160, 23, 0.2)',
-            }}
-          >
-            {/* Top row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: 'rgba(212, 160, 23, 0.15)',
-                    border: '1px solid rgba(212, 160, 23, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--accent)',
-                  }}
-                >
-                  <KeyRound size={18} />
-                </div>
-                <div>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', display: 'block' }}>
-                    {acc.username}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font)' }}>
-                    {acc.asset_id || 'SRV-PROD-ASAAS-01'}
-                  </span>
-                </div>
-              </div>
+      {/* Add Modal */}
+      <Modal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        title={t('إضافة اعتماد مشفر جديد إلى الخزنة')}
+      >
+        <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
+              {t('اسم الأصل أو الخادم*')}
+            </label>
+            <TextInput
+              value={assetName}
+              onChange={(e) => setAssetName(e.target.value)}
+              placeholder={t('مثال: SRV-PROD-LOCAL أو PostgreSQL Cluster')}
+              required
+            />
+          </div>
 
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  color: 'var(--accent)',
-                  background: 'rgba(212, 160, 23, 0.12)',
-                  padding: '2px 8px',
-                  borderRadius: 4,
-                  fontFamily: 'var(--font)',
-                }}
-              >
-                {acc.protocol || 'RDP'}
-              </span>
-            </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
+              {t('اسم المستخدم (Username)*')}
+            </label>
+            <TextInput
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Administrator"
+              dir="ltr"
+              required
+            />
+          </div>
 
-            {/* Secret Mask Row */}
-            <div
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
+              {t('نوع البروتوكول / التطبيق*')}
+            </label>
+            <select
+              value={protocol}
+              onChange={(e) => setProtocol(e.target.value)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
+                width: '100%',
                 padding: '10px 14px',
                 borderRadius: 8,
-                background: 'rgba(0, 0, 0, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                background: 'var(--surface-ground)',
+                border: '1px solid var(--glass-rim)',
+                color: 'var(--text-1)',
+                fontSize: 13,
+                outline: 'none',
               }}
             >
-              <span
-                style={{
-                  fontFamily: 'var(--font)',
-                  letterSpacing: revealedPwd && targetId === acc.id ? 0 : 4,
-                  fontSize: 13,
-                  color: revealedPwd && targetId === acc.id ? '#22c55e' : 'var(--text-3)',
-                  fontWeight: 700,
-                }}
-              >
-                {revealedPwd && targetId === acc.id ? revealedPwd : '••••••••••••••••'}
-              </span>
+              {PROTOCOL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setTargetId(acc.id);
-                    setRevealOpen(true);
-                  }}
-                  style={{ padding: '3px 8px', fontSize: 11 }}
-                  title="كشف كلمة السر"
-                >
-                  <Eye size={12} />
-                  <span>كشف</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleCopySecure(acc.username, 'اسم المستخدم')}
-                  style={{ padding: '3px 8px', fontSize: 11 }}
-                  title="نسخ اسم المستخدم"
-                >
-                  <Copy size={12} />
-                  <span>نسخ</span>
-                </Button>
-              </div>
-            </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
+              {t('كلمة المرور أو المفتاح السري*')}
+            </label>
+            <TextInput
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••••••"
+              dir="ltr"
+              required
+            />
+          </div>
 
-            {/* Bottom Row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 6 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                تشفير: <strong style={{ color: 'var(--accent)' }}>AES-256-GCM</strong>
-              </span>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
+            <Button variant="ghost" label={t('إلغاء')} onClick={() => setAddModalOpen(false)} />
+            <Button
+              variant="primary"
+              label={submitting ? t('جارٍ التشفير...') : t('حفظ مشفراً (AES-256)')}
+              type="submit"
+              disabled={submitting}
+            />
+          </div>
+        </form>
+      </Modal>
 
-              <button
-                type="button"
-                onClick={() => handleDelete(acc.id)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-3)',
-                  padding: 4,
-                }}
-                title="حذف من الخزنة"
-              >
-                <Trash2 size={14} color="#ef4444" />
-              </button>
-            </div>
-          </Glass>
-        ))}
-      </div>
-
-      {/* 4. Sovereign Hardware-bound Encryption Standards Guarantee Card (Stitch _3 Bottom) */}
-      <div
-        style={{
-          padding: 20,
-          borderRadius: 14,
-          background: 'rgba(212, 160, 23, 0.05)',
-          border: '1px solid rgba(212, 160, 23, 0.25)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
+      {/* Reveal Modal */}
+      <Modal
+        open={revealModalOpen}
+        onClose={() => {
+          setRevealModalOpen(false);
+          setRevealedSecret(null);
         }}
+        title={t('كشف الاعتماد المشفّر')}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ShieldCheck size={18} color="var(--accent)" />
-          <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-            معايير أمان التشفير السيادي (Sovereign Hardware-bound Encryption Standards)
-          </h4>
-        </div>
-        <p style={{ fontSize: 12, color: 'var(--text-2)', margin: 0, lineHeight: 1.6 }}>
-          تستخدم الخزنة تشفير <strong>AES-256-GCM</strong> مع مفاتيح اشتقاق <strong>PBKDF2 (600,000 دورة)</strong>،
-          مقترنة بـ <strong>Windows DPAPI</strong> ومقيدة بعتاد الخادم (TPM 2.0). لا يتم تخزين أي نص صريح لكلمات السر على
-          القرص نهائياً، ويتم مسح المفاتيح من الذاكرة العشوائية تلقائياً بعد كل عملية فك تشفير.
-        </p>
-      </div>
+        {revealedSecret && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ padding: 14, borderRadius: 10, background: 'var(--glass-tint-strong)', border: '1px solid var(--accent-soft)' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginBottom: 4 }}>{t('الأصل')}</div>
+              <div style={{ fontWeight: 700, color: 'var(--text-1)' }}>{revealedSecret.asset}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 8, marginBottom: 4 }}>{t('المستخدم')}</div>
+              <div style={{ fontFamily: 'monospace', color: 'var(--text-1)' }}>{revealedSecret.username}</div>
+            </div>
 
-      {/* Modal: Reveal Password with Master Key */}
-      {revealOpen && (
-        <Modal
-          onClose={() => {
-            setRevealOpen(false);
-            setMasterKey('');
-            setRevealedPwd(null);
-            setCountdown(null);
-          }}
-          title="المصادقة لفك تشفير الاعتماد (Master Key Authentication)"
-        >
-          <form onSubmit={handleReveal} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0 }}>
-              لأغراض الامتثال والأمان، يلزم إدخال المفتاح الرئيسي أو رمز المصادقة المزدوجة لكشف الاعتماد:
-            </p>
-
-            <Field label="المفتاح الرئيسي للخزنة (Master Secret Key)">
-              {(id) => (
-                <PasswordInput
-                  id={id}
-                  value={masterKey}
-                  onChange={(e) => setMasterKey(e.target.value)}
-                  placeholder="أدخل الماستر كي..."
-                  required
+            <div>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-1)', fontWeight: 600 }}>
+                {t('كلمة المرور المفكوكة')}
+              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <TextInput
+                  value={revealedSecret.secret}
+                  readOnly
+                  dir="ltr"
+                  style={{ fontFamily: 'monospace', fontWeight: 600 }}
                 />
-              )}
-            </Field>
-
-            {revealedPwd && countdown !== null && (
-              <div
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 8,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  border: '1px solid rgba(34, 197, 94, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Clock size={16} color="#22c55e" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>
-                    سيتم حجب الرمز تلقائياً خلال: {countdown} ثوانٍ
-                  </span>
-                </div>
                 <Button
-                  size="sm"
                   variant="primary"
-                  type="button"
-                  onClick={() => handleCopySecure(revealedPwd, 'كلمة السر')}
-                >
-                  نسخ آمن
-                </Button>
+                  iconNode={<Copy size={15} />}
+                  label={t('نسخ')}
+                  onClick={() => copyToClipboard(revealedSecret.secret)}
+                />
               </div>
-            )}
+            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
               <Button
-                type="button"
                 variant="ghost"
+                label={t('إغلاق النافذة')}
                 onClick={() => {
-                  setRevealOpen(false);
-                  setMasterKey('');
-                  setRevealedPwd(null);
+                  setRevealModalOpen(false);
+                  setRevealedSecret(null);
                 }}
-              >
-                إلغاء
-              </Button>
-              {!revealedPwd && (
-                <Button type="submit" variant="primary" loading={revealing}>
-                  فك التشفير الآن
-                </Button>
-              )}
+              />
             </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* Modal: Add New Credential */}
-      {modalOpen && (
-        <Modal onClose={() => setModalOpen(false)} title="إضافة اعتماد جديد إلى الخزنة المشفرة">
-          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="الخادم أو الأصل المستهدف (Target Asset)">
-              {(id) => (
-                <TextInput
-                  id={id}
-                  value={assetId}
-                  onChange={(e) => setAssetId(e.target.value)}
-                  placeholder="مثال: SRV-PROD-ASAAS-01"
-                  required
-                />
-              )}
-            </Field>
-
-            <Field label="اسم المستخدم أو المعرف (Username / Identity)">
-              {(id) => (
-                <TextInput
-                  id={id}
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="مثال: Administrator أو postgres"
-                  required
-                />
-              )}
-            </Field>
-
-            <Field label="كلمة المرور أو الرمز السري (Secret Password / Key)">
-              {(id) => (
-                <PasswordInput
-                  id={id}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="أدخل كلمة المرور لتشفيرها..."
-                  required
-                />
-              )}
-            </Field>
-
-            <Field label="بروتوكول الوصول (Protocol)">
-              {() => (
-                <select
-                  value={protocol}
-                  onChange={(e) => setProtocol(e.target.value)}
-                  className="text-input"
-                  style={{ width: '100%' }}
-                >
-                  <option value="RDP">Windows RDP (Remote Desktop)</option>
-                  <option value="SSH">SSH / SFTP Key</option>
-                  <option value="PostgreSQL">PostgreSQL / SQL Server SA</option>
-                  <option value="API_TOKEN">API Token / Cloud Secret</option>
-                </select>
-              )}
-            </Field>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
-                إلغاء
-              </Button>
-              <Button type="submit" variant="primary" loading={submitting}>
-                تشفير وحفظ بالخزنة
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

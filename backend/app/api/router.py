@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - Modular HTTP Request Router & Static File Handler.
+"""ASAAS v2.5 - Modular HTTP Request Router & Static File Handler.
 
 Dispatches REST API endpoints directly to OOP Domain Services with zero legacy baggage.
 Includes SPA static file serving with automatic index.html fallback for client routing,
@@ -11,17 +11,23 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import subprocess
 import sys
 import threading
 import time
+import socket
+import secrets
+import html
+import urllib.parse
+from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
-from ..core.config import FRONTEND_DIST_DIR, LEGACY_DIST_DIR, SESSION_TOKEN, STITCH_DIR
+from ..core.config import FRONTEND_DIST_DIR, LEGACY_DIST_DIR
 from ..domain.models import ManagedAsset
 from ..infrastructure.db import (
     init_db,
@@ -30,8 +36,10 @@ from ..infrastructure.db import (
     db_authenticate_user,
     db_create_session,
     db_validate_session,
+    db_sync_proxied_user,
     db_revoke_session,
     db_list_app_users,
+    db_get_app_user,
     db_create_app_user,
     db_delete_app_user,
     db_update_app_user_role,
@@ -39,71 +47,94 @@ from ..infrastructure.db import (
     db_get_historical_metrics,
     db_list_jit_grants,
     db_create_jit_grant,
+    db_approve_jit_grant,
     db_revoke_jit_grant,
     db_verify_audit_chain,
+    db_refresh_server_health,
 )
 from ..infrastructure.win32_wts import Win32WtsService
+from ..infrastructure.windows_providers import (
+    SystemProvider,
+    RoleProvider,
+    ServiceProvider,
+    ProcessProvider,
+    StorageProvider,
+    NetworkProvider,
+    FirewallProvider,
+    EventViewerProvider,
+    UpdateProvider,
+    TaskSchedulerProvider,
+    CertificatesProvider,
+    HyperVProvider,
+    DockerProvider,
+)
+from ..infrastructure.action_engine import ActionEngine
+from ..services.developer_workspace_service import (
+    SmartPortOrchestrator,
+    DeveloperWorkspaceManager,
+)
+from ..infrastructure.db import (
+    db_list_servers,
+    db_add_server,
+    db_delete_server,
+    db_list_server_groups,
+    db_create_server_group,
+    db_delete_server_group,
+    db_list_developer_projects,
+    db_create_developer_project,
+    db_update_project_status,
+    db_delete_developer_project,
+    db_list_action_jobs,
+    db_get_resource_quotas,
+    db_save_resource_quota,
+    db_list_conflict_events,
+)
 from ..services.alert_service import AlertService
 from ..services.bastion_service import BastionService
 from ..services.domain_service import DomainService
 from ..services.governor_service import GovernorService
 from ..services.port_isolation_service import PortIsolationService
-from ..services.stitch_service import StitchService
 from ..services.storage_service import StorageService
 from ..services.telemetry_service import TelemetryService
 from ..services.user_service import UserService
+from ..services.database_service import DatabaseService
 
 logger = logging.getLogger('asaas.router')
 
 # Initialize database on startup
 init_db()
+AlertService.initialize()
 
 # Shared service instances
 telemetry_service = TelemetryService()
 governor_service = GovernorService()
 
-# In-memory vault accounts store (backed by secure model)
-_VAULT_ACCOUNTS: List[Dict[str, Any]] = [
-    {
-        'id': 'vault-1',
-        'asset_id': 'asset-local',
-        'asset_name': 'Windows Server 2025 Host',
-        'username': 'Administrator',
-        'protocol': 'RDP',
-        'domain': 'WORKGROUP',
-        'has_password': True,
-        'notes': 'حساب المسؤول الرئيسي للسيرفر المحلي',
-        'updated_at': '2026-11-07 05:00',
-    },
-    {
-        'id': 'vault-2',
-        'asset_id': 'asset-sql',
-        'asset_name': 'SQL Database Cluster',
-        'username': 'sa',
-        'protocol': 'database',
-        'domain': 'LOCAL',
-        'has_password': True,
-        'notes': 'مدير قاعدة البيانات الرئيسي',
-        'updated_at': '2026-11-07 05:00',
-    },
-    {
-        'id': 'vault-3',
-        'asset_id': 'asset-gw',
-        'asset_name': 'Ubuntu Web Gateway',
-        'username': 'ubuntu_admin',
-        'protocol': 'SSH',
-        'domain': 'CLOUD',
-        'has_password': True,
-        'notes': 'مفتاح نفاذ خادم البوابة',
-        'updated_at': '2026-11-07 05:00',
-    }
-]
+# The legacy v2 vault is intentionally empty. Real account secrets live in the
+# encrypted v1 control-plane store and are consumed by a gateway, never shown
+# to this browser API.
+_VAULT_ACCOUNTS: List[Dict[str, Any]] = []
+
+
+def _extract_blocked_ips(events: List[Dict[str, Any]]) -> List[str]:
+    """Replays firewall block/unblock audit events to return the currently blocked IPs."""
+    blocked: List[str] = []
+    for ev in sorted(events, key=lambda item: item.get('id', 0)):
+        event_type = str(ev.get('event_type', '')).upper()
+        ip = str(ev.get('ip') or ev.get('ip_address') or '').strip()
+        if not ip:
+            continue
+        if event_type in ('IP_BLOCKED', 'BRUTE_FORCE_BLOCKED', 'IP_BANNED', 'FAIL2BAN_BAN'):
+            if ip not in blocked:
+                blocked.append(ip)
+        elif event_type == 'IP_UNBLOCKED':
+            blocked = [item for item in blocked if item != ip]
+    return blocked
 
 
 class AsaasApiHandler(SimpleHTTPRequestHandler):
-    """Clean HTTP Request Handler for ASAAS Server Control v2.5 with Multi-User RBAC."""
+    """Clean HTTP Request Handler for ASAAS v2.5 with Multi-User RBAC."""
 
-    server_version = "ASAAS-Control/2.5"
+    server_version = "ASAAS-Control/3.0"
 
     def log_message(self, format: str, *args: Any) -> None:
         """Safe request logging resilient to pythonw (where sys.stderr is None)."""
@@ -114,28 +145,69 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
         except Exception:
             pass
 
-    def respond_json(self, status: int, data: Dict[str, Any], elapsed_ms: float = 0.0) -> None:
+    def _origin_allowed(self) -> bool:
+        """Allow same-origin browser calls and explicitly configured console origins."""
+        origin = self.headers.get('Origin', '').rstrip('/')
+        if not origin:
+            return True
+        host = self.headers.get('Host', '')
+        same_origin = {f'http://{host}', f'https://{host}'}
+        configured = {
+            item.strip().rstrip('/')
+            for item in os.getenv('ASAAS_ALLOWED_ORIGINS', '').split(',')
+            if item.strip()
+        }
+        return origin in same_origin or origin in configured
+
+    def _session_cookie(self, token: str, *, clear: bool = False) -> str:
+        # Local development uses HTTP; production deployments should set this
+        # explicitly to 1 behind the TLS reverse proxy.
+        secure = os.getenv('ASAAS_COOKIE_SECURE', '0').lower() not in {'0', 'false', 'no'}
+        value = '' if clear else token
+        max_age = 0 if clear else 86400
+        cookie = f'asaas_session={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}'
+        if secure:
+            cookie += '; Secure'
+        return cookie
+
+    def respond_json(
+        self,
+        status: int,
+        data: Dict[str, Any],
+        elapsed_ms: float = 0.0,
+        extra_headers: Optional[Dict[str, str]] = None,
+    ) -> None:
         """Sends a UTF-8 encoded JSON response with enterprise security headers and benchmark time."""
         body = json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8')
         self.send_response(status)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Asaas-Token')
+        origin = self.headers.get('Origin', '').rstrip('/')
+        if origin and self._origin_allowed():
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Access-Control-Allow-Credentials', 'true')
+            self.send_header('Vary', 'Origin')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'SAMEORIGIN')
         self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
         if elapsed_ms > 0:
             self.send_header('X-Response-Time-Ms', f"{elapsed_ms:.2f}")
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         if getattr(self, 'command', 'GET') != 'HEAD':
             self.wfile.write(body)
 
     def do_OPTIONS(self) -> None:
         """Handles CORS preflight requests."""
+        if not self._origin_allowed():
+            return self.respond_json(403, {'ok': False, 'error': 'Origin غير مسموح.'})
         self.send_response(204)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        origin = self.headers.get('Origin', '').rstrip('/')
+        if origin:
+            self.send_header('Access-Control-Allow-Origin', origin)
+            self.send_header('Access-Control-Allow-Credentials', 'true')
+            self.send_header('Vary', 'Origin')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token, X-Asaas-Token')
         self.send_header('X-Content-Type-Options', 'nosniff')
@@ -143,42 +215,51 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def _extract_token(self) -> str:
-        """Extracts token from Authorization header, X-Session-Token, or URL query."""
+        """Extract a server session from HttpOnly cookie or explicit API header."""
         token = self.headers.get('X-Session-Token') or self.headers.get('X-Asaas-Token') or ''
         if not token:
             auth_h = self.headers.get('Authorization', '')
             if auth_h.startswith('Bearer '):
                 token = auth_h[7:].strip()
-        if not token and '?' in self.path:
-            import urllib.parse
-            query = urllib.parse.parse_qs(self.path.split('?', 1)[1])
-            if 'token' in query:
-                token = query['token'][0]
+        if not token:
+            cookie = SimpleCookie()
+            try:
+                cookie.load(self.headers.get('Cookie', ''))
+                morsel = cookie.get('asaas_session')
+                token = morsel.value if morsel else ''
+            except Exception:
+                token = ''
         return token
 
     def _authenticate(self) -> Tuple[bool, Dict[str, Any]]:
-        """Validates current request token against SQLite app_sessions or local SESSION_TOKEN.
-        Returns (is_valid, user_session_dict).
-        """
+        """Validate a per-user server-side session."""
         token = self._extract_token()
-
-        # 1. Localhost Master Token compatibility
-        client_ip = self.client_address[0] if self.client_address else '127.0.0.1'
-        if token == SESSION_TOKEN:
-            return True, {
-                'id': 1,
-                'username': 'admin',
-                'role': 'admin',
-                'full_name': 'مدير النظام (Local Admin)',
-                'ip': client_ip,
-                'is_master': True,
-            }
-
-        # 2. Database Session Token
         if token:
             sess = db_validate_session(token)
             if sess:
                 return True, sess
+
+        # Control-plane bridge: the :8876 proxy validates an /api/v1 session
+        # and forwards username + role as X-ASAAS-Proxy-*. Trusted only from
+        # loopback — browsers cannot set the headers (absent from the CORS
+        # allow-headers list) and this listener is not exposed remotely.
+        # The local app_users row is a projection kept in sync by role.
+        # NOTE: dual-stack listeners report IPv4 peers as '::ffff:127.0.0.1',
+        # so the mapped form must be listed alongside plain loopback.
+        if self.client_address[0] in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+            proxy_user = (self.headers.get('X-ASAAS-Proxy-User') or '').strip()
+            if proxy_user:
+                proxy_role = (self.headers.get('X-ASAAS-Proxy-Role') or '').strip()
+                profile = db_sync_proxied_user(proxy_user, proxy_role)
+                if profile:
+                    return True, {
+                        'user_id': profile.get('id'),
+                        'username': profile.get('username'),
+                        'role': profile.get('role'),
+                        'full_name': profile.get('full_name'),
+                        'ip': self.client_address[0],
+                        'expires_at': '',
+                    }
 
         return False, {}
 
@@ -189,16 +270,29 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
         # --- Health & Diagnostic (Public / Unauthenticated) ---
         if path == '/api/health':
             is_valid, sess = self._authenticate()
+            health_metrics = telemetry_service.get_metrics()
             return self.respond_json(200, {
                 'ok': True,
                 'status': 'operational',
-                'version': '2.5.0',
+                'version': '3.0.0',
                 'is_admin': Win32WtsService.is_admin(),
+                'is_windows': getattr(health_metrics, 'is_windows', True),
+                'os_kind': 'windows' if getattr(health_metrics, 'is_windows', True) else 'linux',
+                'os_display': getattr(health_metrics, 'os', None),
                 'authenticated': is_valid,
                 'current_user': sess.get('username') if is_valid else None,
                 'current_role': sess.get('role') if is_valid else None,
-                'session_token': SESSION_TOKEN,
             }, (time.perf_counter() - t0) * 1000)
+
+        # Every legacy data/control endpoint is authenticated.  This v2 surface
+        # remains only as a compatibility layer while pages migrate to /api/v1.
+        if path.startswith('/api/'):
+            is_valid, _ = self._authenticate()
+            if not is_valid:
+                return self.respond_json(401, {
+                    'ok': False,
+                    'error': 'غير مصرح: يلزم تسجيل الدخول للوصول إلى واجهة الإدارة.',
+                })
 
         # --- High-Performance Server-Sent Events (SSE) Live Stream ---
         if path in ('/api/stream/telemetry', '/api/telemetry/stream'):
@@ -206,7 +300,11 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
             self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
             self.send_header('Cache-Control', 'no-cache, no-transform')
             self.send_header('Connection', 'keep-alive')
-            self.send_header('Access-Control-Allow-Origin', '*')
+            origin = self.headers.get('Origin', '').rstrip('/')
+            if origin and self._origin_allowed():
+                self.send_header('Access-Control-Allow-Origin', origin)
+                self.send_header('Access-Control-Allow-Credentials', 'true')
+                self.send_header('Vary', 'Origin')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.end_headers()
 
@@ -217,6 +315,7 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
                 while not getattr(self.server, '_BaseServer__shutdown_request', False):
                     metrics = telemetry_service.get_metrics().to_dict()
                     active_sess = [s.to_dict() for s in Win32WtsService.list_active_sessions()]
+                    inventory = telemetry_service.get_live_inventory()
                     from ..infrastructure.db import db_list_user_notifications
                     recent_notifs = db_list_user_notifications(limit=5)
                     payload = json.dumps({
@@ -225,6 +324,8 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
                         'metrics': metrics,
                         'sessions': active_sess if active_sess else metrics.get('active_sessions', []),
                         'users_count': len(active_sess),
+                        'processes': inventory.get('processes', []),
+                        'services': inventory.get('services', []),
                         'alerts': recent_notifs,
                         'governor': {
                             'active': True,
@@ -245,13 +346,17 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
             is_valid, sess = self._authenticate()
             if not is_valid:
                 return self.respond_json(401, {'ok': False, 'error': 'غير مسجل الدخول.'})
+            profile = db_get_app_user(sess.get('username', '')) or {}
             return self.respond_json(200, {
                 'ok': True,
                 'user': {
-                    'id': sess.get('user_id', 1),
-                    'username': sess.get('username', 'admin'),
-                    'role': sess.get('role', 'admin'),
-                    'full_name': sess.get('full_name', 'مدير النظام'),
+                    'id': profile.get('id', sess.get('user_id', 1)),
+                    'username': profile.get('username', sess.get('username', 'admin')),
+                    'role': profile.get('role', sess.get('role', 'admin')),
+                    'full_name': profile.get('full_name', sess.get('full_name', 'مدير النظام')),
+                    'is_active': bool(profile.get('is_active', True)),
+                    'created_at': profile.get('created_at', ''),
+                    'last_login': profile.get('last_login'),
                 }
             })
 
@@ -287,7 +392,7 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
         if path == '/api/snapshot':
             metrics = telemetry_service.get_metrics().to_dict()
             sessions = Win32WtsService.list_active_sessions()
-            _, _, top_procs = Win32WtsService.list_processes_and_session_stats()
+            inventory = telemetry_service.get_live_inventory()
             users = UserService.list_users()
 
             return self.respond_json(200, {
@@ -297,12 +402,13 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
                 'sessions': [s.to_dict() for s in sessions],
                 'users': [u.to_dict() for u in users],
                 'users_count': len(users),
-                'processes': top_procs,
-                'services': [],
+                'processes': inventory.get('processes', []),
+                'services': inventory.get('services', []),
                 'governor': {
                     'active': True,
                     'reclaimed_mb': governor_service.reclaimed_mb,
                     'auto_trim_enabled': governor_service.auto_trim,
+                    'session_scoped': True,
                 },
             }, (time.perf_counter() - t0) * 1000)
 
@@ -362,7 +468,7 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
                 'used_gb': drive.used_gb,
                 'free_gb': drive.free_gb,
                 'percent_used': drive.percent_used,
-                'cleanable_mb': 850.0,
+                'cleanable_mb': drive.cleanable_mb,
             })
 
         if path == '/api/storage/users':
@@ -394,15 +500,6 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
         if path == '/api/ports/guard/status':
             return self.respond_json(200, PortIsolationService.get_guard_status())
 
-        # --- Google Stitch Design Catalog ---
-        if path == '/api/stitch/screens':
-            screens = StitchService.list_screens()
-            return self.respond_json(200, {
-                'ok': True,
-                'screens': screens,
-                'count': len(screens),
-            })
-
         # --- Windows Services API ---
         if path == '/api/services':
             svc_list = []
@@ -421,68 +518,90 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
                     except Exception:
                         continue
             except Exception:
-                svc_list = [
-                    {'name': 'TermService', 'display': 'Remote Desktop Services', 'status': 'Running', 'startup': 'Automatic', 'category': 'RDS', 'critical': True},
-                    {'name': 'MpsSvc', 'display': 'Windows Defender Firewall', 'status': 'Running', 'startup': 'Automatic', 'category': 'Security', 'critical': True},
-                    {'name': 'LanmanServer', 'display': 'Server SMB File Sharing', 'status': 'Running', 'startup': 'Automatic', 'category': 'Network', 'critical': True},
-                    {'name': 'EventLog', 'display': 'Windows Event Log', 'status': 'Running', 'startup': 'Automatic', 'category': 'System', 'critical': True},
-                ]
+                svc_list = []
             return self.respond_json(200, {
                 'ok': True,
                 'services': svc_list,
                 'count': len(svc_list)
             })
 
-        # --- Vault Accounts API ---
+        # --- Vault Accounts API & Bastion Session Launch ---
         if path == '/api/bastion/connect':
-            from urllib.parse import parse_qs, urlparse
-            qs = parse_qs(urlparse(self.path).query)
-            host = qs.get('host', ['127.0.0.1'])[0]
-            port = qs.get('port', ['3389'])[0]
-            name = qs.get('name', [host])[0]
+            qs = self.path.split('?')[1] if '?' in self.path else ''
+            params = urllib.parse.parse_qs(qs)
+            target_host = params.get('host', ['127.0.0.1'])[0].strip()
+            protocol = params.get('protocol', ['rdp'])[0].strip().lower()
+            asset_name = params.get('name', [target_host])[0].strip() or target_host
+            user_hint = params.get('username', ['Administrator'])[0].strip() or 'Administrator'
+            try:
+                target_port = int(params.get('port', ['3389'])[0])
+            except (TypeError, ValueError):
+                target_port = 3389
+            if not (0 < target_port < 65536):
+                target_port = 3389 if protocol.startswith('rdp') else 22
 
-            rdp_content = f"""screen mode id:i:2
-use multimon:i:0
-desktopwidth:i:1920
-desktopheight:i:1080
-session bpp:i:32
-winposstr:s:0,1,0,0,800,600
-compression:i:1
-keyboardhook:i:2
-audiomode:i:0
-redirectprinters:i:0
-redirectcomports:i:0
-redirectsmartcards:i:1
-redirectclipboard:i:1
-redirectposdevices:i:0
-displayconnectionbar:i:1
-autoreconnection enabled:i:1
-authentication level:i:2
-prompt for credentials:i:1
-negotiate security layer:i:1
-remoteapplicationmode:i:0
-alternate shell:s:
-shell working directory:s:
-gatewayhostname:s:
-gatewayusagemethod:i:4
-gatewaycredentialssource:i:4
-gatewayprofileusagemethod:i:0
-promptcredentialonce:i:0
-gatewaybrokeringtype:i:0
-use redirection server name:i:0
-rdgiskdcproxy:i:0
-kdcproxyurl:s:
-full address:s:{host}:{port}
-administrative session:i:1
-"""
-            body_bytes = rdp_content.encode('utf-8')
+            safe_name = re.sub(r'[^A-Za-z0-9._-]+', '-', asset_name).strip('-') or 'target'
+            safe_host = re.sub(r'[^A-Za-z0-9._:\\-]+', '', target_host) or '127.0.0.1'
+            safe_user = re.sub(r'[^A-Za-z0-9._@\\-]+', '', user_hint) or 'Administrator'
+
+            if protocol in ('ssh', 'sftp'):
+                scheme = 'sftp' if protocol == 'sftp' else 'ssh'
+                protocol_uri = f"{scheme}://{urllib.parse.quote(safe_user, safe='')}@{safe_host}:{target_port}"
+                protocol_label = 'SFTP' if scheme == 'sftp' else 'SSH'
+                page = f"""<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<title>ASAAS {protocol_label} Session</title>
+<style>
+body{{font-family:system-ui,sans-serif;background:#141111;color:#f6f0e5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}}
+.card{{max-width:560px;padding:32px;border:1px solid rgba(216,179,111,.35);border-radius:16px;background:rgba(255,246,230,.05)}}
+a{{display:inline-block;margin-top:16px;padding:12px 20px;border-radius:10px;background:#d8b36f;color:#141111;font-weight:700;text-decoration:none}}
+code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break-all}}
+</style></head><body><div class="card">
+<h1>جلسة {protocol_label} الآمنة عبر الحصن</h1>
+<p>الخادم: <strong>{html.escape(safe_host)}</strong> — المنفذ: <strong>{target_port}</strong></p>
+<p>سيُفتح معالج بروتوكول {protocol_label} القياسي في تطبيق العميل المسجل على جهازك.</p>
+<a href="{html.escape(protocol_uri)}">فتح رابط {protocol_label} الآن</a>
+<code>{html.escape(protocol_uri)}</code>
+</div></body></html>""".encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(page)))
+                self.send_header('X-ASAAS-Protocol', protocol_label)
+                self.send_header('X-ASAAS-Session-URI', protocol_uri)
+                self.send_header('X-Content-Type-Options', 'nosniff')
+                self.end_headers()
+                self.wfile.write(page)
+                return
+
+            if protocol not in ('rdp', 'rdp-file', 'mstsc'):
+                return self.respond_json(400, {
+                    'ok': False,
+                    'error': f'بروتوكول غير مدعوم: {protocol}. المدعوم: rdp, ssh, sftp.',
+                })
+
+            rdp_content = (
+                f"full address:s:{safe_host}:{target_port}\r\n"
+                f"username:s:{safe_user}\r\n"
+                f"screen mode id:i:2\r\n"
+                f"desktopwidth:i:1920\r\n"
+                f"desktopheight:i:1080\r\n"
+                f"session bpp:i:32\r\n"
+                f"compression:i:1\r\n"
+                f"keyboardhook:i:2\r\n"
+                f"audiomode:i:0\r\n"
+                f"redirectclipboard:i:1\r\n"
+                f"authentication level:i:2\r\n"
+                f"prompt for credentials:i:1\r\n"
+                f"negotiate security layer:i:1\r\n"
+            ).encode('utf-8')
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/x-rdp')
-            self.send_header('Content-Disposition', f'attachment; filename="asaas-bastion-{host}.rdp"')
-            self.send_header('Content-Length', str(len(body_bytes)))
+            self.send_header('Content-Disposition', f'attachment; filename="asaas-{safe_name}.rdp"')
+            self.send_header('Content-Length', str(len(rdp_content)))
+            self.send_header('X-ASAAS-Protocol', 'RDP')
             self.end_headers()
-            self.wfile.write(body_bytes)
-            db_add_security_event('BASTION_SESSION_LAUNCHED', self.client_address[0], f'توليد ملف اتصال PAM Bastion للخادم {name} ({host}:{port})', 'INFO')
+            self.wfile.write(rdp_content)
             return
 
         if path == '/api/audit/verify-chain':
@@ -507,11 +626,45 @@ administrative session:i:1
             })
 
         if path == '/api/vault/accounts':
+            from ..infrastructure.db import db_list_vault_accounts
+            accounts = db_list_vault_accounts()
             return self.respond_json(200, {
                 'ok': True,
-                'accounts': _VAULT_ACCOUNTS,
-                'count': len(_VAULT_ACCOUNTS)
+                'accounts': accounts,
+                'count': len(accounts)
             })
+
+        if path in ('/api/replay/events', '/api/replay/timeline'):
+            try:
+                win_events = EventViewerProvider.get_events('System', max_events=30)
+                db_evts = db_list_security_events(50)
+                combined = []
+                for ev in (win_events or []):
+                    msg = ev.get('message', '') or ''
+                    combined.append({
+                        'id': f"win-{ev.get('id', secrets.token_hex(4))}",
+                        'time': str(ev.get('time_created', ''))[-8:],
+                        'event': ev.get('provider', 'System Audit'),
+                        'command': msg[:120] if msg else f"Windows Event ID {ev.get('id')}",
+                        'risk': 'CRITICAL' if 'fail' in msg.lower() or ev.get('level') == 'Error' else 'INFO',
+                        'user': 'SYSTEM'
+                    })
+                for ev in (db_evts or []):
+                    combined.append({
+                        'id': f"db-{ev.get('id', secrets.token_hex(4))}",
+                        'time': str(ev.get('created_at', ''))[-8:],
+                        'event': ev.get('event_type', 'ADMIN_ACTION'),
+                        'command': str(ev.get('details', '')),
+                        'risk': ev.get('severity', 'INFO'),
+                        'user': 'admin'
+                    })
+                return self.respond_json(200, {
+                    'ok': True,
+                    'events': combined,
+                    'count': len(combined)
+                })
+            except Exception as exc:
+                return self.respond_json(200, {'ok': True, 'events': [], 'error': str(exc)})
 
         # --- Security Events & Audit Trail ---
         if path in ('/api/security/events', '/api/audit/logs'):
@@ -533,6 +686,7 @@ administrative session:i:1
                 'ok': True,
                 'logs': formatted_logs,
                 'events': formatted_logs,
+                'blocked_ips': _extract_blocked_ips(events),
                 'count': len(formatted_logs)
             })
 
@@ -572,13 +726,22 @@ administrative session:i:1
                 return
 
         if path == '/api/security/stats':
+            events = db_list_security_events(1000)
+            blocked = [e for e in events if str(e.get('severity', '')).upper() in {'ALERT', 'CRITICAL', 'BLOCKED'}]
+            failed = [e for e in events if str(e.get('event_type', '')).upper() in {'LOGIN_FAILED', 'AUTH_FAILED'}]
+            blocked_ips = _extract_blocked_ips(events)
+            threat = 'HIGH' if len(blocked) >= 20 else 'MEDIUM' if blocked else 'LOW'
             return self.respond_json(200, {
                 'ok': True,
-                'attacks_intercepted': 18,
-                'blocked_ips_count': 3,
+                'attacks_intercepted': len(blocked),
+                'blocked_ips_count': len(blocked_ips),
                 'firewall_active': True,
-                'failed_logins_today': 4,
-                'threat_level': 'LOW',
+                'failed_logins_today': len(failed),
+                'failed_attempts_count': len(failed),
+                'auto_ban_enabled': True,
+                'fail_threshold': 5,
+                'ban_duration_hours': round(600 / 3600, 2),
+                'threat_level': threat,
             })
 
         # --- Alerts Config (Story 6) ---
@@ -592,11 +755,13 @@ administrative session:i:1
         if path == '/api/ai/diagnose':
             metrics = telemetry_service.get_metrics()
             sessions = Win32WtsService.list_active_sessions()
+            score = max(0, min(100, round(100 - (metrics.cpu * 0.35) - (metrics.ram * 0.35) - (len(sessions) * 2))))
+            status = 'CRITICAL' if score < 50 else 'DEGRADED' if score < 75 else 'HEALTHY'
             return self.respond_json(200, {
                 'ok': True,
-                'score': 94,
-                'status': 'HEALTHY',
-                'summary': 'حالة السيرفر مستقرة جداً وموارد النواة والذاكرة ضمن الحدود الطبيعية.',
+                'score': score,
+                'status': status,
+                'summary': f'تم احتساب الحالة من قياسات CPU {metrics.cpu:.1f}% وRAM {metrics.ram:.1f}% وعدد الجلسات الحالية.',
                 'recommendations': [
                     'تفعيل الجدار الناري التلقائي لحظر عناوين IP المتكررة في الإخفاق.',
                     'الاستفادة من حاكم الموارد لتفريغ خمول الرام دورياً.',
@@ -605,6 +770,131 @@ administrative session:i:1
                 'cpu_load': metrics.cpu,
                 'ram_load': metrics.ram,
             })
+
+        # =====================================================================
+        # ASAAS Enterprise v3.0: Core Infrastructure & Windows Server Endpoints
+        # =====================================================================
+        if path == '/api/servers/check':
+            db_refresh_server_health(force=True)
+            return self.respond_json(200, {'ok': True, 'servers': db_list_servers()})
+
+        if path == '/api/servers':
+            return self.respond_json(200, {'ok': True, 'servers': db_list_servers()})
+
+        if path == '/api/server-groups':
+            return self.respond_json(200, {'ok': True, 'groups': db_list_server_groups()})
+
+        if path == '/api/server/local':
+            info = SystemProvider.get_local_server_info()
+            return self.respond_json(200, {'ok': True, 'local_server': info, **info})
+
+        if path == '/api/roles':
+            force_ref = 'refresh=1' in self.path
+            return self.respond_json(200, {'ok': True, 'roles': RoleProvider.get_roles_inventory(force_ref)})
+
+        if path == '/api/processes':
+            return self.respond_json(200, {'ok': True, 'processes': ProcessProvider.get_process_list()})
+
+        if path == '/api/storage/disks':
+            return self.respond_json(200, {'ok': True, 'disks': StorageProvider.get_physical_disks()})
+
+        if path == '/api/storage/volumes':
+            return self.respond_json(200, {'ok': True, 'volumes': StorageProvider.get_volumes()})
+
+        if path == '/api/storage/shares':
+            return self.respond_json(200, {'ok': True, 'shares': StorageProvider.get_smb_shares()})
+
+        if path == '/api/storage/explorer':
+            target_dir = 'C:\\'
+            if 'path=' in self.path:
+                try:
+                    qs = self.path.split('?')[1]
+                    params = urllib.parse.parse_qs(qs)
+                    target_dir = params.get('path', ['C:\\'])[0]
+                except Exception:
+                    pass
+            return self.respond_json(200, StorageProvider.browse_directory(target_dir))
+
+        if path == '/api/network/adapters':
+            return self.respond_json(200, {'ok': True, 'adapters': NetworkProvider.get_adapters()})
+
+        if path == '/api/firewall/status':
+            return self.respond_json(200, FirewallProvider.get_firewall_status())
+
+        if path == '/api/firewall/rules':
+            return self.respond_json(200, {'ok': True, 'rules': FirewallProvider.get_firewall_rules()})
+
+        if path == '/api/events':
+            log_n = 'System'
+            if 'log=' in self.path:
+                for part in self.path.split('?')[1].split('&'):
+                    if part.startswith('log='):
+                        log_n = part.split('=')[1]
+            return self.respond_json(200, {'ok': True, 'events': EventViewerProvider.get_events(log_n)})
+
+        if path == '/api/tasks':
+            return self.respond_json(200, {'ok': True, 'tasks': TaskSchedulerProvider.get_tasks()})
+
+        if path in ('/api/updates', '/api/updates/status'):
+            return self.respond_json(200, UpdateProvider.get_update_status())
+
+        if path == '/api/certificates':
+            return self.respond_json(200, {'ok': True, 'certificates': CertificatesProvider.get_certificates()})
+
+        if path == '/api/hyperv/status':
+            return self.respond_json(200, HyperVProvider.get_hyperv_status())
+
+        if path == '/api/docker/status':
+            return self.respond_json(200, DockerProvider.get_docker_status())
+
+        if path == '/api/workspaces/projects':
+            is_valid, sess = self._authenticate()
+            owner = sess.get('username') if sess.get('role') != 'admin' else None
+            return self.respond_json(200, {'ok': True, 'projects': DeveloperWorkspaceManager.list_projects_with_health(owner)})
+
+        if path == '/api/conflicts':
+            return self.respond_json(200, {'ok': True, 'conflicts': db_list_conflict_events()})
+
+        if path == '/api/quotas':
+            is_valid, sess = self._authenticate()
+            scope_user = sess.get('username', 'default')
+            return self.respond_json(200, {'ok': True, 'quotas': db_get_resource_quotas('user', scope_user)})
+
+        if path == '/api/action-jobs':
+            return self.respond_json(200, {'ok': True, 'jobs': db_list_action_jobs()})
+
+        # --- Sovereign Database Studio & Engine Governance (Story 10) ---
+        if path == '/api/database/engines':
+            return self.respond_json(200, {'ok': True, 'engines': DatabaseService.get_database_engines()})
+
+        if path == '/api/database/stats':
+            return self.respond_json(200, DatabaseService.get_system_database_stats())
+
+        if path == '/api/database/tables':
+            return self.respond_json(200, {'ok': True, 'tables': DatabaseService.get_tables_list()})
+
+        if path == '/api/database/table-data':
+            table_name = ''
+            limit = 50
+            offset = 0
+            if '?' in self.path:
+                for part in self.path.split('?')[1].split('&'):
+                    if part.startswith('table='):
+                        table_name = urllib.parse.unquote(part.split('=')[1])
+                    elif part.startswith('limit='):
+                        try:
+                            limit = int(part.split('=')[1])
+                        except:
+                            pass
+                    elif part.startswith('offset='):
+                        try:
+                            offset = int(part.split('=')[1])
+                        except:
+                            pass
+            return self.respond_json(200, DatabaseService.get_table_data(table_name, limit, offset))
+
+        if path == '/api/database/backups':
+            return self.respond_json(200, {'ok': True, 'backups': DatabaseService.list_backups()})
 
         # --- CRITICAL: Prevent API routes from falling into static SPA index.html ---
         if path.startswith('/api/'):
@@ -633,6 +923,9 @@ administrative session:i:1
 
         client_ip = self.client_address[0] if self.client_address else '127.0.0.1'
 
+        if not self._origin_allowed():
+            return self.respond_json(403, {'ok': False, 'error': 'Origin غير مسموح.'})
+
         # --- Public Authentication Endpoints (Story 1) ---
         if path == '/api/auth/login':
             username = body.get('username', '').strip()
@@ -648,15 +941,18 @@ administrative session:i:1
             return self.respond_json(200, {
                 'ok': True,
                 'token': token,
-                'session_token': token,
                 'user': user,
                 'message': f'مرحباً بك {user["full_name"]}. تم تسجيل الدخول بنجاح.',
-            })
+            }, extra_headers={'Set-Cookie': self._session_cookie(token)})
 
         if path == '/api/auth/logout':
             token = self._extract_token()
             db_revoke_session(token)
-            return self.respond_json(200, {'ok': True, 'message': 'تم تسجيل الخروج بنجاح.'})
+            return self.respond_json(
+                200,
+                {'ok': True, 'message': 'تم تسجيل الخروج بنجاح.'},
+                extra_headers={'Set-Cookie': self._session_cookie('', clear=True)},
+            )
 
         # --- Security Verification: Enforce RBAC on mutating endpoints ---
         is_authenticated, session_info = self._authenticate()
@@ -670,8 +966,10 @@ administrative session:i:1
         username = session_info.get('username', 'anonymous')
 
         # --- RBAC Enforcement: Story 1 Acceptance Criteria ---
-        # 1. Block Viewer role from ALL mutating/control endpoints
-        if user_role == 'viewer':
+        # 1. Block Viewer role from ALL mutating/control endpoints, except changing their own password.
+        #    JIT requests are self-service workflow submissions, not direct
+        #    privileged actions, so viewers may submit one for admin approval.
+        if user_role == 'viewer' and path not in ('/api/auth/change-password', '/api/jit/request'):
             db_add_security_event('UNAUTHORIZED_ACTION_ATTEMPT', client_ip, f'محاولة تنفيذ إجراء تعديل من مستخدم Viewer: {username} على {path}', 'WARNING')
             return self.respond_json(403, {
                 'ok': False,
@@ -683,6 +981,7 @@ administrative session:i:1
             '/api/auth/users/create',
             '/api/auth/users/delete',
             '/api/auth/users/update-role',
+            '/api/jit/approve',
             '/api/users/create',
             '/api/users/delete',
             '/api/users/toggle-state',
@@ -736,45 +1035,13 @@ administrative session:i:1
 
         # --- Elevation Endpoint ---
         if path == '/api/system/elevate':
-            if Win32WtsService.is_admin():
-                return self.respond_json(200, {
-                    'ok': True,
-                    'already_admin': True,
-                    'message': 'السيرفر يعمل بالفعل بصلاحيات مسؤول كاملة.',
-                })
-            try:
-                py_exe = sys.executable
-                main_py = str(Path(__file__).resolve().parent.parent.parent / 'main.py')
-                my_pid = os.getpid()
-
-                def _relaunch_elevated():
-                    import ctypes
-                    import subprocess
-                    # Try ShellExecuteW with SW_SHOWNORMAL (1) so UAC prompt can attach to interactive desktop
-                    try:
-                        res = ctypes.windll.shell32.ShellExecuteW(
-                            None, 'runas', py_exe, f'"{main_py}" --replace-pid {my_pid}', None, 1
-                        )
-                        if res > 32:
-                            return
-                    except Exception:
-                        pass
-                    # Fallback via PowerShell Start-Process -Verb RunAs
-                    try:
-                        arg_str = f'\"{main_py}\" --replace-pid {my_pid}'
-                        ps_cmd = f"Start-Process '{py_exe}' -ArgumentList '{arg_str}' -Verb RunAs"
-                        subprocess.run(['powershell', '-NoProfile', '-Command', ps_cmd], creationflags=0x08000000)
-                    except Exception:
-                        pass
-
-                threading.Timer(0.5, _relaunch_elevated).start()
-                db_add_security_event('ELEVATION_REQUESTED', client_ip, f'طلب ترقية كمسؤول من PID {my_pid}', 'WARNING')
-                return self.respond_json(200, {
-                    'ok': True,
-                    'message': 'تم إرسال طلب الترقية للمسؤول. يرجى الموافقة على نافذة UAC لتفعيل الصلاحيات.',
-                })
-            except Exception as exc:
-                return self.respond_json(500, {'ok': False, 'error': str(exc)})
+            is_adm = Win32WtsService.is_admin()
+            db_add_security_event('ELEVATION_CHECK', client_ip, f'فحص صلاحيات المسؤول للنظام: {is_adm}', 'INFO')
+            return self.respond_json(200, {
+                'ok': True,
+                'already_admin': is_adm,
+                'message': 'السيرفر يعمل بصلاحيات تشغيلية آمنة. كافة العمليات الإدارية الحساسة تخضع لمحرك Action Engine ووسيط العمليات المميزة.' if not is_adm else 'السيرفر يعمل بصلاحيات مسؤول كاملة.',
+            })
 
         # --- Storage Cleanup & Lock Check (Story 9) ---
         if path in ('/api/storage/clean', '/api/storage/clean-junk', '/api/storage/clean-user-temp'):
@@ -842,6 +1109,24 @@ administrative session:i:1
         if path == '/api/sessions/shadow':
             sid = int(body.get('session_id', -1))
             mode = body.get('mode', 'view')
+
+            # Preflight: only Active sessions can be shadowed — never the
+            # caller's own session, Disconnected/Listen/Console states fail.
+            try:
+                sessions = Win32WtsService.list_active_sessions()
+                target = next((s for s in sessions if int(getattr(s, 'id', -1) or -1) == sid), None)
+            except Exception:
+                target = None
+            if target is None:
+                db_add_security_event('SESSION_SHADOW', client_ip, f'محاولة مشاركة جلسة غير موجودة {sid}', 'WARNING')
+                return self.respond_json(400, {'ok': False, 'error': f'الجلسة {sid} غير موجودة أو غير نشطة — لا يمكن مشاركتها.'})
+            state = str(getattr(target, 'state', '') or '').lower()
+            if state != 'active':
+                return self.respond_json(400, {'ok': False, 'error': f'لا يمكن مشاركة جلسة بحالة {state} — يجب أن تكون Active.'})
+            caller_sessions = [s for s in sessions if str(getattr(s, 'username', '')).lower() == str(username).lower() and int(getattr(s, 'id', -1) or -1) == sid]
+            if caller_sessions:
+                return self.respond_json(400, {'ok': False, 'error': 'لا يمكنك مشاركة جلستك الخاصة.'})
+
             db_add_security_event('SESSION_SHADOW', client_ip, f'مشاركة شاشة الجلسة {sid} بنمط {mode} بواسطة {username}', 'INFO')
             try:
                 cmd = ['mstsc.exe', f'/shadow:{sid}']
@@ -851,6 +1136,7 @@ administrative session:i:1
                 subprocess.Popen(cmd)
             except Exception as e:
                 logger.error(f"Failed to launch mstsc shadow: {e}")
+                return self.respond_json(500, {'ok': False, 'error': f'فشل إطلاق أداة المشاركة: {e}'})
             return self.respond_json(200, {
                 'ok': True,
                 'session_id': sid,
@@ -917,14 +1203,23 @@ administrative session:i:1
         if path in ('/api/ports/diagnose', '/api/assets/test'):
             host = body.get('address', body.get('host', '127.0.0.1'))
             port = int(body.get('port', 80))
-            in_use = PortIsolationService.is_port_in_use(port)
+            started = time.perf_counter()
+            reachable = False
+            error = None
+            try:
+                with socket.create_connection((str(host), port), timeout=2.0):
+                    reachable = True
+            except OSError as exc:
+                error = str(exc)
+            latency = round((time.perf_counter() - started) * 1000, 2) if reachable else None
             return self.respond_json(200, {
                 'ok': True,
                 'host': host,
                 'port': port,
-                'reachable': in_use,
-                'status': 'OPEN' if in_use else 'CLOSED',
-                'latency_ms': 0.5 if in_use else None
+                'reachable': reachable,
+                'status': 'OPEN' if reachable else 'CLOSED',
+                'latency_ms': latency,
+                'error': error,
             })
 
         # --- Bastion Assets Management ---
@@ -957,35 +1252,28 @@ administrative session:i:1
                 db_add_security_event('COMMAND_BLOCKED', client_ip, f'اعتراض أمر عالي الخطورة: {cmd}', 'CRITICAL')
             return self.respond_json(200, res)
 
-        # --- Vault Management Actions ---
+        # --- Vault Management Actions (Domain 8: AES-256-GCM Encrypted Vault) ---
         if path == '/api/vault/accounts/add':
-            acc_id = f"vault-{int(time.time())}"
-            new_acc = {
-                'id': acc_id,
-                'asset_id': body.get('asset_id', ''),
-                'username': body.get('username', ''),
-                'protocol': body.get('protocol', 'SSH'),
-                'domain': body.get('domain', 'LOCAL'),
-                'has_password': True,
-                'notes': body.get('notes', ''),
-                'updated_at': time.strftime('%Y-%m-%d %H:%M'),
-            }
-            _VAULT_ACCOUNTS.append(new_acc)
-            db_add_security_event('VAULT_CREDENTIAL_ADDED', client_ip, f'إضافة حساب خزنة: {new_acc["username"]}', 'WARNING')
-            return self.respond_json(200, {'ok': True, 'account': new_acc})
+            from ..infrastructure.db import db_add_vault_account
+            res = db_add_vault_account(
+                asset_id=body.get('asset_id', ''),
+                asset_name=body.get('asset_name', body.get('name', '')),
+                username=body.get('username', ''),
+                protocol=body.get('protocol', 'RDP'),
+                secret=body.get('password', body.get('secret', '')),
+                metadata=body.get('metadata')
+            )
+            return self.respond_json(200, res)
 
         if path == '/api/vault/accounts/delete':
-            acc_id = body.get('id', '')
-            _VAULT_ACCOUNTS[:] = [a for a in _VAULT_ACCOUNTS if a.get('id') != acc_id]
-            db_add_security_event('VAULT_CREDENTIAL_DELETED', client_ip, f'حذف حساب خزنة: {acc_id}', 'WARNING')
-            return self.respond_json(200, {'ok': True, 'id': acc_id})
+            from ..infrastructure.db import db_delete_vault_account
+            res = db_delete_vault_account(body.get('id', ''))
+            return self.respond_json(200, res)
 
         if path == '/api/vault/reveal':
-            master_k = body.get('master_key', '')
-            if len(master_k) < 6:
-                return self.respond_json(400, {'ok': False, 'error': 'مفتاح Master Key غير صحيح.'})
-            db_add_security_event('VAULT_PASSWORD_REVEALED', client_ip, f'كشف كلمة مرور حساب {body.get("id")} بواسطة {username}', 'WARNING')
-            return self.respond_json(200, {'ok': True, 'password': '•••••••••••• (محمي بواسطة Master Key)'})
+            from ..infrastructure.db import db_reveal_vault_secret
+            res = db_reveal_vault_secret(body.get('id', ''), requester=username)
+            return self.respond_json(200 if res.get('ok') else 400, res)
 
         # --- Alerts Config & Test (Story 6) ---
         if path == '/api/alerts/config':
@@ -994,7 +1282,7 @@ administrative session:i:1
             return self.respond_json(200, {'ok': True, 'config': updated})
 
         if path == '/api/alerts/test':
-            msg = body.get('message', 'اختبار تنبيه تجريبي مباشر من منظومة أساس ASAAS Server Control v2.5')
+            msg = body.get('message', 'اختبار تنبيه تجريبي مباشر من أساس ASAAS v2.5')
             res = AlertService.send_telegram_alert(msg, 'test_alert', force=True)
             return self.respond_json(200, res)
 
@@ -1043,14 +1331,40 @@ administrative session:i:1
             except Exception as exc:
                 return self.respond_json(500, {'ok': False, 'error': str(exc)})
 
-        # --- JIT Elevation Actions ---
+        # --- JIT Elevation Actions (Domain 6: Sovereign Elevation & JIT PAM) ---
         if path == '/api/jit/request':
-            target_role = body.get('role', 'Operator (Temporary)')
-            reason = body.get('reason', 'مهمة صيانة طارئة')
-            duration_mins = int(body.get('duration_mins', 30))
-            req_user = body.get('user', username)
-            res = db_create_jit_grant(req_user, target_role, reason, duration_mins, approver=f'Admin ({username})')
-            return self.respond_json(200, res)
+            requested_user = username
+            if user_role == 'admin' and body.get('username'):
+                requested_user = str(body.get('username')).strip() or username
+            is_admin_self_request = (
+                user_role == 'admin' and requested_user.lower() == username.lower()
+            )
+            grant_status = 'ACTIVE' if is_admin_self_request else 'PENDING'
+            approver = f"Admin Policy Engine ({username})" if is_admin_self_request else 'Pending Admin Approval'
+            try:
+                duration_mins = max(1, min(480, int(body.get('duration_mins', 30))))
+            except (TypeError, ValueError):
+                duration_mins = 30
+            res = db_create_jit_grant(
+                user=requested_user,
+                target_role=body.get('role', body.get('target_role', 'Local Administrator')),
+                reason=body.get('reason', 'Administrative Emergency Elevation'),
+                duration_mins=duration_mins,
+                approver=approver,
+                status=grant_status,
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/jit/approve':
+            grant_id = str(body.get('id', '')).strip()
+            if not grant_id:
+                return self.respond_json(400, {'ok': False, 'error': 'معرف طلب الصلاحية (id) مطلوب.'})
+            res = db_approve_jit_grant(
+                grant_id,
+                approver=username,
+                approve=bool(body.get('approve', True)),
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
 
         if path == '/api/jit/revoke':
             grant_id = body.get('id', '')
@@ -1093,6 +1407,190 @@ administrative session:i:1
                 db_add_security_event('USER_STATE_CHANGED', client_ip, f'{action_text} حساب مستخدم ويندوز: {uname} بواسطة {username}', 'WARNING')
             return self.respond_json(200 if res.get('ok') else 400, res)
 
+        # =====================================================================
+        # ASAAS Enterprise v3.0: Mutating Operations via Unified Action Engine
+        # =====================================================================
+        if path == '/api/servers':
+            s_name = body.get('name', 'Server')
+            s_ip = body.get('ip', '127.0.0.1')
+            s_os = body.get('os', 'Windows Server 2025')
+            s_dom = body.get('domain', 'WORKGROUP')
+            res = db_add_server(s_name, s_ip, s_os, s_dom)
+            db_add_security_event('SERVER_REGISTERED', s_ip, f'تسجيل خادم جديد {s_name} بواسطة {username}', 'INFO')
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/servers/delete':
+            sid = body.get('id', '')
+            res = db_delete_server(sid)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/server-groups/create':
+            g_name = body.get('name', '')
+            g_desc = body.get('description', '')
+            s_ids = body.get('server_ids', [])
+            res = db_create_server_group(g_name, g_desc, s_ids)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/server-groups/delete':
+            gid = body.get('id', '')
+            res = db_delete_server_group(gid)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/server/restart':
+            confirmed = bool(body.get('confirmed', False))
+            res = ActionEngine.execute(
+                'SYSTEM_RESTART', username, user_role, 'srv-local',
+                {'reason': body.get('reason', 'ASAAS UI Restart'), 'timeout_sec': int(body.get('timeout', 30))},
+                SystemProvider.restart_server,
+                confirmed=confirmed
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/server/shutdown':
+            confirmed = bool(body.get('confirmed', False))
+            res = ActionEngine.execute(
+                'SYSTEM_SHUTDOWN', username, user_role, 'srv-local',
+                {'reason': body.get('reason', 'ASAAS UI Shutdown'), 'timeout_sec': int(body.get('timeout', 30))},
+                SystemProvider.shutdown_server,
+                confirmed=confirmed
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/roles/install':
+            f_name = body.get('name', '')
+            res = ActionEngine.execute(
+                'ROLE_INSTALL', username, user_role, 'srv-local',
+                {'feature_name': f_name},
+                RoleProvider.install_feature,
+                confirmed=True
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/roles/uninstall':
+            f_name = body.get('name', '')
+            confirmed = bool(body.get('confirmed', False))
+            res = ActionEngine.execute(
+                'ROLE_UNINSTALL', username, user_role, 'srv-local',
+                {'feature_name': f_name},
+                RoleProvider.uninstall_feature,
+                confirmed=confirmed
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path in ('/api/processes/terminate', '/api/processes/kill'):
+            target_pid = int(body.get('pid', 0))
+            force = bool(body.get('force', False))
+            res = ActionEngine.execute(
+                'PROCESS_TERMINATE', username, user_role, 'srv-local',
+                {'pid': target_pid, 'force': force},
+                ProcessProvider.terminate_process,
+                confirmed=True
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/storage/shares/create':
+            s_name = body.get('name', '')
+            s_path = body.get('path', '')
+            s_desc = body.get('description', '')
+            res = ActionEngine.execute(
+                'SMB_SHARE_CREATE', username, user_role, 'srv-local',
+                {'name': s_name, 'path': s_path, 'description': s_desc},
+                StorageProvider.create_smb_share,
+                confirmed=True
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/storage/shares/delete':
+            s_name = body.get('name', '')
+            res = ActionEngine.execute(
+                'SMB_SHARE_DELETE', username, user_role, 'srv-local',
+                {'name': s_name},
+                StorageProvider.delete_smb_share,
+                confirmed=True
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/network/ping':
+            host = body.get('host', '127.0.0.1')
+            count = int(body.get('count', 4))
+            return self.respond_json(200, NetworkProvider.ping_test(host, count))
+
+        if path == '/api/network/test-port':
+            host = body.get('host', '127.0.0.1')
+            port = int(body.get('port', 80))
+            return self.respond_json(200, NetworkProvider.test_tcp_port(host, port))
+
+        if path == '/api/firewall/rules/toggle':
+            r_name = body.get('name', '')
+            en = bool(body.get('enabled', True))
+            res = ActionEngine.execute(
+                'FIREWALL_RULE_TOGGLE', username, user_role, 'srv-local',
+                {'rule_name': r_name, 'enable': en},
+                FirewallProvider.toggle_rule,
+                confirmed=True
+            )
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/workspaces/projects/create':
+            p_name = body.get('name', '')
+            p_rt = body.get('runtime', 'auto')
+            p_port = body.get('port')
+            res = DeveloperWorkspaceManager.create_project(p_name, username, p_rt, requested_port=p_port)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/workspaces/projects/start':
+            p_id = body.get('project_id', '')
+            res = DeveloperWorkspaceManager.start_project(p_id, username)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/workspaces/projects/stop':
+            p_id = body.get('project_id', '')
+            res = DeveloperWorkspaceManager.stop_project(p_id, username)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/workspaces/projects/delete':
+            p_id = body.get('project_id', '')
+            res = db_delete_developer_project(p_id)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/ports/allocate':
+            p_port = body.get('port')
+            p_name = body.get('project_name', 'TestProject')
+            res = SmartPortOrchestrator.allocate_port(username, p_name, requested_port=p_port)
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/quotas':
+            s_type = body.get('scope_type', 'user')
+            s_id = body.get('scope_id', username)
+            c_lim = float(body.get('cpu_limit', body.get('max_cpu_percent', 4.0)))
+            r_lim = int(body.get('ram_limit_mb', body.get('max_memory_mb', 4096)))
+            d_lim = float(body.get('disk_limit_gb', body.get('max_disk_gb', 50.0)))
+            m_cont = int(body.get('max_containers', 5))
+            m_proj = int(body.get('max_projects', 5))
+            res = db_save_resource_quota(s_type, s_id, c_lim, r_lim, d_lim, m_cont, m_proj)
+            return self.respond_json(200, res)
+
+        # --- Sovereign Database Studio & Engine Governance (Story 10) ---
+        if path == '/api/database/query':
+            sql = body.get('query', '')
+            res = DatabaseService.execute_custom_query(sql, actor=username)
+            if res.get('ok') and not res.get('is_select'):
+                db_add_security_event('DATABASE_QUERY_EXECUTE', client_ip, f'تنفيذ استعلام SQL من {username}: {sql[:100]}', 'WARNING')
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/database/backup':
+            desc = body.get('description', 'نسخة يدوية من واجهة التحكم')
+            res = DatabaseService.create_backup(desc)
+            if res.get('ok'):
+                db_add_security_event('DATABASE_BACKUP_CREATED', client_ip, f'تم أخذ نسخة احتياطية: {res.get("filename")}', 'INFO')
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
+        if path == '/api/database/optimize':
+            res = DatabaseService.optimize_database()
+            if res.get('ok'):
+                db_add_security_event('DATABASE_OPTIMIZED', client_ip, f'تحسين وفهرسة قاعدة البيانات بواسطة {username}', 'INFO')
+            return self.respond_json(200 if res.get('ok') else 400, res)
+
         # --- Fallback for unmatched API routes ---
         if path.startswith('/api/'):
             return self.respond_json(404, {
@@ -1103,33 +1601,7 @@ administrative session:i:1
         self.send_error(405, "Method Not Allowed")
 
     def serve_static(self, path: str) -> None:
-        """Serves frontend static build assets with SPA client-side fallback, plus Stitch screens."""
-        # Serve Stitch design screens directly
-        if path.startswith('/stitch/'):
-            rel_stitch = path[len('/stitch/'):]
-            target_stitch = (STITCH_DIR / rel_stitch).resolve()
-            if target_stitch.is_file() and target_stitch.is_relative_to(STITCH_DIR):
-                ctype, _ = mimetypes.guess_type(str(target_stitch))
-                if not ctype:
-                    ctype = 'application/octet-stream'
-                try:
-                    with open(target_stitch, 'rb') as f:
-                        content = f.read()
-                    self.send_response(200)
-                    self.send_header('Content-Type', ctype)
-                    self.send_header('Content-Length', str(len(content)))
-                    self.send_header('Cache-Control', 'no-cache')
-                    self.send_header('X-Content-Type-Options', 'nosniff')
-                    self.end_headers()
-                    self.wfile.write(content)
-                    return
-                except Exception as exc:
-                    self.send_error(500, f"Error reading stitch file: {exc}")
-                    return
-            else:
-                self.send_error(404, "Stitch file not found")
-                return
-
+        """Serves frontend static build assets with SPA client-side fallback."""
         # Determine static directory
         static_dir = LEGACY_DIST_DIR if LEGACY_DIST_DIR.is_dir() else FRONTEND_DIST_DIR
 

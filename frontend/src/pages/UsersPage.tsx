@@ -1,19 +1,24 @@
 /**
- * ASAAS Server Control v2.5 - Screen RDP
+ * ASAAS v2.5 - Screen RDP
  * حوكمة مستخدمي ويندوز المحليين وصلاحيات سطح المكتب البعيد RDP & IAM
  * Strict implementation of Stitch Prototype RDP
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, Field, TextInput, PasswordInput, PasswordStrength, Glass, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
-import { api, type LocalUser, type DomainProfile } from '../lib/api';
+import { Card, Button, Modal, Field, TextInput, PasswordInput, PasswordStrength, Glass, Select, useToast, TableContainer, Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableEmpty } from '../asaas-ui';
+import { api, type LocalUser, type DomainProfile, type AppUser } from '../lib/api';
+import { apiV1, type V1User } from '../lib/apiV1';
 import {
   Users,
   UserPlus,
   CheckCircle2,
   KeyRound,
   RefreshCw,
+  UserCog,
+  Trash2,
+  ShieldCheck,
 } from 'lucide-react';
+import { t } from '../lib/i18n';
 
 export function UsersPage() {
   const toast = useToast();
@@ -26,12 +31,42 @@ export function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [actionUser, setActionUser] = useState<string | null>(null);
 
+  // ASAAS application-user management — now served by /api/v1 (identity authority).
+  const [appUsers, setAppUsers] = useState<V1User[]>([]);
+  const [appUsersLoading, setAppUsersLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [appModalOpen, setAppModalOpen] = useState(false);
+  const [appUsername, setAppUsername] = useState('');
+  const [appPassword, setAppPassword] = useState('');
+  const [appFullName, setAppFullName] = useState('');
+  const [appRole, setAppRole] = useState<'admin' | 'operator' | 'viewer'>('viewer');
+  const [appSubmitting, setAppSubmitting] = useState(false);
+  const [appActionUser, setAppActionUser] = useState<string | null>(null);
+
+  // Remote agent local accounts — read-only local.users collector results.
+  const [fleetUsers, setFleetUsers] = useState<any[]>([]);
+  const [agentUserBusy, setAgentUserBusy] = useState<string | null>(null);
+  const [agentCreateUser, setAgentCreateUser] = useState<Record<string, { username: string; password: string }>>({});
+
   // Form states
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isRdp, setIsRdp] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Signed agent write job: enable/disable/remove/create a local Windows account.
+  const queueAgentUser = async (agentId: string, payload: Record<string, unknown>, busyKey: string) => {
+    setAgentUserBusy(busyKey);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'local.user', payload });
+      toast(t('تم إرسال أمر الحساب — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setAgentUserBusy(null);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -44,26 +79,145 @@ export function UsersPage() {
         setDomainProfile(dom.domain);
       }
     } catch (err: any) {
-      toast(err.message || 'فشل جلب المستخدمين', 'error');
+      toast(err.message || t('فشل جلب المستخدمين'), 'error');
+    }
+  };
+
+  const fetchAppUsers = async () => {
+    setAppUsersLoading(true);
+    try {
+      const res = await apiV1.users();
+      const list = Array.isArray(res) ? res : (res as { users?: V1User[] })?.users || [];
+      setAppUsers(list);
+    } catch {
+      // The endpoint requires an authenticated session; non-admin operators
+      // simply see the read-only notice instead of a noisy toast.
+    } finally {
+      setAppUsersLoading(false);
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await apiV1.me();
+      if (res?.username) {
+        setCurrentUser({
+          username: res.username,
+          role: res.is_admin ? 'admin' : (res.role || 'viewer'),
+          full_name: res.full_name || '',
+        } as AppUser);
+      }
+    } catch {
+      // ignore; role-based controls remain hidden until identity resolves
+    }
+  };
+
+  const fetchFleetUsers = async () => {
+    try {
+      const fleetRes = await apiV1.fleetSummary();
+      if (!fleetRes?.agents?.length) { setFleetUsers([]); return; }
+      const detailed = await Promise.all(
+        fleetRes.agents.map(async (ag) => {
+          const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
+          const entry = r?.results?.['local.users'] ?? null;
+          let arr: any[] = [];
+          const raw = entry && !entry.error ? entry.result : null;
+          const src = Array.isArray(raw) ? raw : ((raw as any)?.users ?? (raw as any)?.items ?? []);
+          if (Array.isArray(src)) arr = src.filter((x) => x && typeof x === 'object');
+          return { id: ag.id, name: ag.name, hostname: ag.hostname, status: ag.status, entry, users: arr };
+        }),
+      );
+      setFleetUsers(detailed);
+    } catch {
+      setFleetUsers([]);
     }
   };
 
   useEffect(() => {
     fetchUsers();
+    fetchAppUsers();
+    fetchCurrentUser();
+    fetchFleetUsers();
   }, []);
+
+  const canManageAppUsers = currentUser?.role === 'admin';
+
+  const handleCreateAppUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAppSubmitting(true);
+    try {
+      await apiV1.createUser({
+        username: appUsername.trim(),
+        password: appPassword,
+        role: appRole,
+        full_name: appFullName.trim(),
+      });
+      toast(`${t('تم إنشاء حساب مشغل النظام [')}${appUsername}${t('] بدور ')}${appRole}.`, 'success');
+      setAppModalOpen(false);
+      setAppUsername('');
+      setAppPassword('');
+      setAppFullName('');
+      setAppRole('viewer');
+      fetchAppUsers();
+    } catch (err: any) {
+      toast(err.message || t('فشل إنشاء حساب المشغل'), 'error');
+    } finally {
+      setAppSubmitting(false);
+    }
+  };
+
+  const handleAppRoleChange = async (user: V1User, role: string) => {
+    if (role === user.role) return;
+    if (!confirm(`${t('تغيير دور الحساب [')}${user.username}${t('] إلى (')}${role}${t(')؟')}`)) {
+      fetchAppUsers();
+      return;
+    }
+    setAppActionUser(user.username);
+    try {
+      await apiV1.updateUserRole(user.username, role);
+      toast(`${t('تم تحديث دور الحساب [')}${user.username}${t('] إلى (')}${role}).`, 'success');
+      fetchAppUsers();
+    } catch (err: any) {
+      toast(err.message || t('فشل تحديث الدور'), 'error');
+    } finally {
+      setAppActionUser(null);
+    }
+  };
+
+  const handleDeleteAppUser = async (user: V1User) => {
+    if (user.username.toLowerCase() === 'admin') {
+      toast(t('لا يمكن تعطيل الحساب الجذري admin.'), 'error');
+      return;
+    }
+    if (currentUser?.username?.toLowerCase() === user.username.toLowerCase()) {
+      toast(t('لا يمكنك تعطيل الحساب الذي تستخدمه حالياً.'), 'error');
+      return;
+    }
+    if (!confirm(`${t('تعطيل حساب مشغل النظام [')}${user.username}${t(']؟ سيتم إنهاء جلساته فوراً.')}`)) return;
+    setAppActionUser(user.username);
+    try {
+      await apiV1.updateUserStatus(user.username, false);
+      toast(`${t('تم تعطيل حساب المشغل [')}${user.username}${t('] وإنهاء جلساته.')}`, 'success');
+      fetchAppUsers();
+    } catch (err: any) {
+      toast(err.message || t('فشل تعطيل الحساب'), 'error');
+    } finally {
+      setAppActionUser(null);
+    }
+  };
 
   const handleToggleState = async (user: LocalUser) => {
     setActionUser(user.username);
     try {
       const res = await api.toggleUserState(user.username, !user.enabled);
       if (res.ok) {
-        toast(user.enabled ? `تم تعطيل حساب [${user.username}].` : `تم تفعيل حساب [${user.username}].`, 'success');
+        toast(user.enabled ? `${t('تم تعطيل حساب [')}${user.username}].` : `${t('تم تفعيل حساب [')}${user.username}].`, 'success');
         fetchUsers();
       } else {
-        toast(res.error || 'فشل الإجراء', 'error');
+        toast(res.error || t('فشل الإجراء'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setActionUser(null);
     }
@@ -76,14 +230,14 @@ export function UsersPage() {
     try {
       const res = await api.resetUserPassword(selectedUser, newPassword);
       if (res.ok) {
-        toast(res.message || `تم تغيير كلمة مرور مستخدم ويندوز [${selectedUser}] بنجاح.`, 'success');
+        toast(res.message || `${t('تم تغيير كلمة مرور مستخدم ويندوز [')}${selectedUser}${t('] بنجاح.')}`, 'success');
         setPasswordModalOpen(false);
         setNewPassword('');
       } else {
-        toast(res.error || 'فشل تغيير كلمة المرور', 'error');
+        toast(res.error || t('فشل تغيير كلمة المرور'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ أثناء محاولة تغيير كلمة المرور', 'error');
+      toast(err.message || t('خطأ أثناء محاولة تغيير كلمة المرور'), 'error');
     } finally {
       setLoading(false);
     }
@@ -91,20 +245,20 @@ export function UsersPage() {
 
   const handleDelete = async (uname: string) => {
     if (domainProfile?.is_domain_controller) {
-      toast('حظر أمني: لا يمكن حذف حسابات محلية عشوائياً على وحدة تحكم النطاق (Domain Controller).', 'error');
+      toast(t('حظر أمني: لا يمكن حذف حسابات محلية عشوائياً على وحدة تحكم النطاق (Domain Controller).'), 'error');
       return;
     }
-    if (!confirm(`تحذير: هل أنت متأكد من حذف المستخدم [${uname}] نهائياً من نظام ويندوز؟`)) return;
+    if (!confirm(`${t('تحذير: هل أنت متأكد من حذف المستخدم [')}${uname}${t('] نهائياً من نظام ويندوز؟')}`)) return;
     try {
       const res = await api.deleteUser(uname);
       if (res.ok) {
-        toast('تم حذف المستخدم بنجاح', 'success');
+        toast(t('تم حذف المستخدم بنجاح'), 'success');
         fetchUsers();
       } else {
-        toast(res.error || 'فشل الحذف', 'error');
+        toast(res.error || t('فشل الحذف'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     }
   };
 
@@ -120,33 +274,33 @@ export function UsersPage() {
         is_admin: isAdmin,
       });
       if (res.ok) {
-        toast(`تم إنشاء حساب [${username}] وإضافته لمجموعات ويندوز المطلوبة.`, 'success');
+        toast(`${t('تم إنشاء حساب [')}${username}${t('] وإضافته لمجموعات ويندوز المطلوبة.')}`, 'success');
         setModalOpen(false);
         setUsername('');
         setPassword('');
         setFullName('');
         fetchUsers();
       } else {
-        toast(res.error || 'فشل إنشاء المستخدم', 'error');
+        toast(res.error || t('فشل إنشاء المستخدم'), 'error');
       }
     } catch (err: any) {
-      toast(err.message || 'خطأ', 'error');
+      toast(err.message || t('خطأ'), 'error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* 1. Sovereign IAM Header (Stitch RDP Top) */}
-      <div
+    <div className="page">
+      {/* Product page header */}
+      <div className="page-hero"
         style={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 16,
-          background: 'linear-gradient(135deg, rgba(20, 19, 21, 0.95) 0%, rgba(14, 14, 16, 0.98) 100%)',
-          border: '1px solid rgba(212, 160, 23, 0.22)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+          background: 'linear-gradient(135deg, var(--glass-tint-strong) 0%, var(--surface-ground) 100%)',
+          border: '1px solid var(--accent-soft)',
+          boxShadow: '0 12px 32px var(--shadow-soft)',
           padding: '24px 28px',
         }}
       >
@@ -160,20 +314,20 @@ export function UsersPage() {
                   gap: 6,
                   padding: '4px 12px',
                   borderRadius: 9999,
-                  background: 'rgba(34, 197, 94, 0.12)',
-                  color: '#22c55e',
+                  background: 'var(--paid-bg)',
+                  color: 'var(--paid)',
                   fontSize: 12,
                   fontWeight: 700,
                 }}
               >
                 <CheckCircle2 size={13} />
-                حوكمة الهوية وإدارة الوصول المميز IAM
+                {t('حوكمة الهوية وإدارة الوصول المميز IAM')}
               </span>
               <span
                 style={{
                   padding: '3px 10px',
                   borderRadius: 9999,
-                  background: 'rgba(212, 160, 23, 0.12)',
+                  background: 'var(--accent-soft)',
                   color: 'var(--accent)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -184,11 +338,10 @@ export function UsersPage() {
             </div>
 
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
-              حوكمة مستخدمي ويندوز المحليين وصلاحيات سطح المكتب البعيد RDP &amp; IAM
+              {t('حوكمة مستخدمي ويندوز المحليين وصلاحيات سطح المكتب البعيد')} RDP &amp; IAM
             </h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 840, lineHeight: 1.6 }}>
-              إدارة شاملة لحسابات ويندوز (SAM / Active Directory)، تعيين صلاحيات الدخول عن بعد (Remote Desktop Users)،
-              وفرض سياسات تصليب كلمات المرور ومكافحة تصعيد الامتيازات.
+              {t('إدارة شاملة لحسابات ويندوز (SAM / Active Directory)، تعيين صلاحيات الدخول عن بعد (Remote Desktop Users)، وفرض سياسات تصليب كلمات المرور ومكافحة تصعيد الامتيازات.')}
             </p>
           </div>
 
@@ -200,7 +353,7 @@ export function UsersPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <RefreshCw size={13} />
-              <span>مزامنة SAM</span>
+              <span>{t('مزامنة SAM')}</span>
             </Button>
             <Button
               size="sm"
@@ -209,7 +362,7 @@ export function UsersPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <UserPlus size={14} />
-              <span>إضافة مستخدم جديد</span>
+              <span>{t('إضافة مستخدم جديد')}</span>
             </Button>
           </div>
         </div>
@@ -220,67 +373,67 @@ export function UsersPage() {
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-              سياسات أمان الحسابات وتصليب كلمات المرور
+              {t('سياسات أمان الحسابات وتصليب كلمات المرور')}
             </h4>
-            <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>مفعلة Enforced</span>
+            <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>{t('مفعلة Enforced')}</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            فرض طول 12+ رمز، حظر كلمات المرور الشائعة، قفل الحساب التلقائي بعد 5 محاولات خاطئة لمنع هجمات التخمين.
+            {t('فرض طول 12+ رمز، حظر كلمات المرور الشائعة، قفل الحساب التلقائي بعد 5 محاولات خاطئة لمنع هجمات التخمين.')}
           </p>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-              جلسات RDP والحصة المتزامنة
+              {t('جلسات RDP والحصة المتزامنة')}
             </h4>
-            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>غير محدودة Unlimited</span>
+            <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{t('غير محدودة Unlimited')}</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            دعم اتصالات متعددة متزامنة مع عزل مساحة الذاكرة لكل جلسة مستخدم وضبط استهلاك البرامج الخاملة.
+            {t('دعم اتصالات متعددة متزامنة مع عزل مساحة الذاكرة لكل جلسة مستخدم وضبط استهلاك البرامج الخاملة.')}
           </p>
         </Glass>
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
-              بيئة تشغيل السيرفر
+              {t('بيئة تشغيل السيرفر')}
             </h4>
-            <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700 }}>
+            <span style={{ fontSize: 11, color: 'var(--chart-out)', fontWeight: 700 }}>
               {domainProfile?.is_domain_controller ? 'Domain Controller' : 'Sovereign Standalone Host'}
             </span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-            كافة العمليات المحلية تخضع لرقابة النواة المشددة وتوثق بصمتها في سجل الامتثال الجنائي.
+            {t('كافة العمليات المحلية تخضع لرقابة النواة المشددة وتوثق بصمتها في سجل الامتثال الجنائي.')}
           </p>
         </Glass>
       </div>
 
       {/* 3. Windows Local Users Directory Table (Stitch RDP H2) */}
       <Card
-        title="دليل حسابات السيرفر المحلي (Windows Local Users Directory)"
+        title={t('دليل حسابات السيرفر المحلي (Windows Local Users Directory)')}
         icon="users"
         actions={
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            إجمالي الحسابات: {users.length} مستخدم
+            {t('إجمالي الحسابات')}: {users.length} {t('مستخدم')}
           </span>
         }
       >
         <TableContainer>
-          <Table style={{ width: "100%", tableLayout: "fixed" }}>
+          <Table style={{ width: "100%", tableLayout: "fixed", minWidth: 720 }}>
             <TableHeader>
               <TableRow>
-                <TableHead style={{ width: '17%', textAlign: 'start' }}>اسم الحساب (Username)</TableHead>
-                <TableHead style={{ width: '20%', textAlign: 'start' }}>الاسم الكامل والوصف</TableHead>
-                <TableHead style={{ width: '12%', textAlign: 'start' }}>حالة الحساب</TableHead>
-                <TableHead style={{ width: '14%', textAlign: 'start' }}>صلاحية RDP</TableHead>
-                <TableHead style={{ width: '13%', textAlign: 'start' }}>دور الحساب</TableHead>
-                <TableHead style={{ width: '24%', textAlign: 'end' }}>إجراءات الحوكمة</TableHead>
+                <TableHead style={{ width: '17%', textAlign: 'start' }}>{t('اسم الحساب (Username)')}</TableHead>
+                <TableHead style={{ width: '20%', textAlign: 'start' }}>{t('الاسم الكامل والوصف')}</TableHead>
+                <TableHead style={{ width: '12%', textAlign: 'start' }}>{t('حالة الحساب')}</TableHead>
+                <TableHead style={{ width: '14%', textAlign: 'start' }}>{t('صلاحية RDP')}</TableHead>
+                <TableHead style={{ width: '13%', textAlign: 'start' }}>{t('دور الحساب')}</TableHead>
+                <TableHead style={{ width: '24%', textAlign: 'end' }}>{t('إجراءات الحوكمة')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.length === 0 ? (
-                <TableEmpty colSpan={6} message="لا يوجد مستخدمين مسجلين في السيرفر حالياً." />
+                <TableEmpty colSpan={6} message={t('لا يوجد مستخدمين مسجلين في السيرفر حالياً.')} />
               ) : (
                 users.map((u) => (
                   <TableRow key={u.username}>
@@ -292,7 +445,7 @@ export function UsersPage() {
                     </TableCell>
                     <TableCell style={{ width: '20%' }} className="text-xs text-muted">
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                        {u.full_name || u.description || 'حساب مستخدم محلي'}
+                        {u.full_name || u.description || t('حساب مستخدم محلي')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '12%' }}>
@@ -305,7 +458,7 @@ export function UsersPage() {
                         style={{ whiteSpace: 'nowrap' }}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${u.enabled ? 'bg-status-safe' : 'bg-status-danger'}`} />
-                        {u.enabled ? 'نشط Active' : 'معطّل Disabled'}
+                        {u.enabled ? t('نشط Active') : t('معطّل Disabled')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '14%' }}>
@@ -315,7 +468,7 @@ export function UsersPage() {
                         }`}
                         style={{ whiteSpace: 'nowrap' }}
                       >
-                        {u.is_rdp ? 'مفعّل (RDP)' : 'معطّل'}
+                        {u.is_rdp ? t('مفعّل (RDP)') : t('معطّل')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '13%' }}>
@@ -327,7 +480,7 @@ export function UsersPage() {
                         }`}
                         style={{ whiteSpace: 'nowrap' }}
                       >
-                        {u.is_admin ? 'مدير نظام (Admin)' : 'مستخدم قياسي (User)'}
+                        {u.is_admin ? t('مدير نظام (Admin)') : t('مستخدم قياسي (User)')}
                       </span>
                     </TableCell>
                     <TableCell style={{ width: '24%', textAlign: 'end' }}>
@@ -344,7 +497,7 @@ export function UsersPage() {
                           className="text-primary"
                         >
                           <KeyRound size={12} style={{ marginInlineEnd: 4 }} />
-                          كلمة المرور
+                          {t('كلمة المرور')}
                         </Button>
                         <Button
                           size="sm"
@@ -353,7 +506,7 @@ export function UsersPage() {
                           onClick={() => handleToggleState(u)}
                           style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
                         >
-                          {u.enabled ? 'تعطيل' : 'تفعيل'}
+                          {u.enabled ? t('تعطيل') : t('تفعيل')}
                         </Button>
                         <Button
                           size="sm"
@@ -361,7 +514,7 @@ export function UsersPage() {
                           onClick={() => handleDelete(u.username)}
                           style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
                         >
-                          حذف
+                          {t('حذف')}
                         </Button>
                       </div>
                     </TableCell>
@@ -373,17 +526,319 @@ export function UsersPage() {
         </TableContainer>
       </Card>
 
+      {/* 3b. Remote agent local accounts — read-only local.users collector */}
+      {fleetUsers.length > 0 && (
+        <Card
+          title={t('حسابات وكلاء أساس')}
+          icon="users"
+          actions={
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              {t('local.users حقيقية: حسابات Windows على كل وكيل')}
+            </span>
+          }
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, padding: '4px 2px' }}>
+            {fleetUsers.map((ag) => (
+              <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ag.name}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                    {ag.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                  {ag.hostname || ag.id.slice(0, 8)}{ag.users.length ? ` · ${ag.users.length} ${t('حساب')}` : ''}
+                </div>
+                {!ag.entry ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الحسابات بعد — أرسله من صفحة الوكلاء.')}</div>
+                ) : ag.entry.error ? (
+                  <div className="text-status-danger" style={{ fontSize: 11 }}>{ag.entry.error}</div>
+                ) : ag.users.length === 0 ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا حسابات مُعادة أو نتيجة غير معروفة.')}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' }}>
+                    {ag.users.slice(0, 40).map((u: any, i: number) => {
+                      const uname = String(u.name ?? u.Name ?? u.username ?? '?');
+                      const enabled = u.enabled ?? u.Enabled;
+                      const lastLogon = u.last_logon ?? u.LastLogon ?? '';
+                      const source = u.source ?? u.PrincipalSource ?? '';
+                      return (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={uname}>{uname}</span>
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center' }}>
+                            {source && <span style={{ fontSize: 9 }}>{source}</span>}
+                            {lastLogon ? <span style={{ fontSize: 9 }}>{String(lastLogon).slice(0, 10)}</span> : null}
+                            <span style={{ color: enabled === false ? 'var(--unpaid)' : 'var(--paid)' }}>{enabled === false ? t('معطّل') : t('نشط')}</span>
+                            <button
+                              type="button"
+                              disabled={agentUserBusy !== null}
+                              onClick={() => {
+                                const action = enabled === false ? 'enable' : 'disable';
+                                if (window.confirm(t(`${action === 'enable' ? 'تفعيل' : 'تعطيل'} الحساب «${uname}» على ${ag.name}؟`))) {
+                                  void queueAgentUser(ag.id, { username: uname, action }, `${ag.id}:${uname}:${action}`);
+                                }
+                              }}
+                              style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: agentUserBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--accent)' }}
+                            >
+                              {enabled === false ? t('تفعيل') : t('تعطيل')}
+                            </button>
+                            {!/^(administrator|guest|defaultaccount|wdagutilityaccount)$/i.test(uname) && (
+                              <button
+                                type="button"
+                                disabled={agentUserBusy !== null}
+                                onClick={() => {
+                                  if (window.confirm(t(`حذف الحساب «${uname}» على ${ag.name}؟ لا يمكن التراجع.`))) {
+                                    void queueAgentUser(ag.id, { username: uname, action: 'remove' }, `${ag.id}:${uname}:remove`);
+                                  }
+                                }}
+                                style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: agentUserBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--status-danger)' }}
+                              >
+                                {t('حذف')}
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {ag.users.length > 40 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{ag.users.length - 40} {t('حساب آخر')}</div>}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <TextInput
+                        value={agentCreateUser[ag.id]?.username || ''}
+                        onChange={(e: any) => setAgentCreateUser((prev) => ({ ...prev, [ag.id]: { username: e.target.value, password: prev[ag.id]?.password || '' } }))}
+                        placeholder={t('اسم المستخدم الجديد')}
+                        style={{ flex: 1, fontSize: 11 }}
+                      />
+                      <TextInput
+                        type="password"
+                        value={agentCreateUser[ag.id]?.password || ''}
+                        onChange={(e: any) => setAgentCreateUser((prev) => ({ ...prev, [ag.id]: { username: prev[ag.id]?.username || '', password: e.target.value } }))}
+                        placeholder={t('كلمة المرور (8+)')}
+                        style={{ flex: 1, fontSize: 11 }}
+                      />
+                      <Button
+                        variant="secondary"
+                        disabled={agentUserBusy !== null}
+                        onClick={() => {
+                          const cu = agentCreateUser[ag.id] || { username: '', password: '' };
+                          if (!cu.username.trim() || !cu.password) { toast(t('أدخل اسم المستخدم وكلمة المرور'), 'error'); return; }
+                          if (window.confirm(t(`إنشاء الحساب «${cu.username.trim()}» على ${ag.name}؟`))) {
+                            void queueAgentUser(ag.id, { username: cu.username.trim(), action: 'create', password: cu.password }, `${ag.id}:create:${cu.username.trim()}`);
+                            setAgentCreateUser((prev) => ({ ...prev, [ag.id]: { username: '', password: '' } }));
+                          }
+                        }}
+                        style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' }}
+                      >
+                        {t('إنشاء')}
+                      </Button>
+                    </div>
+                    {ag.entry.completed_at && (
+                      <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(ag.entry.completed_at).toLocaleString('ar-SA')}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* 4. ASAAS Application Users (operators of the console itself) */}
+      <Card
+        title={t('حسابات مشغلي النظام (ASAAS App Users)')}
+        icon="users"
+        actions={
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              {t('إجمالي الحسابات')}: {appUsers.length} {t('حساب')}
+            </span>
+            <Button
+              size="sm"
+              variant="glass"
+              onClick={fetchAppUsers}
+              loading={appUsersLoading}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            >
+              <RefreshCw size={12} />
+              <span>{t('تحديث')}</span>
+            </Button>
+            {canManageAppUsers && (
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => setAppModalOpen(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+              >
+                <UserCog size={13} />
+                <span>{t('إضافة حساب مشغل')}</span>
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {!canManageAppUsers && currentUser && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              borderRadius: 8,
+              background: 'var(--partial-bg)',
+              color: 'var(--partial)',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {t('إدارة حسابات مشغلي النظام مقيدة بمدير النظام (Admin). يمكنك مراجعة بيانات حسابك فقط.')}
+          </div>
+        )}
+
+        <TableContainer>
+          <Table style={{ width: '100%', tableLayout: 'fixed', minWidth: 720 }}>
+            <TableHeader>
+              <TableRow>
+                <TableHead style={{ width: '18%', textAlign: 'start' }}>{t('اسم المستخدم')}</TableHead>
+                <TableHead style={{ width: '19%', textAlign: 'start' }}>{t('الاسم الكامل')}</TableHead>
+                <TableHead style={{ width: '18%', textAlign: 'start' }}>{t('الدور والصلاحية')}</TableHead>
+                <TableHead style={{ width: '11%', textAlign: 'start' }}>{t('حالة الحساب')}</TableHead>
+                <TableHead style={{ width: '18%', textAlign: 'start' }}>{t('المصادقة الثنائية')}</TableHead>
+                <TableHead style={{ width: '16%', textAlign: 'end' }}>{t('إجراءات')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {appUsers.length === 0 ? (
+                <TableEmpty
+                  colSpan={6}
+                  message={appUsersLoading ? t('جارٍ تحميل حسابات المشغلين...') : t('لا توجد حسابات مشغلين مسجلة حالياً.')}
+                />
+              ) : (
+                appUsers.map((u) => {
+                  const isSelf = currentUser?.username?.toLowerCase() === u.username.toLowerCase();
+                  const isRoot = u.username.toLowerCase() === 'admin';
+                  return (
+                    <TableRow key={u.id}>
+                      <TableCell style={{ width: '18%' }} className="font-bold text-title">
+                        <div className="flex items-center gap-2">
+                          <UserCog size={15} className="text-primary" />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {u.username}
+                            {isSelf && (
+                              <span style={{ marginInlineStart: 6, fontSize: 10, color: 'var(--accent)' }}>{t('(أنت)')}</span>
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell style={{ width: '19%' }} className="text-xs text-muted">
+                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {u.full_name || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ width: '18%' }}>
+                        {canManageAppUsers && !isRoot ? (
+                          <select
+                            value={u.role}
+                            disabled={appActionUser === u.username}
+                            onChange={(e) => handleAppRoleChange(u, e.target.value)}
+                            className="text-input"
+                            style={{ width: '100%', fontSize: 12, padding: '5px 8px' }}
+                            aria-label={`${t('دور الحساب ')}${u.username}`}
+                          >
+                            <option value="admin">{t('مدير النظام (Admin)')}</option>
+                            <option value="operator">{t('مشغل (Operator)')}</option>
+                            <option value="viewer">{t('مشاهد (Viewer)')}</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded font-bold ${
+                              u.role === 'admin'
+                                ? 'bg-primary/20 text-primary border border-border-gold-rim'
+                                : 'bg-surface-glass-tint text-muted'
+                            }`}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            {u.role === 'admin' ? t('مدير النظام (Admin)') : u.role === 'operator' ? t('مشغل (Operator)') : t('مشاهد (Viewer)')}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell style={{ width: '11%' }}>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold ${
+                            u.is_active
+                              ? 'bg-status-safe-surface text-status-safe'
+                              : 'bg-status-danger-surface text-status-danger'
+                          }`}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-status-safe' : 'bg-status-danger'}`} />
+                          {u.is_active ? t('نشط Active') : t('معطّل Disabled')}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ width: '18%' }} className="text-xs text-muted">
+                        <span style={{ whiteSpace: 'nowrap' }}>
+                          {u.mfa_enabled ? t('MFA مفعّل') : '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell style={{ width: '16%', textAlign: 'end' }}>
+                        {canManageAppUsers ? (
+                          u.is_active ? (
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={isRoot || isSelf || appActionUser === u.username}
+                              onClick={() => handleDeleteAppUser(u)}
+                              style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
+                              title={isRoot ? t('الحساب الجذري محمي من التعطيل') : t('تعطيل حساب المشغل وإنهاء جلساته')}
+                            >
+                              <Trash2 size={12} style={{ marginInlineEnd: 4 }} />
+                              {t('تعطيل')}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="glass"
+                              disabled={appActionUser === u.username}
+                              onClick={async () => {
+                                setAppActionUser(u.username);
+                                try {
+                                  await apiV1.updateUserStatus(u.username, true);
+                                  toast(`${t('تم تفعيل حساب المشغل [')}${u.username}].`, 'success');
+                                  fetchAppUsers();
+                                } catch (err: any) {
+                                  toast(err.message || t('فشل تفعيل الحساب'), 'error');
+                                } finally {
+                                  setAppActionUser(null);
+                                }
+                              }}
+                              style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap' }}
+                            >
+                              {t('تفعيل')}
+                            </Button>
+                          )
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                            <ShieldCheck size={12} style={{ marginInlineEnd: 4 }} />
+                            {t('مقيد')}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Card>
+
       {/* Modal: Change Password */}
       {passwordModalOpen && (
-        <Modal onClose={() => setPasswordModalOpen(false)} title={`تغيير كلمة المرور للمستخدم: ${selectedUser}`}>
+        <Modal onClose={() => setPasswordModalOpen(false)} title={`${t('تغيير كلمة المرور للمستخدم: ')}${selectedUser}`}>
           <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="كلمة المرور الجديدة (New Password)">
+            <Field label={t('كلمة المرور الجديدة (New Password)')}>
               {(id) => (
                 <PasswordInput
                   id={id}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="أدخل كلمة مرور قوية (12+ رمز)..."
+                  placeholder={t('أدخل كلمة مرور قوية (12+ رمز)...')}
                   required
                 />
               )}
@@ -392,10 +847,10 @@ export function UsersPage() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setPasswordModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button type="submit" variant="primary" loading={loading}>
-                تحديث كلمة المرور
+                {t('تحديث كلمة المرور')}
               </Button>
             </div>
           </form>
@@ -404,38 +859,38 @@ export function UsersPage() {
 
       {/* Modal: Create User (Stitch RDP H2) */}
       {modalOpen && (
-        <Modal onClose={() => setModalOpen(false)} title="إضافة مستخدم ويندوز محلي جديد">
+        <Modal onClose={() => setModalOpen(false)} title={t('إضافة مستخدم ويندوز محلي جديد')}>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label="اسم الحساب بالإنجليزية (Username)">
+            <Field label={t('اسم الحساب بالإنجليزية (Username)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="مثال: khalid.ops"
+                  placeholder={t('مثال: khalid.ops')}
                   required
                 />
               )}
             </Field>
 
-            <Field label="الاسم الكامل أو الوصف (Full Name / Description)">
+            <Field label={t('الاسم الكامل أو الوصف (Full Name / Description)')}>
               {(id) => (
                 <TextInput
                   id={id}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="مثال: خالد محمد - فريق الدعم الفني"
+                  placeholder={t('مثال: خالد محمد - فريق الدعم الفني')}
                 />
               )}
             </Field>
 
-            <Field label="كلمة المرور (Password)">
+            <Field label={t('كلمة المرور (Password)')}>
               {(id) => (
                 <PasswordInput
                   id={id}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="كلمة مرور مؤمنة..."
+                  placeholder={t('كلمة مرور مؤمنة...')}
                   required
                 />
               )}
@@ -450,7 +905,7 @@ export function UsersPage() {
                   onChange={(e) => setIsRdp(e.target.checked)}
                   style={{ accentColor: 'var(--accent)' }}
                 />
-                <span>منح إذن تسجيل الدخول عن بعد (Remote Desktop Users)</span>
+                <span>{t('منح إذن تسجيل الدخول عن بعد (Remote Desktop Users)')}</span>
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13 }}>
@@ -460,16 +915,78 @@ export function UsersPage() {
                   onChange={(e) => setIsAdmin(e.target.checked)}
                   style={{ accentColor: 'var(--accent)' }}
                 />
-                <span>منح صلاحيات مدير نظام كامل (Administrators Group)</span>
+                <span>{t('منح صلاحيات مدير نظام كامل (Administrators Group)')}</span>
               </label>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>
-                إلغاء
+                {t('إلغاء')}
               </Button>
               <Button type="submit" variant="primary" loading={loading}>
-                إنشاء الحساب
+                {t('إنشاء الحساب')}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {/* Modal: Create ASAAS App User */}
+      {appModalOpen && (
+        <Modal onClose={() => setAppModalOpen(false)} title={t('إضافة حساب مشغل جديد لمنصة ASAAS')}>
+          <form onSubmit={handleCreateAppUser} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Field label={t('اسم المستخدم (Username)')}>
+              {(id) => (
+                <TextInput
+                  id={id}
+                  value={appUsername}
+                  onChange={(e) => setAppUsername(e.target.value)}
+                  placeholder={t('مثال: ops.khalid')}
+                  required
+                  minLength={3}
+                />
+              )}
+            </Field>
+
+            <Field label={t('الاسم الكامل (Full Name)')}>
+              {(id) => (
+                <TextInput
+                  id={id}
+                  value={appFullName}
+                  onChange={(e) => setAppFullName(e.target.value)}
+                  placeholder={t('مثال: خالد محمد - مشغل البنية التحتية')}
+                />
+              )}
+            </Field>
+
+            <Field label={t('الدور والصلاحية (Role)')}>
+              {() => (
+                <Select value={appRole} onChange={(e) => setAppRole(e.target.value as 'admin' | 'operator' | 'viewer')}>
+                  <option value="viewer">{t('مشاهد (Viewer) - قراءة وتدقيق فقط')}</option>
+                  <option value="operator">{t('مشغل (Operator) - تنفيذ عمليات التشغيل')}</option>
+                  <option value="admin">{t('مدير النظام (Admin) - صلاحيات كاملة')}</option>
+                </Select>
+              )}
+            </Field>
+
+            <Field label={t('كلمة المرور (Password)')}>
+              {(id) => (
+                <PasswordInput
+                  id={id}
+                  value={appPassword}
+                  onChange={(e) => setAppPassword(e.target.value)}
+                  placeholder={t('كلمة مرور قوية (12+ رمز)...')}
+                  required
+                />
+              )}
+            </Field>
+            <PasswordStrength password={appPassword} />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+              <Button type="button" variant="ghost" onClick={() => setAppModalOpen(false)}>
+                {t('إلغاء')}
+              </Button>
+              <Button type="submit" variant="primary" loading={appSubmitting}>
+                {t('إنشاء حساب المشغل')}
               </Button>
             </div>
           </form>

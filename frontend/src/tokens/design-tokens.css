@@ -1,8 +1,8 @@
 /**
  * ==============================================================================
- * ASAAS SOVEREIGN DESIGN SYSTEM - THREE-LAYER DESIGN TOKENS
+ * asaas SOVEREIGN DESIGN SYSTEM - THREE-LAYER DESIGN TOKENS
  * Architecture: Primitives -> Semantics (Light/Dark) -> Components
- * Standard: Cyber Dark Luxury Glassmorphism & High-Density NOC/SOC Telemetry
+ * Standard: Sovereign Signature — warm obsidian, heritage gold, editorial glass
  * ==============================================================================
  */
 
@@ -112,53 +112,53 @@
 /* ==========================================================================
    LAYER 2: SEMANTIC TOKENS (Contextual Purpose Aliases)
    Maps primitives to meaningful semantic roles.
-   Default: Cyber Dark Enclave
+   Default: Sovereign Signature Dark
    ========================================================================== */
 :root,
 [data-theme='dark'],
 .dark {
   color-scheme: dark;
 
-  /* 2.1 Surface Architecture */
-  --surface-canvas:            var(--primitive-color-carbon-950);
-  --surface-ground:            var(--primitive-color-carbon-900);
-  --surface-alt:               var(--primitive-color-carbon-850);
-  --surface-container-lowest:  var(--primitive-color-carbon-800);
-  --surface-container-low:     #1b1b1d;
-  --surface-container:         var(--primitive-color-carbon-700);
-  --surface-container-high:    var(--primitive-color-carbon-600);
-  --surface-container-highest: var(--primitive-color-carbon-500);
+  /* 2.1 Surface Architecture — warm obsidian */
+  --surface-canvas:            #0e0c0a;
+  --surface-ground:            #14110d;
+  --surface-alt:               #1a1712;
+  --surface-container-lowest:  #1e1a15;
+  --surface-container-low:     #23201a;
+  --surface-container:         #2a251d;
+  --surface-container-high:    #332d23;
+  --surface-container-highest: #3e372a;
 
-  /* Glassmorphism Plane */
-  --surface-glass:             rgba(22, 20, 20, 0.76);
-  --surface-glass-tint:        rgba(255, 255, 255, 0.035);
-  --surface-glass-tint-strong: rgba(255, 255, 255, 0.075);
-  --surface-glass-sheen:       rgba(255, 244, 222, 0.14);
+  /* Glassmorphism Plane — warm gold-tinted glass */
+  --surface-glass:             rgba(20, 18, 14, 0.72);
+  --surface-glass-tint:        rgba(212, 175, 106, 0.05);
+  --surface-glass-tint-strong: rgba(212, 175, 106, 0.09);
+  --surface-glass-sheen:       rgba(232, 201, 138, 0.14);
   --surface-glass-blur:        24px;
 
-  /* 2.2 Borders & Outlines */
-  --border-hairline:           rgba(255, 255, 255, 0.08);
-  --border-hairline-strong:    rgba(255, 255, 255, 0.16);
-  --border-gold-rim:           rgba(212, 160, 23, 0.22);
-  --border-gold-rim-strong:    rgba(212, 160, 23, 0.45);
-  --border-gold-glow:          rgba(246, 190, 57, 0.6);
+  /* 2.2 Borders & Outlines — heritage gold hairlines */
+  --border-hairline:           rgba(245, 239, 228, 0.09);
+  --border-hairline-strong:    rgba(245, 239, 228, 0.18);
+  --border-gold-rim:           rgba(212, 175, 106, 0.22);
+  --border-gold-rim-strong:    rgba(212, 175, 106, 0.45);
+  --border-gold-glow:          rgba(212, 175, 106, 0.55);
 
   /* 2.3 Text & Typography Contrast */
-  --text-title:                var(--primitive-color-carbon-50);
-  --text-body:                 var(--primitive-color-carbon-150);
-  --text-secondary:            var(--primitive-color-carbon-200);
-  --text-muted:                var(--primitive-color-carbon-300);
-  --text-gold:                 var(--primitive-color-gold-400);
-  --text-inverse:              var(--primitive-color-carbon-950);
+  --text-title:                #f5efe4;
+  --text-body:                 #d8cdb8;
+  --text-secondary:            #b3a892;
+  --text-muted:                #8a7f6a;
+  --text-gold:                 #d4af6a;
+  --text-inverse:              #141110;
 
-  /* 2.4 Interactive Actions */
-  --action-primary:            var(--primitive-color-gold-500);
-  --action-primary-hover:      var(--primitive-color-gold-400);
-  --action-primary-fg:         var(--primitive-color-gold-950);
-  --action-secondary:          var(--primitive-color-carbon-600);
-  --action-secondary-hover:    var(--primitive-color-carbon-500);
-  --action-secondary-fg:       var(--primitive-color-carbon-50);
-  --action-accent:             var(--primitive-color-gold-300);
+  /* 2.4 Interactive Actions — heritage gold gradient */
+  --action-primary:            #d4af6a;
+  --action-primary-hover:      #e8c98a;
+  --action-primary-fg:         #17130c;
+  --action-secondary:          #2a251d;
+  --action-secondary-hover:    #352e22;
+  --action-secondary-fg:       #ede7da;
+  --action-accent:             #c9a45c;
 
   /* 2.5 Operational Diagnostics & Statuses */
   --status-safe:               var(--primitive-color-emerald-500);
@@ -177,6 +177,15 @@
   --status-info-surface:       var(--primitive-color-sky-50);
   --status-info-border:        rgba(56, 189, 248, 0.35);
 
+  /* Data-viz palette: gold stays the brand series; companions are muted
+     enough to sit on obsidian without competing with the UI chrome. */
+  --chart-1:                   #d4af6a; /* heritage gold — primary series */
+  --chart-2:                   #7fae9e; /* sage teal */
+  --chart-3:                   #a08bc4; /* muted violet */
+  --chart-4:                   #c98a7d; /* dusty rose */
+  --chart-5:                   #8fa8c4; /* slate blue */
+  --chart-6:                   #c4b083; /* sand */
+
   /* Global Layout Frame */
   --frame-page-max:            1360px;
   --frame-header-height:       64px;
@@ -186,13 +195,31 @@
 
   /* Directional Reading Axis: -1 in RTL (Arabic), 1 in LTR */
   --dir-x: -1;
+
+  /* Compatibility aliases → official asaas kit tokens */
+  --text-1:                 var(--text);
+  --accent-soft:            rgba(212, 175, 106, 0.16);
+  --danger:                 var(--unpaid);
+  --mono:                   var(--primitive-font-mono);
+  --panel:                  var(--surface-container-low);
+  --panel-raised:           var(--surface-container);
+  --panel-soft:             var(--surface-ground);
+  --panel-inset:            var(--surface-container-lowest);
+  --shadow-soft:            rgba(0, 0, 0, 0.6);
+
+  /* Kit-alias utilities used across pages */
+  --font-mono:              var(--mono);
+  --font-telemetry:         var(--mono);
+  --warn:                   #e0b25c;
+  --brand-mark:             url('/logo-dark.png');
+  --nav-active-gradient:    linear-gradient(135deg, rgba(186, 149, 85, 0.16), rgba(186, 149, 85, 0.05));
 }
 
 /* ==========================================================================
    LAYER 2 (B): LIGHT THEME SEMANTIC OVERRIDES
    Optional High-Contrast Light Workspace
    ========================================================================== */
-[data-theme='light'] {
+:root[data-theme='light'] {
   color-scheme: light;
 
   /* Light Surfaces */
@@ -227,11 +254,37 @@
   /* Light Actions */
   --action-primary:            #ba9555;
   --action-primary-hover:      #a88243;
-  --action-primary-fg:         #ffffff;
+  --action-primary-fg:         #141111;
   --action-secondary:          #e5ded0;
   --action-secondary-hover:    #d9d0c0;
   --action-secondary-fg:       #221f1f;
   --action-accent:             #8f6626;
+
+  /* Light-theme data-viz palette */
+  --chart-1:                   #8f6626;
+  --chart-2:                   #4e7d6d;
+  --chart-3:                   #7a68a0;
+  --chart-4:                   #a85f52;
+  --chart-5:                   #5f7ea8;
+  --chart-6:                   #a08a5a;
+
+  /* Compatibility aliases → official asaas kit tokens (light) */
+  --text-1:                 var(--text);
+  --accent-soft:            rgba(186, 149, 85, 0.18);
+  --danger:                 var(--unpaid);
+  --mono:                   var(--primitive-font-mono);
+  --panel:                  var(--surface-container-low);
+  --panel-raised:           var(--surface-container);
+  --panel-soft:             var(--surface-ground);
+  --panel-inset:            var(--surface-container-lowest);
+  --shadow-soft:            rgba(34, 31, 31, 0.14);
+
+  /* Kit-alias utilities used across pages */
+  --font-mono:              var(--mono);
+  --font-telemetry:         var(--mono);
+  --warn:                   #b8860b;
+  --brand-mark:             url('/logo.png');
+  --nav-active-gradient:    linear-gradient(135deg, rgba(186, 149, 85, 0.18), rgba(186, 149, 85, 0.06));
 }
 
 :root[dir='ltr'] {
@@ -330,8 +383,8 @@
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--card-radius);
-  backdrop-filter: var(--card-backdrop);
   -webkit-backdrop-filter: var(--card-backdrop);
+  backdrop-filter: var(--card-backdrop);
   box-shadow: var(--card-shadow);
 }
 

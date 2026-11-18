@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - Active Directory & Windows Domain Discovery Service.
+"""ASAAS v2.5 - Active Directory & Windows Domain Discovery Service.
 
 Detects Windows Server Domain role (Domain Controller vs Domain Member vs Standalone Server),
 enumerates domain users/groups when joined, distinguishes local vs domain accounts visually,

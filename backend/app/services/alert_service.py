@@ -1,4 +1,4 @@
-"""ASAAS Server Control v2.5 - Enterprise Emergency Alerting Service.
+"""ASAAS v2.5 - Enterprise Emergency Alerting Service.
 
 Monitors CPU/RAM thresholds, critical system services, and brute-force events,
 dispatching alerts via Telegram Bot with intelligent cooldown to prevent alert flooding.
@@ -15,9 +15,15 @@ import urllib.parse
 import urllib.request
 from typing import Dict, Any, Optional
 
-from ..infrastructure.db import db_add_security_event
+from ..infrastructure.db import (
+    db_add_security_event,
+    db_get_system_metadata,
+    db_set_system_metadata,
+)
 
 logger = logging.getLogger('asaas.alerts')
+
+_ALERT_CONFIG_METADATA_KEY = 'alert_service_config'
 
 # Alert category cooldown tracking (timestamp of last sent alert)
 _LAST_ALERT_TIMES: Dict[str, float] = {}
@@ -38,7 +44,7 @@ def mask_secret(secret: str) -> str:
 
 
 class AlertService:
-    """Centralized enterprise alerting engine for ASAAS Server Control."""
+    """Centralized enterprise alerting engine for ASAAS."""
 
     _config: Dict[str, Any] = {
         'telegram_enabled': False,
@@ -51,26 +57,67 @@ class AlertService:
         'ram_threshold': 90,
         'disk_threshold': 90,
         'cooldown_minutes': 10,
+        'rule_brute_force': True,
+        'rule_command_risk': True,
+        'rule_port_flood': True,
+        'rule_service_crash': True,
     }
+    _config_loaded: bool = False
+
+    @classmethod
+    def _load_config(cls) -> None:
+        """Loads the persisted alert configuration from SQLite on first use."""
+        if cls._config_loaded:
+            return
+        cls._config_loaded = True
+        raw = db_get_system_metadata(_ALERT_CONFIG_METADATA_KEY)
+        if not raw:
+            return
+        try:
+            persisted = json.loads(raw)
+        except (TypeError, ValueError):
+            logger.warning("Persisted alert configuration is not valid JSON; using defaults.")
+            return
+        if isinstance(persisted, dict):
+            for key, value in persisted.items():
+                if key in cls._config:
+                    cls._config[key] = value
+
+    @classmethod
+    def initialize(cls) -> None:
+        """Warms the persisted configuration during server startup."""
+        cls._load_config()
 
     @classmethod
     def get_config(cls, mask_secrets: bool = True) -> Dict[str, Any]:
+        cls._load_config()
         cfg = dict(cls._config)
-        if mask_secrets and cfg.get('bot_token'):
-            cfg['bot_token_masked'] = mask_secret(cfg['bot_token'])
-            # Don't return raw bot_token to client if already set
-            cfg['bot_token_configured'] = bool(cfg['bot_token'])
+        if mask_secrets:
+            raw_token = cfg.get('bot_token') or ''
+            cfg['bot_token_configured'] = bool(raw_token)
+            if raw_token:
+                cfg['bot_token_masked'] = mask_secret(raw_token)
+            # Never expose the raw token through the read API.
+            cfg.pop('bot_token', None)
         return cfg
 
     @classmethod
     def update_config(cls, new_cfg: Dict[str, Any]) -> Dict[str, Any]:
+        cls._load_config()
         # Preserve existing bot token if client passed masked version
         if 'bot_token' in new_cfg:
-            new_tok = new_cfg['bot_token'].strip()
+            new_tok = str(new_cfg['bot_token']).strip()
             if '••' in new_tok:
                 # Do not overwrite with mask
                 del new_cfg['bot_token']
         cls._config.update(new_cfg)
+        try:
+            db_set_system_metadata(
+                _ALERT_CONFIG_METADATA_KEY,
+                json.dumps(cls._config, ensure_ascii=False),
+            )
+        except Exception as exc:
+            logger.error("Failed to persist alert configuration: %s", exc)
         global _COOLDOWN_SECONDS
         _COOLDOWN_SECONDS = int(cls._config.get('cooldown_minutes', 10)) * 60
         return cls.get_config()
@@ -89,6 +136,7 @@ class AlertService:
     @classmethod
     def send_telegram_alert(cls, message: str, alert_category: str = 'general', force: bool = False) -> Dict[str, Any]:
         """Sends an urgent notification to configured Telegram Chat ID with cooldown enforcement."""
+        cls._load_config()
         if not cls._config.get('telegram_enabled') and not force:
             return {'ok': False, 'skipped': True, 'reason': 'Telegram alerting is disabled.'}
 
@@ -105,10 +153,10 @@ class AlertService:
         def _async_send():
             try:
                 url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                headers = {'User-Agent': 'ASAAS-Server-Control/2.5'}
+                headers = {'User-Agent': 'ASAAS/2.5'}
                 payload = {
                     'chat_id': chat_id,
-                    'text': f"🚨 [ASAAS Server Control v2.5 Alert]\n\n{message}\n\n🕒 {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                    'text': f"🚨 [ASAAS v2.5 Alert]\n\n{message}\n\n🕒 {time.strftime('%Y-%m-%d %H:%M:%S')}",
                     'parse_mode': 'HTML',
                 }
                 data = json.dumps(payload).encode('utf-8')
@@ -129,6 +177,7 @@ class AlertService:
     @classmethod
     def evaluate_telemetry_thresholds(cls, cpu: float, ram: float, disk: float) -> None:
         """Evaluates live metrics against alert thresholds and triggers notifications."""
+        cls._load_config()
         cpu_thresh = float(cls._config.get('cpu_threshold', 85))
         ram_thresh = float(cls._config.get('ram_threshold', 90))
         disk_thresh = float(cls._config.get('disk_threshold', 90))

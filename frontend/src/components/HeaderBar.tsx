@@ -1,12 +1,30 @@
 import { useState } from 'react';
-import { useTheme, Button, useToast } from '../asaas-ui';
+import { NavLink } from 'react-router-dom';
+import { useTheme, useToast } from '../asaas-ui';
 import { api, type HealthInfo, type AppUser } from '../lib/api';
-import { RefreshCw, Megaphone, Zap, ShieldAlert, Sun, Moon, Maximize, CheckCircle2, AlertCircle, UserCheck } from 'lucide-react';
+import { useLang, toggleLang } from '../lib/i18n';
+import {
+  Bell,
+  Settings,
+  ChevronDown,
+  Server,
+  RefreshCw,
+  Sparkles,
+  Zap,
+  ShieldAlert,
+  Sun,
+  Moon,
+  Maximize,
+  UserRound,
+  Languages,
+} from 'lucide-react';
+import { t } from '../lib/i18n';
 
 interface HeaderBarProps {
   isConnected: boolean;
   health: HealthInfo | null;
   currentUser: AppUser | null;
+  hostname?: string;
   onRefresh: () => void;
   onOpenBroadcast: () => void;
   onOpenAiDiag: () => void;
@@ -17,42 +35,53 @@ export function HeaderBar({
   isConnected,
   health,
   currentUser,
+  hostname,
   onRefresh,
   onOpenBroadcast,
   onOpenAiDiag,
   onOpenUserAccount,
 }: HeaderBarProps) {
   const [theme, toggleTheme] = useTheme();
+  const lang = useLang();
   const toast = useToast();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [trimming, setTrimming] = useState(false);
   const [elevating, setElevating] = useState(false);
 
   const handleTrim = async () => {
+    setMenuOpen(false);
     setTrimming(true);
     try {
       const res = await api.trimGovernor();
-      const reclaimed = res.result?.reclaimed_mb || 0;
-      toast(reclaimed > 0 ? `تم استرداد ${reclaimed} MB من ذاكرة الجلسات الخاملة بنجاح.` : 'السيرفر يعمل بكفاءة قصوى، لا توجد جلسات خاملة حالياً.', 'success');
+      const reclaimed = res.reclaimed_mb ?? res.result?.reclaimed_mb ?? 0;
+      toast(
+        reclaimed > 0
+          ? `${t('تم استرداد ')}${reclaimed}${t(' MB من ذاكرة الجلسات الخاملة بنجاح.')}`
+          : t('السيرفر يعمل بكفاءة قصوى، لا توجد جلسات خاملة حالياً.'),
+        'success',
+      );
     } catch (err: any) {
-      toast(err.message || 'فشل تفريغ الذاكرة', 'error');
+      toast(err.message || t('فشل تفريغ الذاكرة'), 'error');
     } finally {
       setTrimming(false);
     }
   };
 
   const handleElevate = async () => {
+    setMenuOpen(false);
     setElevating(true);
     try {
       const res = await api.requestElevation();
-      toast(res.message || 'تم إرسال طلب الترقية، يرجى الموافقة في شاشة السيرفر.', 'success');
+      toast(res.message || t('تم إرسال طلب الترقية، يرجى الموافقة في شاشة السيرفر.'), 'success');
     } catch (err: any) {
-      toast(err.message || 'فشل الترقية', 'error');
+      toast(err.message || t('فشل الترقية'), 'error');
     } finally {
       setElevating(false);
     }
   };
 
   const toggleFullScreen = () => {
+    setMenuOpen(false);
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
     } else {
@@ -60,178 +89,122 @@ export function HeaderBar({
     }
   };
 
-  const roleColor = currentUser?.role === 'admin' ? '#22c55e' : currentUser?.role === 'operator' ? 'var(--accent, #d4a017)' : '#3b82f6';
-  const roleLabel = currentUser?.role === 'admin' ? 'مدير النظام (Admin)' : currentUser?.role === 'operator' ? 'مشغل (Operator)' : 'مراجع (Viewer)';
+  const displayName = currentUser?.full_name || currentUser?.username || t('مدير النظام');
+  const roleLabel = currentUser?.role === 'operator'
+    ? t('مشغل عمليات')
+    : currentUser?.role === 'viewer'
+      ? t('مراجع')
+      : t('مدير النظام');
+  const initials = (currentUser?.full_name || currentUser?.username || 'A').trim().charAt(0).toUpperCase();
 
   return (
-    <header
-      className="site-header"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        backgroundColor: '#0e0d0d',
-        borderBottom: '1px solid rgba(212, 160, 23, 0.25)',
-        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.85)',
-        width: '100%',
-      }}
-    >
-      <div
-        className="header-inner"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          padding: '10px 24px',
-          maxWidth: 1600,
-          margin: '0 auto',
-          width: '100%',
-          boxSizing: 'border-box',
-          flexWrap: 'wrap',
-          backgroundColor: '#0e0d0d',
-        }}
-      >
-        {/* Status Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div
-            className={`badge ${isConnected ? 'badge--success' : 'badge--danger'}`}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-          >
-            {isConnected ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-            <span>{isConnected ? 'متصل مباشر (Live SSE)' : 'جارٍ الاتصال بالسيرفر...'}</span>
-          </div>
+    <header className="site-header">
+      <div className="header-inner">
+        <NavLink to="/" className="header-brand header-brand--mobile" aria-label={t('أساس - لوحة القيادة')}>
+          <img className="header-brand__logo" src="/logo-light.png" alt="" width={36} height={36} />
+          <span className="header-brand__text">
+            <strong>ASAAS</strong>
+            <span>Server Control</span>
+          </span>
+        </NavLink>
 
-          <div
-            className="badge badge--accent"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+        <div className="header-center">
+          <NavLink
+            to="/servers"
+            className="server-select"
+            title={hostname ? `${t('إدارة السيرفر ')}${hostname}` : t('إدارة السيرفرات')}
           >
-            <span>{health?.os_display || 'Windows Server 2025'}</span>
-          </div>
+            <Server size={15} />
+            <span className="server-select__name" dir="ltr">{hostname || '—'}</span>
+            <span className="server-select__meta">{health?.os_display ? 'Windows Server' : 'Server'}</span>
+            <ChevronDown size={14} className="server-select__chev" />
+          </NavLink>
 
-          <button
-            type="button"
-            onClick={onOpenAiDiag}
-            className="badge badge--warning hover:brightness-110 active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary cursor-pointer select-none"
-            style={{
-              border: '1px solid rgba(212, 160, 23, 0.4)',
-              background: 'rgba(212, 160, 23, 0.12)',
-              color: '#d4a017',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-            aria-label="فتح رادار الذكاء الاصطناعي لتشخيص المنظومة"
-          >
-            <span>رادار الذكاء الاصطناعي (AI Ops)</span>
-          </button>
+          <span className={`conn-pill ${isConnected ? '' : 'conn-pill--off'}`}>
+            <span className="conn-dot" />
+            {isConnected ? t('متصل') : t('غير متصل')}
+          </span>
         </div>
 
-        {/* Action Cluster */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {/* User Account / Role Switcher Pill */}
+        <div className="header-actions">
+          <div className="header-menu-wrap">
+            <button
+              type="button"
+              className="header-icon-btn"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label={t('إعدادات سريعة')}
+              aria-expanded={menuOpen}
+              title={t('إعدادات سريعة')}
+            >
+              <Settings size={18} />
+            </button>
+
+            {menuOpen && (
+              <>
+                <button
+                  type="button"
+                  className="header-menu-backdrop"
+                  aria-label={t('إغلاق القائمة')}
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="header-menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onRefresh(); }}>
+                    <RefreshCw size={15} /> {t('تحديث البيانات الآن')}
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenAiDiag(); }}>
+                    <Sparkles size={15} /> {t('رادار الذكاء الاصطناعي')}
+                  </button>
+                  <button type="button" role="menuitem" onClick={handleTrim} disabled={trimming}>
+                    <Zap size={15} /> {trimming ? t('جارٍ تفريغ الذاكرة…') : t('تفريغ ذاكرة الجلسات الخاملة')}
+                  </button>
+                  {health && !health.is_admin && (
+                    <button type="button" role="menuitem" onClick={handleElevate} disabled={elevating}>
+                      <ShieldAlert size={15} /> {elevating ? t('جارٍ طلب الترقية…') : t('ترقية السيرفر كمسؤول')}
+                    </button>
+                  )}
+                  <div className="header-menu__sep" />
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); toggleTheme(); }}>
+                    {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                    {theme === 'dark' ? t('الوضع النهاري') : t('الوضع الليلي')}
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); toggleLang(); }}>
+                    <Languages size={15} /> {lang === 'ar' ? 'English' : 'العربية'}
+                  </button>
+                  <button type="button" role="menuitem" onClick={toggleFullScreen}>
+                    <Maximize size={15} /> {t('ملء الشاشة')}
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpenUserAccount(); }}>
+                    <UserRound size={15} /> {t('حساب المستخدم والصلاحيات')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             type="button"
-            onClick={onOpenUserAccount}
-            aria-label={`تغيير المستخدم والدور: ${currentUser?.username || 'Administrator'} (${roleLabel})`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: `1px solid ${roleColor}`,
-              color: '#f0ede6',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              fontSize: 12,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-            className="hover:bg-surface-glass-tint active:scale-95 transition-all focus-visible:ring-2 focus-visible:ring-primary"
+            className="header-icon-btn"
+            onClick={onOpenBroadcast}
+            aria-label={t('التنبيهات والبث الإداري')}
+            title={t('التنبيهات والبث الإداري')}
           >
-            <UserCheck size={14} color={roleColor} />
-            <span>{currentUser?.username || 'Administrator'}</span>
-            <span
-              style={{
-                fontSize: 10,
-                padding: '2px 6px',
-                borderRadius: 4,
-                background: roleColor,
-                color: '#000',
-                fontWeight: 700,
-              }}
-            >
-              {roleLabel}
-            </span>
+            <Bell size={18} />
+            <span className="header-icon-btn__badge">3</span>
           </button>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onRefresh}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
+          <button
+            type="button"
+            className="header-user"
+            onClick={onOpenUserAccount}
+            aria-label={`${t('إدارة الحساب: ')}${displayName} (${roleLabel})`}
+            title={t('حساب المستخدم')}
           >
-            <RefreshCw size={14} />
-            <span>تحديث</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onOpenBroadcast}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-          >
-            <Megaphone size={14} />
-            <span>تنبيه</span>
-          </Button>
-
-          <Button
-            size="sm"
-            variant="glass"
-            loading={trimming}
-            onClick={handleTrim}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--accent, #d4a017)', whiteSpace: 'nowrap' }}
-          >
-            <Zap size={14} />
-            <span>تفريغ الخمول</span>
-          </Button>
-
-          {health && !health.is_admin && (
-            <Button
-              size="sm"
-              variant="primary"
-              loading={elevating}
-              onClick={handleElevate}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}
-            >
-              <ShieldAlert size={14} />
-              <span>ترقية كمسؤول</span>
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={toggleTheme}
-            style={{ padding: '6px 10px' }}
-            label={theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}
-          >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          </Button>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={toggleFullScreen}
-            style={{ padding: '6px 10px' }}
-            label="ملء الشاشة"
-          >
-            <Maximize size={16} />
-          </Button>
+            <span className="header-user__meta">
+              <strong>{displayName}</strong>
+              <span>{roleLabel}</span>
+            </span>
+            <span className="header-user__avatar">{initials || <UserRound size={15} />}</span>
+          </button>
         </div>
       </div>
     </header>
