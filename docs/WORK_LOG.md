@@ -512,3 +512,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `hyperv.power` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `ContainersPage` تبويب Hyper-V — أزرار تشغيل/إيقاف/إعادة لكل VM في بطاقات الوكلاء (مع confirm) → `apiV1.createJob`؛ حُدّث عنوان البطاقة (لم تعد «قراءة فقط»).
 - **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.
+
+### 12.11 خامس agent write job — `share.control`
+
+- **Agent**: `share.control` في `AllowedJobs` + `ShareControl(payload)` — `{action: create|delete, name, path?, description?}` عبر `New-SmbShare`/`Remove-SmbShare -Force` ثم `Get-SmbShare` للتأكيد؛ create يتطلب مساراً مطلقاً؛ تحقق من الاسم.
+- **Control plane**: `share.control` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `NetworkStoragePage` بطاقات مشاركات الوكلاء — زر «حذف» لكل مشاركة (مع confirm) → `apiV1.createJob`؛ حُدّث العنوان (لم تعد «قراءة فقط»). الإنشاء متاح عبر API (لا نموذج UI بعد).
+- **تحقق**: dotnet build 0/0 ✅، npm build ✅، 10/10 tests ✅.

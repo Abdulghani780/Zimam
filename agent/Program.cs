@@ -160,7 +160,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
-        "service.control", "process.kill", "task.control", "hyperv.power"
+        "service.control", "process.kill", "task.control", "hyperv.power", "share.control"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -319,8 +319,45 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "process.kill" => ProcessKill(payload),
         "task.control" => TaskControl(payload),
         "hyperv.power" => HypervPower(payload),
+        "share.control" => ShareControl(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
+
+    // Signed write job: create or remove an SMB share.
+    // payload: {"action": "create"|"delete", "name": "...", "path": "..." (create), "description": "..." (optional)}
+    private static object ShareControl(JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var n) ? n.GetString() : null;
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("share.control requires payload.name");
+        if (name.Any(c => !(char.IsLetterOrDigit(c) || c is '_' or '-' or '.' or ' ')))
+            throw new InvalidOperationException("share name contains invalid characters");
+        var escaped = name.Replace("'", "''");
+        string ps;
+        if (action == "create")
+        {
+            var path = payload.TryGetProperty("path", out var p) ? p.GetString() : null;
+            if (string.IsNullOrWhiteSpace(path))
+                throw new InvalidOperationException("share.control create requires payload.path");
+            if (!Path.IsPathRooted(path))
+                throw new InvalidOperationException("share path must be absolute");
+            var description = payload.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
+            var escapedPath = path.Replace("'", "''");
+            var escapedDesc = description.Replace("'", "''");
+            ps = $"New-SmbShare -Name '{escaped}' -Path '{escapedPath}' -Description '{escapedDesc}'";
+        }
+        else if (action == "delete")
+        {
+            ps = $"Remove-SmbShare -Name '{escaped}' -Force";
+        }
+        else
+        {
+            throw new InvalidOperationException("share.control action must be create|delete");
+        }
+        PsProbe.Run($"{ps}; Get-SmbShare -Name '{escaped}' -ErrorAction SilentlyContinue | Select-Object Name,Path,Description | ConvertTo-Json -Compress");
+        return new { name, action, executed = true };
+    }
 
     // Signed write job: power action on a Hyper-V VM.
     // payload: {"vm_name": "...", "action": "start"|"stop"|"restart"|"save"|"pause"|"resume"}

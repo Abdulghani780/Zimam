@@ -118,6 +118,22 @@ export function NetworkStoragePage() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [newShareName, setNewShareName] = useState('');
   const [newSharePath, setNewSharePath] = useState('');
+  const [agentShareBusy, setAgentShareBusy] = useState<string | null>(null);
+
+  // Signed agent write job: delete an SMB share on its host agent.
+  const queueAgentShareDelete = async (agentId: string, shareName: string, hostName: string) => {
+    const key = `${agentId}:${shareName}`;
+    if (!window.confirm(t(`حذف المشاركة ${shareName} على ${hostName}؟`))) return;
+    setAgentShareBusy(key);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'share.control', payload: { action: 'delete', name: shareName } });
+      toast(t('تم إرسال أمر الحذف — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setAgentShareBusy(null);
+    }
+  };
   const [newShareDesc, setNewShareDesc] = useState('');
   const [submittingShare, setSubmittingShare] = useState(false);
 
@@ -385,8 +401,8 @@ export function NetworkStoragePage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Share2 size={18} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('مشاركات وكلاء أساس (قراءة فقط)')}</h3>
-              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('shares.list حقيقية: مشاركات SMB على كل وكيل')}</span>
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('مشاركات وكلاء أساس')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('shares.list + حذف مشاركات موقّع')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
               {t('إدارة الوكلاء')} ←
@@ -422,9 +438,17 @@ export function NetworkStoragePage() {
                           <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }} title={`${sname} → ${spath}`}>
                             \\{ag.hostname || ag.linked_asset?.hostname || ag.name}\{sname}
                           </span>
-                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
+                          <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center' }}>
                             {users !== '' && users !== null && <span style={{ fontSize: 9 }}>{t('مستخدمون')}: {users}</span>}
                             {sdesc && <span style={{ fontSize: 9 }}>{sdesc}</span>}
+                            <button
+                              type="button"
+                              disabled={agentShareBusy !== null}
+                              onClick={() => queueAgentShareDelete(ag.id, sname, ag.linked_asset?.name || ag.name || ag.hostname || ag.id.slice(0, 8))}
+                              style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: agentShareBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--status-danger, #dc2626)' }}
+                            >
+                              {agentShareBusy === `${ag.id}:${sname}` ? '…' : t('حذف')}
+                            </button>
                           </span>
                         </div>
                       );
