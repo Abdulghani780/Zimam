@@ -598,3 +598,13 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Frontend**: مسح `Math.random`/mock/dummy/«قيد التطوير»/أزرار ميتة — نظيف (فقط `Toast` id وfallback id في `api.ts`). Backend: لا بيانات مُختلقة.
 - **AgentsPage**: تصحيح نصّين قديمين يكذبان بعد إضافة write jobs — «المهام الكتابية غير مدعومة» و«لا يوجد تنفيذ أوامر كتابية» → نصوص دقيقة (القائمة read-only، والكتابة من صفحاتها).
 - **PROJECT_MAP**: المرحلة 3 → ✅ (كل عناصرها منجزة).
+
+### 12.24 تدقيق ترحيل `/api/v1` — تصنيف الاستخدام المتبقي للـ legacy
+
+- **صفحات على apiV1 بالكامل/غالباً**: Agents, Assets, Audit, Bastion, Containers, Control, Infrastructure, JitElevation, SessionReplay, Users, Vault, SetupWizard.
+- **صفحات ما زالت تستخدم `api` legacy — مصنّفة كـ local console tools** (تعمل على مضيف ASAAS نفسه، لا على أصول بعيدة — لا يوجد لها مكافئ v1 مشروع):
+  - `DevelopmentPage`: مشاريع المطورين/الحصص/فحص المنافذ المحلية
+  - `GovernorPage`: حاكم الموارد/الخدمات/العمليات على المضيف المحلي
+  - `DatabasesPage`: محركات/استعلامات/نسخ قواعد البيانات المحلية
+  - `PortsPage`, `StoragePage`, `ServersPage`, `NetworkStoragePage`, `SecurityPage`, `OverviewPage`: مجموعات محلية (منافذHost، تنظيف تخزين، مجموعات خوادم محلية، مشاركات/جدار المضيف، metrics محلية)
+- **الخلاصة**: لا يوجد استخدام legacy لبيانات أصول بعيدة — المتبقي أدوات console محلية، وهو مسموح به في Definition of Done. ترحيلها لـ `/api/v1` يتطلب بناء endpoints جديدة في control plane وهي خارج نطاق «الترحيل» الحالي.
