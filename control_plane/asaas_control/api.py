@@ -1018,15 +1018,42 @@ def system_backup(user: User = Depends(_current_user)) -> dict:
     """Online backup of the control-plane SQLite database into data/backups/.
 
     Uses the SQLite backup API so the copy is consistent while the server is
-    running. Contains credential material — admin only. The same routine backs
-    the scheduled loop in ``app.py``; off-box replication remains a deployment
-    concern.
+    running. Contains credential material — admin only. When
+    ``ASAAS_BACKUP_DEST`` is configured the artifact is also replicated
+    off-box (file/sftp/s3); replication failures are reported, not hidden.
     """
     _require_admin(user)
     try:
-        return create_backup(created_by=user.username, actor_id=user.id)
+        result = create_backup(created_by=user.username, actor_id=user.id)
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="Control-plane database file not found") from None
+    from . import replication
+
+    replication_info: dict = {"configured": False}
+    try:
+        replication_info = replication.replicate_file(result["path"])
+    except Exception as exc:  # transport failure — backup itself succeeded
+        replication_info = {"configured": True, "error": str(exc)}
+    if replication_info.get("configured") and not replication_info.get("error"):
+        with db_session() as db:
+            append_audit(
+                db,
+                actor_id=user.id,
+                action="system.backup.replicate",
+                target_id=result["file"],
+                payload={"scheme": replication_info.get("scheme"), "target": replication_info.get("target")},
+            )
+    result["replication"] = replication_info
+    return result
+
+
+@router.get("/system/backup/replication")
+def backup_replication_status(user: User = Depends(_current_user)) -> dict:
+    """Whether off-box backup replication is configured (no secrets)."""
+    _require_admin(user)
+    from . import replication
+
+    return replication.replication_status()
 
 
 # --- License & entitlements ---------------------------------------------------

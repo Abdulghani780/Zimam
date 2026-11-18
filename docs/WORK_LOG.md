@@ -477,3 +477,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - Endpoints: `POST /directory/sync` (admin فقط + audit) و`GET /directory/users` (writer+).
 - `ldap3>=2.9,<3` في requirements + ثُبّت 2.9.1 في `.venv`.
 - **تحقق**: compile + imports + 10/10 tests ✅. مزامنة AD حقيقية تتطلب بيئة domain.
+
+### 12.6 Off-box backup replication
+
+- `asaas_control/replication.py`: `ASAAS_BACKUP_DEST` يدعم `file://`/مسار عادي (يشمل UNC)، `sftp://user@host[:port]/dir` (paramiko + `ASAAS_BACKUP_SFTP_PASSWORD`/`_KEY_PATH`)، `s3://bucket/prefix` (boto3 lazy → RuntimeError بدونها).
+- `POST /system/backup` ينسخ تلقائياً عند الضبط — `replication` field في الرد + audit `system.backup.replicate`؛ الفشل يُبلَّغ ولا يُخفى. `GET /system/backup/replication` للتشخيص بدون أسرار.
+- `boto3>=1.34,<2` في requirements + ثُبّت 1.44.5.
+- **تحقق**: compile + imports + status + 10/10 tests ✅. نسخ فعلي لـ remote حقيقي خطوة نشر.

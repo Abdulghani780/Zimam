@@ -92,7 +92,7 @@
 - ~~live session terminate~~ ✅ (signed `session.logoff`/`session.disconnect` agent jobs via `/api/v1/sessions/*`)
 - ~~screen/terminal recording + replay~~ ✅ `asaas_control/recording.py` — guacd instruction stream → `data/recordings/*.jsonl` + replay WebSocket؛ `ASAAS_GW_RECORD`
 - ~~AD/LDAP sync~~ ✅ `asaas_control/directory.py` — ldap3 connector + `directory_users` read model + `POST /directory/sync` + `GET /directory/users`
-- off-box backup replication
+- ~~off-box backup replication~~ ✅ `asaas_control/replication.py` — `ASAAS_BACKUP_DEST` file/sftp/s3 + auto-replicate on `/system/backup` + status endpoint
 - ~~production mTLS issuance~~ ✅ `asaas_control/mtls.py` — CA محلي ECDSA + `POST /pki/ca` + `POST /agents/{id}/cert` + `GET /pki/ca.crt`؛ إنفاذ client-cert على TLS terminator خطوة نشر
 
 ### ⬜ المرحلة 6 — نواقص تشغيلية (من WORK_LOG)
