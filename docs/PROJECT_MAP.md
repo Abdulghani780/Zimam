@@ -73,7 +73,7 @@
 - [x] **password complexity ≥8 + 3/4 فئات** — `backend/app/services/user_service.py::_password_policy_error` (len≥8 + 3/4 من lower/upper/digit/symbol)
 - [x] README/TESTS تحديث نهائي — README سليم (هوية ASAAS + /api/v1)؛ TESTS.md أُضيف له صفّا control_plane + Playwright e2e
 
-### ⬜ المرحلة 3 — استقرار التشغيل
+### ✅ المرحلة 3 — استقرار التشغيل
 - [x] `scripts/restart-elevated.ps1` — موجود ومُستخدم
 - [x] Playwright e2e في CI — job `e2e-smoke` في `.github/workflows/ci.yml`
 - [x] حذف `stitch_*.zip` — لا ملفات متعقبة (`git ls-files` نظيف)

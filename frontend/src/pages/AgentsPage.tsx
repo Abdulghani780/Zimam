@@ -186,7 +186,7 @@ export function AgentsPage() {
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)', margin: '0 0 8px' }}>{t('وكلاء الأصول (ASAAS Agents)')}</h1>
             <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, maxWidth: 800, lineHeight: 1.6 }}>
-              {t('وكلاء Windows خروجية فقط يُسجَّلون عبر مفتاح لمرة واحدة، ويستلمون مهاماً موقعة Ed25519 للقراءة فقط — لا يوجد تنفيذ أوامر كتابية عن بُعد.')}
+              {t('وكلاء Windows خروجية فقط يُسجَّلون عبر مفتاح لمرة واحدة، ويستلمون مهاماً موقعة Ed25519 للقراءة والكتابة المُتحقَّق منها.')}
             </p>
           </div>
           <Button size="sm" variant="glass" onClick={fetchAll} loading={loading} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -388,7 +388,7 @@ export function AgentsPage() {
       {jobModalAgent && (
         <Modal open onClose={() => setJobModalAgent(null)} title={`${t('إرسال مهمة موقعة إلى ')}${jobModalAgent.name || jobModalAgent.id}`}>
           <form onSubmit={dispatchJob} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <Field label={t('نوع المهمة (قراءة فقط)')}>
+            <Field label={t('نوع المهمة')}>
               {(id) => (
                 <Select id={id} value={jobType} onChange={(e) => setJobType(e.target.value)}>
                   {JOB_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label} ({t.value})</option>)}
@@ -396,7 +396,7 @@ export function AgentsPage() {
               )}
             </Field>
             <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
-              {t('تُوقَّع المهمة بتوقيع Ed25519 ولا ينفذها الوكيل إلا بعد التحقق من التوقيع. المهام الكتابية غير مدعومة.')}
+              {t('تُوقَّع المهمة بتوقيع Ed25519 ولا ينفذها الوكيل إلا بعد التحقق من التوقيع. هذه القائمة للقراءة فقط — مهام الكتابة تُرسل من صفحاتها المخصصة.')}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <Button type="button" variant="ghost" onClick={() => setJobModalAgent(null)}>{t('إلغاء')}</Button>
