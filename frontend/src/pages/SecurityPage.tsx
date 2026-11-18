@@ -35,6 +35,38 @@ interface FleetSecAgent {
   startup: ResultEntry | null;
 }
 
+interface FwProfile { profile: string; enabled: boolean | null; ruleCount: number | null }
+
+// Heuristic extraction for firewall.state payloads — {profiles:[{profile,enabled,rule_count}]}.
+function firewallProfiles(result: unknown): FwProfile[] {
+  const arr = Array.isArray(result)
+    ? result
+    : Array.isArray((result as any)?.profiles)
+      ? (result as any).profiles
+      : null;
+  if (!arr) return [];
+  const pick = (o: any, ...keys: string[]) => {
+    for (const k of keys) { const v = o?.[k]; if (v !== undefined && v !== null && v !== '') return v; }
+    return '';
+  };
+  return arr
+    .filter((p: unknown) => p && typeof p === 'object')
+    .map((p: any) => {
+      const rawEnabled = pick(p, 'enabled', 'Enabled', 'state', 'State');
+      const enabled = rawEnabled === '' ? null
+        : typeof rawEnabled === 'boolean' ? rawEnabled
+        : /^(true|1|on|enabled)$/i.test(String(rawEnabled)) ? true
+        : /^(false|0|off|disabled)$/i.test(String(rawEnabled)) ? false
+        : null;
+      const rc = Number(pick(p, 'rule_count', 'RuleCount', 'rules', 'ruleCount'));
+      return {
+        profile: String(pick(p, 'profile', 'Profile', 'name', 'Name') || '?'),
+        enabled,
+        ruleCount: Number.isFinite(rc) ? rc : null,
+      };
+    });
+}
+
 export function SecurityPage() {
   const toast = useToast();
   const [stats, setStats] = useState<SecurityStats | null>(null);
@@ -87,6 +119,8 @@ export function SecurityPage() {
 
   useEffect(() => {
     fetchSecurity();
+    const timer = window.setInterval(fetchSecurity, 60000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const handleBlockManual = async (e: React.FormEvent) => {
@@ -291,11 +325,54 @@ export function SecurityPage() {
                   {ag.hostname || ag.id.slice(0, 8)}
                 </div>
 
-                {(['firewall', 'eventlog'] as const).map((kind) => {
-                  const entry = ag[kind];
-                  const label = kind === 'firewall' ? t('حالة جدار الحماية') : t('أحداث سجل النظام');
+                {/* firewall.state — structured per-profile state */}
+                {(() => {
+                  const entry = ag.firewall;
+                  const profiles = entry && !entry.error ? firewallProfiles(entry.result) : [];
                   return (
-                    <details key={kind} style={{ marginBottom: 8, border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ marginBottom: 8, border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 10px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: profiles.length ? 8 : 0 }}>
+                        <span>{t('حالة جدار الحماية')}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400 }}>
+                          {entry ? (entry.completed_at ? new Date(entry.completed_at).toLocaleString('ar-SA') : '—') : t('لا بيانات')}
+                        </span>
+                      </div>
+                      {!entry ? (
+                        <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل هذا الجامع بعد — أرسله من صفحة الوكلاء.')}</div>
+                      ) : entry.error ? (
+                        <div className="text-status-danger" style={{ fontSize: 11 }}>{entry.error}</div>
+                      ) : profiles.length === 0 ? (
+                        <details style={{ fontSize: 11 }}>
+                          <summary style={{ cursor: 'pointer', color: 'var(--text-3)' }}>{t('نتيجة غير معروفة — عرض خام')}</summary>
+                          <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                            {JSON.stringify(entry.result, null, 2)}
+                          </pre>
+                        </details>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {profiles.map((p, i) => (
+                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '4px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                              <span style={{ fontWeight: 700, color: 'var(--text)', direction: 'ltr' }}>{p.profile}</span>
+                              <span style={{ display: 'flex', gap: 8, color: 'var(--text-3)' }}>
+                                {p.ruleCount !== null && <span>{p.ruleCount} {t('قاعدة')}</span>}
+                                <span style={{ color: p.enabled === false ? 'var(--unpaid)' : 'var(--paid)' }}>
+                                  {p.enabled === true ? t('مفعّل') : p.enabled === false ? t('معطّل') : '—'}
+                                </span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* eventlog.tail — raw JSON details (unchanged) */}
+                {(() => {
+                  const entry = ag.eventlog;
+                  const label = t('أحداث سجل النظام');
+                  return (
+                    <details style={{ marginBottom: 8, border: '1px solid var(--hairline)', borderRadius: 8, padding: '8px 10px' }}>
                       <summary style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-2)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                         <span>{label}</span>
                         <span style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 400 }}>
@@ -313,7 +390,7 @@ export function SecurityPage() {
                       )}
                     </details>
                   );
-                })}
+                })()}
 
                 {/* startup.programs — Run/RunOnce persistence audit */}
                 {(() => {
