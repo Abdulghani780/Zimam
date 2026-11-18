@@ -613,3 +613,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 
 - **Phase 6 gate**: سكربت PowerShell تحقق من 17 فحصاً بعد تثبيت `ASAAS-Setup.exe` على جهاز نظيف: وجود ملفات payload (backend/control/agent/web)، مهام Scheduled Tasks الأربعة (SYSTEM + AtStartup trigger)، استماع المنفذين 8765/8876، `/api/health` + console 8876 + HTML الـ SPA، صلاحيات `data\`، حالة الوكيل، وقراءة Trigger الإقلاع للاستمرارية بعد إعادة التشغيل. يخرج PASS/FAIL لكل فحص مع تلميح إصلاح، وexit code 0/1. مُختبر نحوياً على جهاز التطوير (يفشل بشكل متوقع لغياب التثبيت).
 - **طريقة الاستخدام على VM نظيف**: ثبّت `installer-out\ASAAS-Setup-1.0.0.exe` → شغّل السكربت مرتين: قبل إعادة التشغيل وبعدها (للتحقق من الاستمرارية).
+
+### 12.26 إصلاح حزمة اختبارات enterprise — 34/34 خضراء
+
+- **`tests/test_enterprise_v25.py` + `v30.py`**: إزالة hardcode `127.0.0.1:8765` و`admin`/`admin@asaas2026` → متغيرات بيئة `ASAAS_TEST_BASE_URL`/`ASAAS_TEST_USER`/`ASAAS_TEST_PASS` (نفس القيم افتراضياً — لا كسر للتوافق).
+- **تحقق**: شُغّل backend حي على :8766 (`ASAAS_PORT`) مع حساب `e2e-admin` → `python -m unittest discover -s tests` = **34/34 OK** (v25: 8/8، v30: 11/11، البقية: عقود/أمن/منافذ/telemetry).
+- السبب الجذري للفشل السابق: المنفذ 8765 كان مشغولاً بنسخة `zimam-backend.exe` قديمة بقاعدة بيانات مختلفة — لم يكن عيب كود بل بيئة اختبار.

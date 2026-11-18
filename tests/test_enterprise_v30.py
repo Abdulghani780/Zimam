@@ -13,11 +13,12 @@ Verifies all v3.0 core domains:
 """
 
 import json
+import os
 import unittest
 import urllib.error
 import urllib.request
 
-BASE_URL = 'http://127.0.0.1:8765'
+BASE_URL = os.environ.get('ASAAS_TEST_BASE_URL', 'http://127.0.0.1:8765')
 
 
 class EnterpriseV30Tests(unittest.TestCase):
@@ -57,7 +58,7 @@ class EnterpriseV30Tests(unittest.TestCase):
             return e.code, body
 
     def setUp(self):
-        _, res = self._post('/api/auth/login', {'username': 'admin', 'password': 'admin@asaas2026'})
+        _, res = self._post('/api/auth/login', {'username': os.environ.get('ASAAS_TEST_USER', 'admin'), 'password': os.environ.get('ASAAS_TEST_PASS', 'admin@asaas2026')})
         self.admin_token = res.get('token')
 
     # Domain 1 & 2: Local Server & Specs

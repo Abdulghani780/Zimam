@@ -8,6 +8,7 @@ admin API instead of relying on predictable demo credentials, which are
 disabled by the legacy-account policy.
 """
 import json
+import os
 import secrets
 import time
 import unittest
@@ -15,9 +16,9 @@ import urllib.error
 import urllib.request
 
 
-BASE_URL = 'http://127.0.0.1:8765'
-ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = 'admin@asaas2026'
+BASE_URL = os.environ.get('ASAAS_TEST_BASE_URL', 'http://127.0.0.1:8765')
+ADMIN_USERNAME = os.environ.get('ASAAS_TEST_USER', 'admin')
+ADMIN_PASSWORD = os.environ.get('ASAAS_TEST_PASS', 'admin@asaas2026')
 
 
 def _post(path: str, data: dict, token: str = None) -> tuple[int, dict]:
