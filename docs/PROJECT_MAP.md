@@ -83,7 +83,7 @@
 1. auth ✅ (منجزة — login يفضّل v1 + bridge)
 2. assets/accounts/policies → tokens → sessions → governor/telemetry
 3. كل شريحة: endpoint حي + صفحة محوّلة + حذف legacy بنفس الـ commit
-4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` + `feature.toggle` + `firewall.rule` (+ `firewall.rules` collector) + `docker.container` (+ `docker.containers` collector) + `cert.remove` (+ `cert.list` collector) ✅ end-to-end؛ ~6 domains remain (disk ops, hotfix install, startup programs, local.users, software uninstall, share create UI)
+4. 🔄 agent write channel: `service.control` + `process.kill` + `task.control` + `hyperv.power` + `share.control` + `feature.toggle` + `firewall.rule` (+ `firewall.rules` collector) + `docker.container` (+ `docker.containers` collector) + `cert.remove` (+ `cert.list` collector) + `disk.state` (+ `disk.physical` collector) ✅ end-to-end؛ ~5 domains remain (hotfix install, startup.program.remove, local.users, software uninstall, share create UI)
 
 ### ⬜ المرحلة 5 — بوابات الإصدار (Release Gates)
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:
@@ -256,7 +256,7 @@ powershell tools/build-release.ps1   # binaries → release/
 1. ~~Verify agent compiles~~ ✅ DONE — user-local SDK 10.0.402 at `%LOCALAPPDATA%\Microsoft\dotnet\dotnet.exe` builds `agent/` clean (0 warnings). NOTE: system `C:\Program Files\dotnet` has runtime only, no SDK.
 2. ~~Migrate `InfrastructurePage` tabs to fleet collectors~~ ✅ DONE (2026-11-18): roles→`windows.features`, services→`service.list`, tasks→`scheduled.tasks`, updates→`hotfix.list` — aggregated fleet tables with agent column + honest per-agent empty states; certs tab stays legacy (no collector). Also: `service.list` collector upgraded from `sc.exe` (name-only) to `Get-Service` `{name,display_name,status,start_type}` — requires agent rebuild/redeploy; fixed missing `session.disconnect` in agent `AllowedJobs`. Write actions (service control, role install) removed — no agent write job types exist.
 3. ~~Migrate `SecurityPage` firewall state → `firewall.state` collector.~~ ✅ DONE (2026-11-18, b412e2a): structured per-agent profile rows; rest of page stays legacy.
-4. ~~`NetworkStoragePage` disks → `disk.list`; ports → `ports.list`.~~ ✅ DONE (2026-11-18): volumes tab → fleet `disk.list` aggregated table; `ports.list` already on `PortsPage`. Physical disks tab stays legacy (no collector).
+4. ~~`NetworkStoragePage` disks → `disk.list`; ports → `ports.list`.~~ ✅ DONE (2026-11-18): volumes tab → fleet `disk.list` aggregated table; `ports.list` already on `PortsPage`. Physical disks tab migrated to fleet `disk.physical` + `disk.state` write jobs (local server table kept below).
 5. Remaining P5 release gates: SSH/SFTP data path, Redis token consumption, recordings, AD/LDAP sync, backup replication, mTLS (see CONTROL_PLANE.md 501/503 list).
 6. P6 remainder: Inno Setup build (`packaging/asaas.iss` via ISCC), agent-as-service install test, clean VM install test.
 

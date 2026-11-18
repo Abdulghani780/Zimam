@@ -10,6 +10,7 @@ import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
   HardDrive,
+  Bot,
   Network,
   Shield,
   FolderTree,
@@ -79,6 +80,8 @@ interface FleetAgentInfo {
   shareRows: any[];
   diskEntry: ResultEntry | null;
   driveRows: { drive: string; totalGb: number | null; freeGb: number | null }[];
+  physEntry: ResultEntry | null;
+  physRows: any[];
 }
 
 function agentRefOf(ag: FleetAgentInfo): AgentRef {
@@ -119,6 +122,22 @@ export function NetworkStoragePage() {
   const [newShareName, setNewShareName] = useState('');
   const [newSharePath, setNewSharePath] = useState('');
   const [agentShareBusy, setAgentShareBusy] = useState<string | null>(null);
+  const [diskStateBusy, setDiskStateBusy] = useState<string | null>(null);
+
+  // Signed agent write job: set a physical disk online/offline/read-only.
+  const queueDiskState = async (agentId: string, diskNumber: number, hostName: string, action: 'online' | 'offline' | 'readonly' | 'clear-readonly') => {
+    const key = `${agentId}:${diskNumber}:${action}`;
+    if (!window.confirm(t(`تنفيذ ${action} على القرص ${diskNumber} في ${hostName}؟`))) return;
+    setDiskStateBusy(key);
+    try {
+      await apiV1.createJob({ agent_id: agentId, job_type: 'disk.state', payload: { disk_number: diskNumber, action } });
+      toast(t('تم إرسال أمر القرص — ينفذ على الوكيل خلال ~15 ثانية'), 'success');
+    } catch (err: any) {
+      toast(err?.message || t('فشل إرسال الأمر'), 'error');
+    } finally {
+      setDiskStateBusy(null);
+    }
+  };
 
   // Signed agent write job: delete an SMB share on its host agent.
   const queueAgentShareDelete = async (agentId: string, shareName: string, hostName: string) => {
@@ -171,13 +190,18 @@ export function NetworkStoragePage() {
         fleetRes.agents.map(async (ag) => {
           let sharesEntry: ResultEntry | null = null;
           let diskEntry: ResultEntry | null = null;
+          let physEntry: ResultEntry | null = null;
           const r = await apiV1.agentLatestResults(ag.id).catch(() => null);
           sharesEntry = r?.results?.['shares.list'] ?? null;
           diskEntry = r?.results?.['disk.list'] ?? null;
+          physEntry = r?.results?.['disk.physical'] ?? null;
           const shareRows = sharesEntry && !sharesEntry.error
             ? asItemArray(sharesEntry.result, 'shares', 'items')
             : [];
           const drives = diskEntry && !diskEntry.error ? driveRows(diskEntry.result) : [];
+          const physRows = physEntry && !physEntry.error
+            ? asItemArray(physEntry.result, 'disks', 'items')
+            : [];
           return {
             id: ag.id,
             name: ag.name,
@@ -188,6 +212,8 @@ export function NetworkStoragePage() {
             shareRows,
             diskEntry,
             driveRows: drives,
+            physEntry,
+            physRows,
           };
         }),
       );
@@ -615,7 +641,95 @@ export function NetworkStoragePage() {
         </button>
       </div>
 
-      {/* Tab 1: Physical Disks */}
+      {/* Fleet physical disks — disk.physical collector + disk.state write jobs */}
+      {activeTab === 'disks' && fleetAgents.length > 0 && (
+        <Card style={{ padding: 22, border: '1px solid var(--glass-rim)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <HardDrive size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('أقراص وكلاء أساس الفيزيائية')}</h3>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('disk.physical + أوامر حالة موقعة (online/offline/readonly)')}</span>
+            </div>
+            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+              {t('إدارة الوكلاء')} ←
+            </NavLink>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+            {fleetAgents.map((ag) => {
+              const entry = ag.physEntry;
+              const rows = entry && !entry.error ? ag.physRows : [];
+              const ref = agentRefOf(ag);
+              return (
+                <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Bot size={15} style={{ color: 'var(--accent)' }} />
+                      <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{ref.label}</span>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--paid-bg)' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--paid)' : 'var(--text-3)' }}>
+                      {ag.status}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', marginBottom: 10 }}>
+                    {ref.hostname}{rows.length ? ` · ${rows.length} ${t('قرص')}` : ''}
+                  </div>
+                  {!entry ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لم يُرسل جامع الأقراص بعد — أرسله من صفحة الوكلاء (disk.physical).')}</div>
+                  ) : entry.error ? (
+                    <div className="text-status-danger" style={{ fontSize: 11 }}>{entry.error}</div>
+                  ) : rows.length === 0 ? (
+                    <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('لا أقراص فيزيائية أو Get-Disk غير متاح.')}</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 260, overflowY: 'auto' }}>
+                      {rows.slice(0, 20).map((d: any, i: number) => {
+                        const dnum = Number(pickField(d, 'Number', 'number', 'disk_number') ?? i);
+                        const dname = String(pickField(d, 'FriendlyName', 'friendly_name', 'Model', 'model') || `Disk ${dnum}`);
+                        const dsize = pickField(d, 'size_gb', 'Size');
+                        const health = String(pickField(d, 'HealthStatus', 'health_status', 'OperationalStatus', 'operational_status') || '');
+                        const offline = d.IsOffline === true || d.is_offline === true || /offline|not present/i.test(String(pickField(d, 'OperationalStatus', 'operational_status')));
+                        const readonly = d.IsReadOnly === true || d.is_read_only === true;
+                        const key = `${ag.id}:${dnum}`;
+                        const btn = (action: 'online' | 'offline' | 'readonly' | 'clear-readonly', label: string) => (
+                          <button
+                            key={action}
+                            type="button"
+                            disabled={diskStateBusy !== null}
+                            onClick={() => void queueDiskState(ag.id, dnum, ref.label, action)}
+                            style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, cursor: diskStateBusy ? 'wait' : 'pointer', border: '1px solid var(--glass-rim)', background: 'transparent', color: 'var(--accent)' }}
+                          >
+                            {diskStateBusy === `${key}:${action}` ? '…' : label}
+                          </button>
+                        );
+                        return (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 10, padding: '5px 8px', borderRadius: 6, background: 'var(--surface-ground)' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left', flex: 1 }} title={dname}>
+                              {offline ? '○ ' : ''}{dname}
+                            </span>
+                            <span style={{ display: 'flex', gap: 4, flexShrink: 0, color: 'var(--text-3)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                              {dsize !== '' && <span>{dsize} GB</span>}
+                              <span style={{ color: /healthy|ok/i.test(health) ? 'var(--paid)' : 'var(--unpaid)' }}>{health || '—'}</span>
+                              {readonly && <span style={{ color: 'var(--unpaid)' }}>{t('للقراءة فقط')}</span>}
+                              {offline ? btn('online', t('توصيل')) : btn('offline', t('فصل'))}
+                              {readonly ? btn('clear-readonly', t('إزالة RO')) : btn('readonly', 'RO')}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {rows.length > 20 && <div style={{ fontSize: 10, color: 'var(--text-3)' }}>+{rows.length - 20} {t('قرص آخر')}</div>}
+                      {entry.completed_at && (
+                        <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{t('آخر قياس')}: {new Date(entry.completed_at).toLocaleString('ar-SA')}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Tab 1: Physical Disks */}"
+
       {activeTab === 'disks' && (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>

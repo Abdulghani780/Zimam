@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -302,6 +302,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "firewall.rules" => PsProbe.Run("Get-NetFirewallRule | Sort-Object DisplayName | Select-Object -First 500 Name,DisplayName,Direction,Action,Enabled,Profile | ConvertTo-Json -Compress -Depth 3"),
         "docker.containers" => PsProbe.Run("docker ps -a --format '{{json .}}' | ForEach-Object { $_ | ConvertFrom-Json } | Select-Object ID,Names,Image,Status,State,Ports | ConvertTo-Json -Compress -Depth 3"),
         "cert.list" => PsProbe.Run("Get-ChildItem Cert:\\LocalMachine\\My -ErrorAction SilentlyContinue | Sort-Object NotAfter | Select-Object -First 200 Subject,Issuer,Thumbprint,NotAfter,NotBefore,HasPrivateKey,FriendlyName | ForEach-Object { [pscustomobject]@{ subject=$_.Subject; issuer=$_.Issuer; thumbprint=$_.Thumbprint; not_after=$_.NotAfter.ToString('yyyy-MM-dd'); not_before=$_.NotBefore.ToString('yyyy-MM-dd'); has_private_key=$_.HasPrivateKey; friendly_name=$_.FriendlyName } } | ConvertTo-Json -Compress -Depth 3"),
+        "disk.physical" => PsProbe.Run("Get-Disk | Sort-Object Number | Select-Object -First 100 Number,FriendlyName,Model,SerialNumber,@{n='size_gb';e={[math]::Round($_.Size/1GB,1)}},PartitionStyle,OperationalStatus,HealthStatus,BusType,IsOffline,IsReadOnly | ConvertTo-Json -Compress -Depth 3"),
         "inventory.collect" => new
         {
             hostname = Environment.MachineName,
@@ -328,6 +329,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "firewall.rule" => FirewallRuleControl(payload),
         "docker.container" => DockerContainerControl(payload),
         "cert.remove" => CertRemove(payload),
+        "disk.state" => DiskState(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -609,6 +611,25 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         var path = $"Cert:\\LocalMachine\\{storeName}\\{clean}";
         PsProbe.Run($"Get-Item '{path}' -ErrorAction Stop | Out-Null; Remove-Item '{path}' -Force; Get-Item '{path}' -ErrorAction SilentlyContinue | Select-Object Thumbprint | ConvertTo-Json -Compress");
         return new { thumbprint = clean, store = storeName, executed = true };
+    }
+
+    // Signed write job: set a physical disk online/offline or read-only/clear-read-only.
+    // payload: {"disk_number": 1, "action": "online"|"offline"|"readonly"|"clear-readonly"}
+    private static object DiskState(JsonElement payload)
+    {
+        if (!payload.TryGetProperty("disk_number", out var dnEl) || !dnEl.TryGetInt32(out var diskNumber) || diskNumber < 0)
+            throw new InvalidOperationException("disk.state requires a non-negative integer payload.disk_number");
+        var action = payload.TryGetProperty("action", out var a) ? a.GetString()?.ToLowerInvariant() : null;
+        var ps = action switch
+        {
+            "online" => $"Set-Disk -Number {diskNumber} -IsOffline $false",
+            "offline" => $"Set-Disk -Number {diskNumber} -IsOffline $true",
+            "readonly" => $"Set-Disk -Number {diskNumber} -IsReadOnly $true",
+            "clear-readonly" => $"Set-Disk -Number {diskNumber} -IsReadOnly $false",
+            _ => throw new InvalidOperationException("disk.state action must be online|offline|readonly|clear-readonly")
+        };
+        PsProbe.Run($"{ps}; Get-Disk -Number {diskNumber} | Select-Object Number,FriendlyName,OperationalStatus,IsOffline,IsReadOnly | ConvertTo-Json -Compress");
+        return new { disk_number = diskNumber, action, executed = true };
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,

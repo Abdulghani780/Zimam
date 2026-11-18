@@ -550,3 +550,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `cert.list` + `cert.remove` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `InfrastructurePage` تبويب الشهادات — بطاقة «شهادات وكلاء أساس» لكل وكيل (قائمة + شارة «منتهية» + زر حذف مع confirm) → `apiV1.createJob('cert.remove')`؛ الجدول القديم (local server) بقي أسفله. `AgentsPage` أضيف `cert.list` للقائمتين.
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج agent مُعاد نشره.
+### 12.16 عاشر agent write job — `disk.state` (+ جامع `disk.physical`)
+
+- **Agent**: `disk.physical` (قراءة) في `AllowedJobs` — `Get-Disk` (أول 100 قرص: Number/FriendlyName/Model/SerialNumber/size_gb/PartitionStyle/OperationalStatus/HealthStatus/BusType/IsOffline/IsReadOnly). `disk.state` (كتابة) في `AllowedJobs` + `DiskState(payload)` — `{disk_number (int >=0), action: online|offline|readonly|clear-readonly}` عبر `Set-Disk -IsOffline/-IsReadOnly` ثم `Get-Disk` للتأكيد.
+- **Control plane**: `disk.physical` + `disk.state` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `NetworkStoragePage` تبويب الأقراص — بطاقة «أقراص وكلاء أساس الفيزيائية» لكل وكيل (قائمة الأقراص مع الصحة/الحجم/حالة offline+readonly + أزرار توصيل/فصل/RO/إزالة RO مع confirm) → `apiV1.createJob('disk.state')`؛ الجدول القديم (السيرفر المحلي) بقي أسفله. `AgentsPage` أضيف `disk.physical` للقائمتين.
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. التنفيذ الفعلي يحتاج agent مُعاد نشره.
