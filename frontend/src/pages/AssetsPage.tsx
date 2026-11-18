@@ -147,6 +147,17 @@ export function AssetsPage() {
     }
   };
 
+  const uninstallSoftware = async (programName: string) => {
+    if (!drawerAgent) return;
+    if (!window.confirm(`${t('إلغاء تثبيت «')}${programName}${t('» على الوكيل (إلغاء صامت). متابعة؟')}`)) return;
+    try {
+      await apiV1.createJob({ agent_id: drawerAgent.id, job_type: 'software.uninstall', payload: { name: programName } });
+      toast(t('تم إرسال مهمة إلغاء التثبيت — ينفذ على الوكيل خلال ~15 ثانية.'), 'success');
+    } catch (err: any) {
+      toast(err.message || t('فشل إرسال مهمة إلغاء التثبيت'), 'error');
+    }
+  };
+
   const openServerDrawer = async (a: AssetItem) => {
     setSelectedServer(a);
     setDrawerOpen(true);
@@ -561,8 +572,18 @@ export function AssetsPage() {
                               <span style={{ fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {String(sw?.name || sw?.Name || sw?.DisplayName || '?')}
                               </span>
-                              <span style={{ color: 'var(--text-3)', flexShrink: 0 }} dir="ltr">
+                              <span style={{ color: 'var(--text-3)', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }} dir="ltr">
                                 {String(sw?.version || sw?.Version || '')}{sw?.publisher || sw?.Publisher ? ` · ${String(sw.publisher || sw.Publisher).slice(0, 30)}` : ''}
+                                {drawerAgent && (
+                                  <button
+                                    type="button"
+                                    onClick={() => uninstallSoftware(String(sw?.name || sw?.Name || sw?.DisplayName || ''))}
+                                    title={t('إلغاء تثبيت')}
+                                    style={{ fontSize: 9, padding: '1px 6px', borderRadius: 6, border: '1px solid var(--status-danger, #e5484d)', background: 'transparent', color: 'var(--status-danger, #e5484d)', cursor: 'pointer', fontWeight: 700 }}
+                                  >
+                                    {t('إلغاء')}
+                                  </button>
+                                )}
                               </span>
                             </div>
                           ))}

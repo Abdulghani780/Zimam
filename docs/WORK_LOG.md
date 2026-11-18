@@ -574,3 +574,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Control plane**: `local.user` في `ALLOWED_JOB_TYPES`.
 - **Frontend**: `UsersPage` بطاقة «حسابات وكلاء أساس» — أزرار تفعيل/تعطيل/حذف لكل مستخدم (مع confirm، والحذف مخفي للحسابات المدمجة) + صف إنشاء حساب (اسم + كلمة مرور) → `apiV1.createJob('local.user')`؛ أُزيلت صيغة «قراءة فقط» من العنوان.
 - **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب agent مُعاد نشره.
+
+### 12.20 رابع عشر agent write job — `software.uninstall`
+
+- **Agent**: `software.uninstall` في `AllowedJobs` + `SoftwareUninstall(payload)` — `{name}` يطابق `DisplayName` من مفاتيح Uninstall (HKLM 64/32 + HKCU) بتطابق تام غير حساس لحالة الأحرف؛ يتطلب تطابقاً واحداً فقط (يطلق قائمة اقتراحات عند عدم وجود تطابق تام). ترتيب التنفيذ: `QuietUninstallString` ← رمز منتج MSI عبر `msiexec /x {GUID} /qn /norestart` ← خطأ صريح «لا يوجد مسار إلغاء صامت»؛ timeout 10 دقائق، exit codes 0/3010/1641 مقبولة مع إبلاغ `reboot_required`.
+- **Control plane**: `software.uninstall` في `ALLOWED_JOB_TYPES`.
+- **Frontend**: `AssetsPage` درج الفحص الميداني — زر «إلغاء» أحمر لكل صف في جدول `software.list` (يظهر فقط عند وجود وكيل مرتبط) مع `window.confirm` → `apiV1.createJob('software.uninstall', {name})`؛ toast «ينفذ على الوكيل خلال ~15 ثانية».
+- **تحقق**: `dotnet build` 0/0 ✅، `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅. يتطلب agent مُعاد نشره.

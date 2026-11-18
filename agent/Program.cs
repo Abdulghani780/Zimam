@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove", "local.user"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove", "local.user", "software.uninstall"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -333,6 +333,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "hotfix.install" => HotfixInstall(payload),
         "startup.program.remove" => StartupProgramRemove(payload),
         "local.user" => LocalUserControl(payload),
+        "software.uninstall" => SoftwareUninstall(payload),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -731,6 +732,120 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         }
         PsProbe.Run(ps);
         return new { username, action, executed = true };
+    }
+
+    // Signed write job: silently uninstall a program listed by software.list.
+    // payload: {"name": "Exact DisplayName"}
+    // Resolution order: QuietUninstallString -> MSI product code (msiexec /x /qn)
+    // -> error for anything without a silent path (honest failure).
+    private static object SoftwareUninstall(JsonElement payload)
+    {
+        var name = payload.TryGetProperty("name", out var n) ? n.GetString()?.Trim() : null;
+        if (string.IsNullOrEmpty(name) || name.Length > 256)
+            throw new InvalidOperationException("software.uninstall requires payload.name (DisplayName from software.list)");
+
+        var roots = new (RegistryKey hive, RegistryView view, string tag)[]
+        {
+            (RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64), RegistryView.Registry64, "machine64"),
+            (RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32), RegistryView.Registry32, "machine32"),
+            (RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default), RegistryView.Default, "user")
+        };
+        string? matchedKeyPath = null, matchedDisplay = null, quiet = null, uninstallStr = null, productCode = null;
+        var exactMatches = new List<string>();
+        var looseMatches = new List<string>();
+        foreach (var (hive, view, tag) in roots)
+        {
+            using var hiveKey = hive;
+            using var uninstall = hiveKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall");
+            if (uninstall is null) continue;
+            foreach (var subName in uninstall.GetSubKeyNames())
+            {
+                using var sub = uninstall.OpenSubKey(subName);
+                var dn = sub?.GetValue("DisplayName") as string;
+                if (string.IsNullOrWhiteSpace(dn)) continue;
+                if (string.Equals(dn.Trim(), name, StringComparison.OrdinalIgnoreCase))
+                {
+                    exactMatches.Add($"{tag}\\{subName}");
+                    if (matchedKeyPath is null)
+                    {
+                        matchedKeyPath = $"{tag}\\{subName}";
+                        matchedDisplay = dn.Trim();
+                        quiet = sub!.GetValue("QuietUninstallString") as string;
+                        uninstallStr = sub.GetValue("UninstallString") as string;
+                        productCode = System.Text.RegularExpressions.Regex.IsMatch(subName, @"^\{[0-9A-Fa-f-]{36}\}$") ? subName : null;
+                    }
+                }
+                else if (dn.Contains(name, StringComparison.OrdinalIgnoreCase) && looseMatches.Count < 10)
+                {
+                    looseMatches.Add(dn.Trim());
+                }
+            }
+        }
+        if (matchedKeyPath is null)
+        {
+            if (exactMatches.Count == 0 && looseMatches.Count > 0)
+                throw new InvalidOperationException($"software.uninstall: no exact match — did you mean: {string.Join("; ", looseMatches.Distinct().Take(5))}");
+            throw new InvalidOperationException($"software.uninstall: program '{name}' not found in uninstall registry keys");
+        }
+        if (exactMatches.Count > 1)
+            throw new InvalidOperationException($"software.uninstall: '{name}' matches {exactMatches.Count} products — use the exact DisplayName");
+
+        string fileName, arguments;
+        if (!string.IsNullOrWhiteSpace(quiet))
+        {
+            // QuietUninstallString may be "exe args" or bare exe — split on first quote boundary.
+            var q = quiet.Trim();
+            if (q.StartsWith('"'))
+            {
+                var end = q.IndexOf('"', 1);
+                fileName = end > 0 ? q[1..end] : q.Trim('"');
+                arguments = end > 0 ? q[(end + 1)..].Trim() : "";
+            }
+            else
+            {
+                var sp = q.IndexOf(' ');
+                fileName = sp > 0 ? q[..sp] : q;
+                arguments = sp > 0 ? q[(sp + 1)..].Trim() : "";
+            }
+        }
+        else if (productCode is not null)
+        {
+            fileName = "msiexec.exe";
+            arguments = $"/x {productCode} /qn /norestart";
+        }
+        else if (!string.IsNullOrWhiteSpace(uninstallStr) &&
+                 System.Text.RegularExpressions.Regex.IsMatch(uninstallStr, @"msiexec.*\{[0-9A-Fa-f-]{36}\}", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(uninstallStr, @"\{[0-9A-Fa-f-]{36}\}");
+            fileName = "msiexec.exe";
+            arguments = $"/x {m.Value} /qn /norestart";
+        }
+        else
+        {
+            throw new InvalidOperationException($"software.uninstall: '{matchedDisplay}' has no silent uninstall path (no QuietUninstallString and not an MSI product)");
+        }
+        if (fileName.Contains('"') || fileName.Contains('\'') || arguments.Contains('\''))
+            throw new InvalidOperationException("uninstall command contains unsafe characters");
+
+        var psi = new ProcessStartInfo(fileName, arguments)
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using var proc = Process.Start(psi)!;
+        var stderrTask = proc.StandardError.ReadToEndAsync();
+        if (!proc.WaitForExit(600000))
+        {
+            try { proc.Kill(true); } catch { }
+            throw new InvalidOperationException("uninstaller timed out after 10 minutes");
+        }
+        var stderr = stderrTask.GetAwaiter().GetResult();
+        var code = proc.ExitCode;
+        if (code != 0 && code != 3010 && code != 1641)
+            throw new InvalidOperationException($"uninstaller exited {code}: {(stderr.Trim().Length > 300 ? stderr.Trim()[..300] : stderr.Trim())}");
+        return new { name = matchedDisplay, uninstall_command = $"{fileName} {arguments}", exit_code = code, reboot_required = code is 3010 or 1641, executed = true };
     }
 
     // Signed self-update: downloads the bundle hosted by the control plane,
