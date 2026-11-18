@@ -648,3 +648,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **إصلاحات CI المتسلسلة**: (1) backend smoke — أُزيل افتراض 3 مستخدمين افتراضيين غير موجودين في نموذج الأمان الحالي؛ schema/DB فقط. (2) bootstrap `e2e-admin` بكلمة مرور مطابقة حرفياً لـ Playwright env + login verification قبل E2E (كان 401 بسبب mismatch `E2E!` vs `E2e!`). (3) SMK-04 — فلترة `Failed to load resource`/404 المتوقعة لـ `/api/v1` عندما لا يعمل control plane محلياً.
 - **النتيجة**: run `44314740979` — Build Frontend & Validate Architecture ✅ 1m56s، Build Release Payload + Installer ✅ 4m33s (artifact `ASAAS-Setup-1.0.0.exe` أُنتج)، Playwright Smoke ✅ 1m48s.
 - **تحذيرات غير مانعة**: Node.js 20 deprecation على actions/checkout@v4 + setup-* (GitHub يفرض Node 24)؛ git.exe exit 128 في post-steps — تجميلي فقط.
+
+### 12.32 ترقية GitHub Actions — إزالة تحذيرات Node.js 20
+
+- **`ci.yml`**: checkout@v4→v7، setup-node@v4→v7، setup-python@v5→v7، setup-dotnet@v4→v6، upload-artifact@v4→v7 (أحدث الإصدارات المستقرة من GitHub API).
+- **التحقق**: run `44316867736` على commit `ff1fdc6` — الثلاثة jobs خضراء، وتحذيرات Node.js 20 deprecation اختفت. تبقى ملاحظة تجميلية `git.exe exit 128` في post-checkout (لا تؤثر).
+- **SonarCloud**: فحص خارجي فاشل («last analysis has failed») — يحتاج صلاحية دخول على dashboard الخاص بالمستخدم؛ ليس جزءاً من workflow المحلي ولا يملك توكن في الريبو.
