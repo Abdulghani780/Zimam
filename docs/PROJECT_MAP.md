@@ -70,13 +70,13 @@
 - [x] Rate limiting `/api/v1/auth/login` — **موجود أصلاً** (8 محاولات/5د)
 - [x] docker-compose — **محذوف** من المشروع أصلاً
 - [x] `net user` password → NetUserAdd/NetUserSetInfo (موجود)
-- [ ] **password complexity ≥8 + 3/4 فئات** — `user_service.py` (نصّ editing)
+- [x] **password complexity ≥8 + 3/4 فئات** — `backend/app/services/user_service.py::_password_policy_error` (len≥8 + 3/4 من lower/upper/digit/symbol)
 - [ ] README/TESTS تحديث نهائي
 
 ### ⬜ المرحلة 3 — استقرار التشغيل
-- [ ] `scripts/restart-elevated.ps1` (إغلاق النسخة القديمة المرتفعة)
-- [ ] Playwright e2e في CI (job منفصل)
-- [ ] حذف `stitch_*.zip` من التتبع إن وُجد
+- [x] `scripts/restart-elevated.ps1` — موجود ومُستخدم
+- [x] Playwright e2e في CI — job `e2e-smoke` في `.github/workflows/ci.yml`
+- [x] حذف `stitch_*.zip` — لا ملفات متعقبة (`git ls-files` نظيف)
 
 ### ⬜ المرحلة 4 — الترحيل لـ /api/v1 (أكبر شغل متبقٍ)
 حسب `docs/MIGRATION_PLAN.md` — الترتيب:
