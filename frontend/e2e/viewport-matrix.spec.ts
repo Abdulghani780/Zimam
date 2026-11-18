@@ -7,6 +7,18 @@ import * as fs from 'fs';
  * plus the 375/768/1280 × light/dark screenshot matrix.
  */
 
+const E2E_USER = process.env.E2E_USER || 'e2e-admin';
+const E2E_PASS = process.env.E2E_PASS || '';
+
+test.beforeEach(async ({ page }) => {
+  test.skip(!E2E_PASS, 'E2E_PASS not set — skipping authenticated UI audits');
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.locator('input[autocomplete="username"]').fill(E2E_USER);
+  await page.locator('input[autocomplete="current-password"]').fill(E2E_PASS);
+  await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20000 });
+});
+
 const screenshotDir = path.resolve('..', 'docs', 'visual-audit-screenshots', 'matrix');
 
 const pagesToAudit = [

@@ -60,7 +60,7 @@
 - [x] عكس zimam→asaas في **كل** المشروع: frontend(51 ملف), `asaas_control`, `Asaas.Agent`, `AsaasLauncher`, `asaas.iss`, CI, tests, docs
 - [x] `asaas_v2.db` + ترحيل تلقائي من `zimam_v2.db`
 - [x] theme-init رسمي (فاتح افتراضي) + design-tokens مستعادة
-- [ ] **متبقٍ:** 0.6 تنقل موبايل ≤900px تحقق + 0.7 screenshots Playwright (375/768/1280 × فاتح/داكن)
+- [x] **0.6+0.7 تم (2026-11-18):** viewport-matrix + mobile-responsiveness خضراء (13/13)؛ 72 لقطة في `docs/visual-audit-screenshots/matrix/`
 
 ### ✅ المرحلة 1 — البيانات الوهمية (مكتملة)
 - [x] `score||95`, Docker version, threat `LOW`, `SRV-LOCAL`, JIT `ACTIVE`,

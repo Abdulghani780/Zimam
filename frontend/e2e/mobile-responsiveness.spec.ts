@@ -1,5 +1,17 @@
 import { test, expect } from '@playwright/test';
 
+const E2E_USER = process.env.E2E_USER || 'e2e-admin';
+const E2E_PASS = process.env.E2E_PASS || '';
+
+test.beforeEach(async ({ page }) => {
+  test.skip(!E2E_PASS, 'E2E_PASS not set — skipping authenticated UI audits');
+  await page.goto('/login', { waitUntil: 'domcontentloaded' });
+  await page.locator('input[autocomplete="username"]').fill(E2E_USER);
+  await page.locator('input[autocomplete="current-password"]').fill(E2E_PASS);
+  await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
+  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20000 });
+});
+
 test.describe('ASAAS - Mobile Responsiveness & Containment', () => {
   test.use({ viewport: { width: 390, height: 844 } }); // Modern Mobile Viewport
 
@@ -18,9 +30,10 @@ test.describe('ASAAS - Mobile Responsiveness & Containment', () => {
 
     // Verify mobile tab items
     await expect(mobileNav.getByText(/الرئيسية/i)).toBeVisible();
-    await expect(mobileNav.getByText(/الحاكم/i)).toBeVisible();
-    await expect(mobileNav.getByText(/الأمان/i)).toBeVisible();
+    await expect(mobileNav.getByText(/الجلسات/i)).toBeVisible();
+    await expect(mobileNav.getByText(/الموارد/i)).toBeVisible();
     await expect(mobileNav.getByText(/المنافذ/i)).toBeVisible();
+    await expect(mobileNav.getByText(/الحماية/i)).toBeVisible();
     await expect(mobileNav.getByText(/المزيد/i)).toBeVisible();
   });
 

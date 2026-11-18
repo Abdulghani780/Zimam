@@ -586,3 +586,9 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 
 - **Frontend فقط**: `NetworkStoragePage` بطاقة «مشاركات وكلاء أساس» — زر «+ مشاركة» لكل وكيل يفتح modal (اسم + مسار محلي + وصف) مع `window.confirm` → `apiV1.createJob('share.control', {action:'create', name, path, description})`؛ toast «ينفذ على الوكيل خلال ~15 ثانية» ويعيد جلب القياسات بعد 20 ثانية. الـ backend `share.control` (create/delete عبر `New-SmbShare`/`Remove-SmbShare`) والـ collector `shares.list` كانا موجودين مسبقاً.
 - **تحقق**: `tsc -b` + `vite build` ✅، oxlint ✅، 10/10 control_plane tests ✅.
+
+### 12.22 المرحلة 0 المتبقي — تحقق الموبايل + مصفوفة لقطات Playwright
+
+- **0.6 تنقل موبايل ≤900px**: `viewport-matrix.spec.ts` (4 عروض × 12 صفحة — صفر فيض أفقي) + `mobile-responsiveness.spec.ts` (tabbar/drawer) — كلها خضراء بعد إضافة `beforeEach` تسجيل دخول حقيقي (كانت ستلتقط صفحة login فقط) وتصحيح تسميات التبويبات القديمة (الحاكم/الأمان → الجلسات/الموارد/الحماية).
+- **0.7 لقطات**: 72 لقطة (12 صفحة × 375/768/1280 × فاتح/داكن) في `docs/visual-audit-screenshots/matrix/` — 13/13 اختبار ناجح على backend حقيقي (:8766،لأن :8765 مشغول بنسخة zimam-backend قديمة PID 20012).
+- **ملاحظة تشغيل**: الاختبارات تتطلب `E2E_USER`/`E2E_PASS`/`E2E_BASE_URL`؛ تُتخطى تلقائياً بدون كلمة مرور.
