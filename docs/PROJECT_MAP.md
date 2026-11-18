@@ -99,7 +99,7 @@
 - [ ] Shadowing: تحقق نهائي (RemoteFX fix مطبّق) + preflight validation
 - [x] Agent كخدمة Windows — `Asaas.Agent.exe install|uninstall|status` موجود (sc.exe + env vars في registry + `AddWindowsService`)؛ تحقق تشغيلي على جهاز نظيف متبقٍ
 - [ ] Inno Setup install + بناء `ASAAS-Setup` + اختبار على جهاز نظيف
-- [ ] إعادة بناء `release/` بالثنائيات الجديدة (asaas-*)
+- [x] إعادة بناء `release/` — `tools/build-release.ps1` نجح (2026-11-18): `asaas-backend.exe` 14.3MB + `asaas-control.exe` 42.3MB (PyInstaller 6.22.3) + `Asaas.Agent.exe` 36.7MB (dotnet publish self-contained) + `web/` — عبر junctions لـ `.venv`/`node_modules` المستودع الرئيسي وSDK المحلي
 
 ---
 

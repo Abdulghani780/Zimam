@@ -419,3 +419,14 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - وُجد مسبقاً: `mobile-responsiveness.spec.ts` (390px: tabbar/drawer/no-overflow على `/` فقط) و`visual-audit.spec.ts` (screenshots 13 صفحة @ desktop).
 - **أُضيف `frontend/e2e/viewport-matrix.spec.ts`**: فحص horizontal overflow لكل الصفحات عند 375/768/900/1280px + تحقق `.mobile-tabbar` ظاهر ≤900px ومخفي >900px + مصفوفة screenshots كاملة 375/768/1280 × light/dark → `docs/visual-audit-screenshots/matrix/`.
 - **لم تُشغَّل بعد** — تتطلب backend حي على `:8765` (كان متوقفاً وقت الكتابة). بعد توفر الخادم: `npx playwright test viewport-matrix` ثم تعليم 0.6/0.7 في PROJECT_MAP.
+
+---
+
+## 11. إعادة بناء release/ (2026-11-18)
+
+- `tools/build-release.ps1` نُفّذ على الـ worktree بعد عمل junctions:
+  - `.venv` → `.venv` المستودع الرئيسي (PyInstaller 6.22.3 موجودة فيه)
+  - `node_modules` → الرئيسي (من جلسة سابقة)
+  - `dotnet` → SDK محلي `%LOCALAPPDATA%\Microsoft\dotnet` (PATH system فيه runtime فقط)
+- النتائج في `release/` (gitignored): `bin/asaas-backend.exe` 14.3MB، `bin/asaas-control.exe` 42.3MB (PyInstaller onefile)، `bin/Asaas.Agent.exe` 36.7MB + `libsodium.dll` (dotnet publish win-x64 self-contained single-file)، `web/` (vite dist)، `data/`.
+- **متبقٍ في Phase 6**: Inno Setup (`ISCC` غير مثبت — blocker بيئي)، اختبار تثبيت على VM نظيف.
