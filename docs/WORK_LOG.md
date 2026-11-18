@@ -654,3 +654,13 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **`ci.yml`**: checkout@v4→v7، setup-node@v4→v7، setup-python@v5→v7، setup-dotnet@v4→v6، upload-artifact@v4→v7 (أحدث الإصدارات المستقرة من GitHub API).
 - **التحقق**: run `44316867736` على commit `ff1fdc6` — الثلاثة jobs خضراء، وتحذيرات Node.js 20 deprecation اختفت. تبقى ملاحظة تجميلية `git.exe exit 128` في post-checkout (لا تؤثر).
 - **SonarCloud**: فحص خارجي فاشل («last analysis has failed») — يحتاج صلاحية دخول على dashboard الخاص بالمستخدم؛ ليس جزءاً من workflow المحلي ولا يملك توكن في الريبو.
+
+### 12.33 SonarCloud — السبب الجذري والحل المُعدّ
+
+- **السبب الجذري**: الريبو **PRIVATE** — SonarCloud Automatic Analysis لا يعمل على الريبات الخاصة بدون import يدوي + توكن. الفحص «SonarCloud Code Analysis» لا يأتي من workflow محلي بل من GitHub App خارجي، لذلك يفشل دائماً.
+- **ما أُضيف**: `.github/workflows/sonar.yml` (معطّل افتراضياً عبر `if: vars.SONAR_ENABLED == 'true'`) + `sonar-project.properties` (projectKey `Abdulghani780_ASAAS-Server-Control-v2`، organization `Abdulghani780`، sources/tests/exclusions محددة).
+- **خطوات التفعيل (تحتاج حساب SonarCloud)**:
+  1. sonarcloud.io → import project `Abdulghani780/ASAAS-Server-Control-v2` (manual mode)
+  2. GitHub repo → Settings → Secrets → `SONAR_TOKEN` = User Token من SonarCloud
+  3. GitHub repo → Settings → Variables → `SONAR_ENABLED` = `true`
+  4. push/PR جديد → التحليل يعمل؛ الفحص الفاشل القديم من الـ GitHub App قد يبقى ظاهراً حتى إعادة import أو ربط الـ App بالمشروع الجديد
