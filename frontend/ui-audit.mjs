@@ -52,7 +52,6 @@ console.log('done');
 function detector() {
   const issues = [];
   const vw = document.documentElement.clientWidth;
-  const vh = window.innerHeight;
 
   // Visible rect = bounding rect clipped by every overflow-hidden/auto/scroll
   // ancestor. Bounding boxes alone lie inside scrollers (RTL tables etc.).

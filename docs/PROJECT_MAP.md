@@ -263,5 +263,5 @@ powershell tools/build-release.ps1   # binaries → release/
 ### Known issues
 - ~~agent C# unverified~~ resolved above
 - ~~enterprise_v25/v30 tests fail~~ resolved (2026-11-18): tests now read `ASAAS_TEST_BASE_URL`/`ASAAS_TEST_USER`/`ASAAS_TEST_PASS` env vars; 34/34 green against live backend (:8766, e2e-admin).
-- `frontend/ui-audit.mjs` unused `vh`; `AssetsPage.tsx` unnecessary `?? {}` — oxlint warnings.
+- ~~`frontend/ui-audit.mjs` unused `vh`; `AssetsPage.tsx` unnecessary `?? {}`~~ fixed (2026-11-18) — `npx oxlint src` fully clean.
 - Login throttle `_login_attempts` is in-memory per-process (fine for single worker).

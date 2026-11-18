@@ -626,3 +626,8 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **Knip/static**: لا `onClick={() => {}}`، لا `href="#"`, لا «قيد التطوير» stubs — مؤكد في §12.23.
 - **Runtime wiring audit (جديد `frontend/e2e/wiring-audit.spec.ts`)**: 20 صفحة رئيسية × تحميل حقيقي بجلسة admin → **20/20 PASS** — صفر أخطاء JS غير ملتقطة، صفر redirect لـ /login. يرفض الفشل فقط على أخطاء console حقيقية (يتجاهل ضجيج `Failed to load resource` و404 الخاصة بـ `/api/v1` عند غياب control plane).
 - **Gremlins/Backstop**: مؤجلان — يحتاجان بيئة staging مستقرة؛ المصفوفة البصرية مغطاة بـ 72 screenshot في §12.22.
+
+### 12.28 تنظيف oxlint نهائي + مراجعة وحدات Phase 5
+
+- **oxlint**: `npx oxlint src` = صفر تحذيرات (أُزيل `?? {}` الزائد في AssetsPage:179 و`vh` غير المستخدم في ui-audit.mjs).
+- **مراجعة control_plane modules**: mtls (CA ECDSA + إصدار/تدوير)، replication (file/sftp/s3 عبر paramiko+boto3 lazy)، sftp (paramiko sessions + TTL GC)، recording (jsonl + replay stream)، directory (ldap3 connector) — كلها تنفيذ حقيقي، لا stubs؛ `pass` الوحيدة في مسارات cleanup مشروعة.

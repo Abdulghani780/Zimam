@@ -176,7 +176,7 @@ export function AssetsPage() {
       if (match) {
         setDrawerAgent(match);
         const res = await apiV1.agentLatestResults(match.id);
-        const rr = { ...(res.results || {}) };
+        const rr = { ...res.results };
         // Normalize software.list payloads ({software:[...]}|{programs:[...]}) to a bare array for the table renderer.
         const sw = rr['software.list'];
         if (sw && !Array.isArray(sw.result) && sw.result && typeof sw.result === 'object') {
