@@ -89,7 +89,7 @@
 موثقة 501/503 في `CONTROL_PLANE.md` — **لازم تكتمل قبل البيع**:
 - SSH/SFTP proxy data path
 - Redis-backed token consumption (multi-worker)
-- live session terminate
+- ~~live session terminate~~ ✅ (signed `session.logoff`/`session.disconnect` agent jobs via `/api/v1/sessions/*`)
 - screen/terminal recording + replay
 - AD/LDAP sync
 - off-box backup replication
