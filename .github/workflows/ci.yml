@@ -131,7 +131,12 @@ jobs:
       - name: Bootstrap E2E Administrator
         working-directory: backend
         run: |
-          python -c "import sys; sys.path.insert(0,'.'); from app.infrastructure.db import init_db, db_bootstrap_admin; init_db(); print(db_bootstrap_admin('e2e-admin', 'E2e!Smoke#Passw0rd2026!', 'E2E Admin'))"
+          python -c "import sys; sys.path.insert(0,'.'); from app.infrastructure.db import init_db, get_db_connection, hash_password; from datetime import datetime, timezone; init_db(); h, s = hash_password('E2e!Smoke#Passw0rd2026!'); conn = get_db_connection(); cur = conn.cursor(); cur.execute('SELECT id FROM app_users WHERE username = ?', ('e2e-admin',)); row = cur.fetchone(); now = datetime.now(timezone.utc).isoformat();
+          if row:
+              cur.execute('UPDATE app_users SET password_hash = ?, salt = ?, role = \'admin\', is_active = 1 WHERE id = ?', (h, s, row['id']))
+          else:
+              cur.execute('INSERT INTO app_users (username, password_hash, salt, role, full_name, is_active, created_at) VALUES (?, ?, ?, \'admin\', \'E2E Admin\', 1, ?)', ('e2e-admin', h, s, now))
+          conn.commit(); print('e2e-admin ready')"
 
       - name: Start ASAAS Backend
         run: |
@@ -147,6 +152,10 @@ jobs:
             } catch { }
           } while ((Get-Date) -lt $deadline)
           if ((Get-Date) -ge $deadline) { throw 'Backend did not become healthy within 90s' }
+          # Verify credentials end-to-end before browser tests run.
+          $login = Invoke-RestMethod -Uri 'http://127.0.0.1:8765/api/auth/login' -Method Post -ContentType 'application/json' -Body (@{ username = 'e2e-admin'; password = 'E2e!Smoke#Passw0rd2026!' } | ConvertTo-Json)
+          if (-not $login.ok) { throw "E2E credential check failed: $($login | ConvertTo-Json -Compress)" }
+          Write-Host 'E2E login verified'
 
       - name: Run Playwright Smoke Tests
         working-directory: frontend
