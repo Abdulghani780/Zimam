@@ -241,16 +241,17 @@ powershell tools/build-release.ps1   # binaries → release/
 - P3 `scripts/restart-elevated.ps1` ✅ (e2e CI was already present)
 - P4 sessions slice ✅: `/api/v1/sessions` (agent `session.list` aggregation), `/sessions/terminate` + `/sessions/disconnect` (signed jobs, 202), `session.disconnect` in `agent/Program.cs` (`SessionProbe.Disconnect`, WTSDisconnectSession P/Invoke), ControlPage fleet rows actionable
 - P6 shadow preflight ✅ (`backend/app/api/router.py` `/api/sessions/shadow` validates Active/non-self session)
+- InfrastructurePage fleet migration ✅ (2026-11-18): 4 tabs → fleet collectors, `service.list` upgraded to `Get-Service`, `session.disconnect` added to agent allowlist
 
 ### Established pattern for remaining Phase 4 domains
 1. Agent already implements collectors in `agent/Program.cs` dispatch (line ~287-315): service.list, disk.list, network.info, eventlog.tail, software.list, firewall.state, windows.features, scheduled.tasks, local.users, shares.list, hotfix.list, ports.list, startup.programs, hyperv.vms
 2. Read model: `GET /api/v1/agents/{id}/results/latest` (latest succeeded result per job_type) and `GET /api/v1/fleet/summary` — `_latest_results_map(db, agent_id)` in `control_plane/asaas_control/api.py:1088`
-3. Frontend pattern: `apiV1.agentLatestResults(id)` + heuristic row extraction (see `ControlPage.tsx` `sessionRows`/`procRows`, `fleetSessions` state ~line 130-148)
+3. Frontend pattern: `apiV1.agentLatestResults(id)` + heuristic row extraction (see `ControlPage.tsx` `sessionRows`/`procRows`, `fleetSessions` state ~line 130-148). `InfrastructurePage.tsx` adds `asItemArray()` — wraps bare-object single-row `PsProbe` payloads (scheduled.tasks/hotfix.list/ports.list return an object, not array, when there's exactly one row).
 4. Job dispatch for UI-triggered actions: `POST /api/v1/jobs` (JobCreateRequest, allowlist `ALLOWED_JOB_TYPES` api.py:123)
 
 ### Next concrete steps (in order)
 1. ~~Verify agent compiles~~ ✅ DONE — user-local SDK 10.0.402 at `%LOCALAPPDATA%\Microsoft\dotnet\dotnet.exe` builds `agent/` clean (0 warnings). NOTE: system `C:\Program Files\dotnet` has runtime only, no SDK.
-2. Migrate `InfrastructurePage` tabs to fleet collectors: services→`service.list`, tasks→`scheduled.tasks`, roles→`windows.features`, updates→`hotfix.list`. Page uses `api.getRoles/getServicesList/getTasksList/getUpdates` (lines ~195-231).
+2. ~~Migrate `InfrastructurePage` tabs to fleet collectors~~ ✅ DONE (2026-11-18): roles→`windows.features`, services→`service.list`, tasks→`scheduled.tasks`, updates→`hotfix.list` — aggregated fleet tables with agent column + honest per-agent empty states; certs tab stays legacy (no collector). Also: `service.list` collector upgraded from `sc.exe` (name-only) to `Get-Service` `{name,display_name,status,start_type}` — requires agent rebuild/redeploy; fixed missing `session.disconnect` in agent `AllowedJobs`. Write actions (service control, role install) removed — no agent write job types exist.
 3. Migrate `SecurityPage` firewall state → `firewall.state` collector.
 4. `NetworkStoragePage` disks → `disk.list`; ports → `ports.list`.
 5. Remaining P5 release gates: SSH/SFTP data path, Redis token consumption, recordings, AD/LDAP sync, backup replication, mTLS (see CONTROL_PLANE.md 501/503 list).

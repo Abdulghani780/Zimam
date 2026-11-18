@@ -157,7 +157,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
     // the control plane and must never be added here without a reviewed design.
     private static readonly HashSet<string> AllowedJobs = new(StringComparer.Ordinal)
     {
-        "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff",
+        "system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect",
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms"
     };
@@ -285,7 +285,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
             .Take(50)
             .Select(p => new { name = p.ProcessName, pid = p.Id, working_set_mb = Math.Round(p.WorkingSet64 / 1048576.0, 1) })
             .ToArray(),
-        "service.list" => ServiceProbe.ListServices(),
+        "service.list" => PsProbe.Run("Get-Service | Sort-Object Name | Select-Object -First 300 | ForEach-Object { [pscustomobject]@{ name=$_.Name; display_name=$_.DisplayName; status=[string]$_.Status; start_type=[string]$_.StartType } } | ConvertTo-Json -Compress -Depth 3"),
         "disk.list" => DriveInfo.GetDrives()
             .Where(d => d.IsReady)
             .Select(d => new { name = d.Name, total_gb = Math.Round(d.TotalSize / 1073741824.0, 1), free_gb = Math.Round(d.AvailableFreeSpace / 1073741824.0, 1) })
@@ -459,29 +459,6 @@ internal static class SessionProbe
 
     [DllImport("wtsapi32.dll", SetLastError = true)]
     private static extern bool WTSDisconnectSession(IntPtr hServer, int sessionId, bool bWait);
-}
-
-internal static class ServiceProbe
-{
-    public static object[] ListServices()
-    {
-        // Read-only snapshot via sc.exe query — no service control operations.
-        var psi = new ProcessStartInfo("sc.exe", "query state= all")
-        {
-            RedirectStandardOutput = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        using var proc = Process.Start(psi)!;
-        var output = proc.StandardOutput.ReadToEnd();
-        proc.WaitForExit(10000);
-        return output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Where(l => l.StartsWith("SERVICE_NAME:", StringComparison.OrdinalIgnoreCase))
-            .Take(200)
-            .Select(l => new { name = l["SERVICE_NAME:".Length..].Trim() })
-            .Cast<object>()
-            .ToArray();
-    }
 }
 
 internal static class NetworkProbe

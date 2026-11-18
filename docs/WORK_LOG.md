@@ -352,3 +352,41 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 | (هذا الالتزام) | `refactor: rename product identity ZIMAM -> ASAAS` — backend/agent/launcher/packaging |
 | 2026-10-19 | الخطة | تحديث `PROJECT_MAP.md` (خريطة كاملة + قاعدة "أول ⬜ بالأولوية")؛ تنفيذ متسلسل: password complexity (تغيير كلمة المرور في Windows)، `restart-elevated.ps1`، e2e CI موجود مسبقاً، `/api/v1/sessions` مربوط بـ agent `session.list` + terminate بـ signed `session.logoff` job (202)، `/api/sessions/shadow` preflight حقيقي | اختبارات الوحدة 15/15 + control_plane 10/10 ✅ — enterprise live tests تفشل لغياب خادم حي/كلمة مرور `admin@asaas2026` (pre-existing) |
 | 2026-11-17 | الخطة | fleet sessions في ControlPage صارت تفاعلية: زرّي disconnect/logoff لكل جلسة وكيل → `POST /api/v1/sessions/{terminate,disconnect}` (jobs موقّعة Ed25519، 202 queued) + `apiV1.disconnectSession`؛ agent يدعم `session.disconnect` عبر WTSDisconnectSession P/Invoke | build ✅ — C# agent غير متحقق محلياً (لا .NET 10 SDK) |
+| 2026-11-18 | الخطة | ترحيل تبويبات `InfrastructurePage` إلى fleet collectors: roles→`windows.features`، services→`service.list`، tasks→`scheduled.tasks`، updates→`hotfix.list` — جداول مجمّعة عبر الأسطول بعمود «الوكيل» + بحث/فلاتر client-side + حالات فارغة صادقة لكل وكيل؛ تبويب الشهادات يبقى على `/api/*` (لا collector بعد) | `npm run build` ✅ — C# agent بُني نظيفاً بـ SDK 10.0.402 المحلي |
+
+---
+
+## 8. ترحيل InfrastructurePage إلى fleet collectors (2026-11-18)
+
+### 8.1 ما تغيّر
+
+**الواجهة (`frontend/src/pages/InfrastructurePage.tsx`)**
+
+- التبويبات الأربعة صارت تقرأ من `apiV1.fleetSummary()` + `agentLatestResults()` بدل `api.getRoles/getServicesList/getTasksList/getUpdates`:
+  - **أدوار وميزات** ← `windows.features` (DISM `/english` — `items[{name,state}]`؛ installed=`Enabled*`، available=`Disabled`)
+  - **خدمات Windows** ← `service.list`
+  - **مهام مجدولة** ← `scheduled.tasks` (`TaskName/TaskPath/State`)
+  - **تحديثات** ← `hotfix.list` (`id/description/installed_on`، آخر 50 مرتبة تنازلياً)
+- كل تبويب = جدول مجمّع عبر كل الوكلاء بعمود «الوكيل» (الاسم + hostname + last-collection في tooltip) — نفس نمط `sessionRows`/`procRows` في ControlPage.
+- إضافة `asItemArray()`: `PsProbe` يُسلسل الصف الواحد ككائن عارٍ بدل مصفوفة — يُغلَّف تلقائياً مع استثناء أغلفة `{count, items, observed_at}`.
+- `serviceRows()` يقبل الآن كائناً عارياً (حالة عنصر واحد) كـ fallback.
+- **إزالة أزرار التحكم** (start/stop/restart للخدمات، تثبيت/إزالة الأدوار + Modal): الـ agent collectors read-only فقط — لا توجد job types للكتابة في `ALLOWED_JOB_TYPES` ولا في `AllowedJobs` بالوكيل. الواجهة الآن صادقة: عرض فقط.
+- تحديث البيانات: زر «تحديث» يستدعي `loadFleetNet()` + `fetchCerts()` عند تبويب الشهادات؛ polling كل 60 ثانية مثل ControlPage.
+- حالات فارغة صادقة لكل وكيل: «لم يُرسل الجامع بعد» / خطأ الجامع / عرض خام JSON عند استلام نتيجة غير قابلة للاستخراج + رابط «إدارة الوكلاء».
+- تبويب **الشهادات** لم يُرحَّل — لا يوجد collector لها بعد، ويبقى على `api.getCertificatesList()`.
+
+**الوكيل (`agent/Program.cs`)**
+
+- `service.list` كان `sc.exe query` يُرجع `{name}` فقط (بلا حالة/نوع بدء/اسم عرض) — استُبدل بـ `Get-Service` عبر `PsProbe` يُصدر `{name, display_name, status, start_type}` (حتى 300 خدمة) — يطابق مفاتيح `serviceRows` مباشرة. حُذف `ServiceProbe` (لم يعد مستخدماً).
+- **إصلاح bug**: `session.disconnect` كان مُعالجاً في `ExecuteJob` ومسموحاً في control plane لكن **غائباً عن `AllowedJobs`** — كانت jobs الفصل ستُرفض. أُضيف للقائمة.
+
+### 8.2 التحقق
+
+- `dotnet build agent/` ✅ — 0 warnings/errors (SDK 10.0.402 في `%LOCALAPPDATA%\Microsoft\dotnet`)
+- `npm run build` (tsc + vite) ✅ — نُفّذ عبر junction لـ `node_modules` المستودع الرئيسي (worktree بلا تثبيت)
+- `oxlint` ✅ — نفس التحذيرين القديمين فقط (`ui-audit.mjs` vh، `AssetsPage.tsx` `?? {}`)
+- **ملاحظة**: `service.list` الجديد يتطلب إعادة بناء `Asaas.Agent.exe` ونشره على الوكلاء؛ الوكلاء القدامى يستمرون بإرجاع `{name}` فقط (الواجهة تتعامل مع الحالتين).
+
+### 8.3 الخطوة التالية
+
+- `SecurityPage` → `firewall.state` collector (الخطوة 3 في `PROJECT_MAP.md` §10)

@@ -1,11 +1,14 @@
 /**
  * ASAAS Enterprise v3.0 - Sovereign Windows Server Management
- * Domain 7: Infrastructure (أدوار Windows، ميزات الخادم، الخدمات، المهام المجدولة، التحديثات والشهادات)
- * Zero-Mock Production with Real Windows Server 2025 Standard APIs
+ * Domain 7: Infrastructure — fleet collectors (windows.features, service.list,
+ * scheduled.tasks, hotfix.list) via /api/v1 agents results/latest.
+ * The certificates tab still uses the legacy local-server API (no collector yet).
+ * All collector data is read-only; there are no agent write job types for
+ * service control or role install yet.
  */
 
-import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, Button, TextInput, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -16,10 +19,6 @@ import {
   Award,
   RefreshCw,
   Search,
-  Play,
-  Square,
-  RotateCw,
-  AlertTriangle,
   Bot,
   Network,
 } from 'lucide-react';
@@ -35,7 +34,10 @@ function serviceRows(result: unknown): RemoteService[] {
     ? result
     : Array.isArray((result as any)?.services)
       ? (result as any).services
-      : null;
+      : result && typeof result === 'object'
+        && ['name', 'Name', 'ServiceName', 'service_name'].some((k) => (result as any)[k] !== undefined)
+        ? [result]
+        : null;
   if (!arr) return [];
   const pick = (o: any, ...keys: string[]) => {
     for (const k of keys) { const v = o?.[k]; if (v !== undefined && v !== null && v !== '') return v; }
@@ -44,7 +46,7 @@ function serviceRows(result: unknown): RemoteService[] {
   return arr
     .filter((s: unknown) => s && typeof s === 'object')
     .map((s: any) => ({
-      name: String(pick(s, 'Name', 'name', 'ServiceName') || '?'),
+      name: String(pick(s, 'Name', 'name', 'ServiceName', 'service_name') || '?'),
       display: String(pick(s, 'DisplayName', 'display_name', 'displayName') || ''),
       status: String(pick(s, 'Status', 'status', 'State', 'state') || ''),
       start: String(pick(s, 'StartType', 'start_type', 'StartMode', 'startMode') || ''),
@@ -74,6 +76,20 @@ function agentRows(result: unknown, ...keys: string[]): any[] {
     }
   }
   return Array.isArray(arr) ? arr.filter((x) => x && typeof x === 'object') : [];
+}
+
+// PowerShell collectors (scheduled.tasks, hotfix.list, ...) serialize a single
+// row as a bare object instead of a one-element array — wrap it so row
+// extraction stays uniform. Wrapper objects ({count, items,...}) are skipped.
+function asItemArray(result: unknown, ...keys: string[]): any[] {
+  const rows = agentRows(result, ...keys);
+  if (rows.length > 0) return rows;
+  if (result && typeof result === 'object' && !Array.isArray(result)) {
+    const o = result as Record<string, unknown>;
+    const isWrapper = keys.some((k) => o[k] !== undefined) || o.count !== undefined || o.observed_at !== undefined;
+    if (!isWrapper) return [o];
+  }
+  return [];
 }
 
 const pickField = (o: any, ...keys: string[]) => {
@@ -128,37 +144,47 @@ function netIfaces(result: unknown): NetIface[] {
     });
 }
 
+interface AgentRef {
+  id: string;
+  label: string;
+  status: string;
+  hostname: string;
+}
+
+function agentRef(ag: FleetNetAgent): AgentRef {
+  return {
+    id: ag.id,
+    label: ag.linked_asset?.name || ag.name,
+    status: ag.status,
+    hostname: ag.hostname || ag.linked_asset?.hostname || ag.id.slice(0, 8),
+  };
+}
+
+interface ServiceFleetRow extends RemoteService { agent: AgentRef; completedAt: string | null }
+interface FeatureFleetRow { agent: AgentRef; completedAt: string | null; name: string; state: string; installed: boolean; available: boolean }
+interface TaskFleetRow { agent: AgentRef; completedAt: string | null; name: string; path: string; state: string }
+interface HotfixFleetRow { agent: AgentRef; completedAt: string | null; id: string; description: string; installedOn: string }
+
+const isServiceRunning = (status: string) => /run|active|started/i.test(status);
+const isServiceStopped = (status: string) => /^stop|paused/i.test(status);
+
 export function InfrastructurePage() {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'roles' | 'services' | 'tasks' | 'updates' | 'certs'>('roles');
   const [loading, setLoading] = useState(false);
 
-  // 1. Roles & Features State
-  const [roles, setRoles] = useState<any[]>([]);
+  // Fleet collector state — one entry per job_type per agent.
+  const [fleetNet, setFleetNet] = useState<FleetNetAgent[]>([]);
+
+  // Tab filters (client-side over fleet rows)
   const [rolesSearch, setRolesSearch] = useState('');
   const [rolesFilter, setRolesFilter] = useState<'all' | 'installed' | 'available'>('installed');
-  const [selectedRole, setSelectedRole] = useState<any | null>(null);
-  const [roleModalOpen, setRoleModalOpen] = useState(false);
-  const [roleActionExecuting, setRoleActionExecuting] = useState(false);
-
-  // 2. Services State
-  const [services, setServices] = useState<any[]>([]);
   const [serviceSearch, setServiceSearch] = useState('');
   const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | 'running' | 'stopped'>('all');
-  const [controllingService, setControllingService] = useState<string | null>(null);
-
-  // 3. Tasks State
-  const [tasks, setTasks] = useState<any[]>([]);
   const [tasksSearch, setTasksSearch] = useState('');
 
-  // 4. Updates State
-  const [updatesData, setUpdatesData] = useState<any>(null);
-
-  // 5. Certificates State
+  // Certificates still come from the legacy local-server API.
   const [certs, setCerts] = useState<any[]>([]);
-
-  // 6. ASAAS agent network telemetry
-  const [fleetNet, setFleetNet] = useState<FleetNetAgent[]>([]);
 
   const loadFleetNet = async () => {
     try {
@@ -186,46 +212,6 @@ export function InfrastructurePage() {
     }
   };
 
-  useEffect(() => {
-    loadFleetNet();
-  }, []);
-
-  const fetchRoles = async (refresh = false) => {
-    try {
-      const res = await api.getRoles(refresh);
-      setRoles(res?.roles || []);
-    } catch (err: any) {
-      toast(err.message || t('فشل جلب أدوار الخادم'), 'error');
-    }
-  };
-
-  const fetchServices = async (q = '') => {
-    try {
-      const res = await api.getServicesList(q);
-      setServices(res?.services || []);
-    } catch (err: any) {
-      toast(err.message || t('فشل جلب خدمات النظام'), 'error');
-    }
-  };
-
-  const fetchTasks = async () => {
-    try {
-      const res = await api.getTasksList();
-      setTasks(res?.tasks || []);
-    } catch (err: any) {
-      toast(err.message || t('فشل جلب المهام المجدولة'), 'error');
-    }
-  };
-
-  const fetchUpdates = async () => {
-    try {
-      const res = await api.getUpdates();
-      setUpdatesData(res);
-    } catch (err: any) {
-      toast(err.message || t('فشل جلب تحديثات الخادم'), 'error');
-    }
-  };
-
   const fetchCerts = async () => {
     try {
       const res = await api.getCertificatesList();
@@ -235,89 +221,160 @@ export function InfrastructurePage() {
     }
   };
 
-  const fetchTabData = async () => {
+  const refreshAll = async () => {
     setLoading(true);
-    if (activeTab === 'roles') await fetchRoles();
-    else if (activeTab === 'services') await fetchServices(serviceSearch);
-    else if (activeTab === 'tasks') await fetchTasks();
-    else if (activeTab === 'updates') await fetchUpdates();
-    else if (activeTab === 'certs') await fetchCerts();
-    setLoading(false);
+    try {
+      await loadFleetNet();
+      if (activeTab === 'certs') await fetchCerts();
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchTabData();
+    loadFleetNet();
+    const timer = window.setInterval(loadFleetNet, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'certs') fetchCerts();
   }, [activeTab]);
 
-  // Roles Actions
-  const handleToggleRoleModal = (role: any) => {
-    setSelectedRole(role);
-    setRoleModalOpen(true);
-  };
+  // --- Fleet row extraction (one row per agent item, tagged with its agent) ---
+  const fleetServices = useMemo<ServiceFleetRow[]>(() => fleetNet.flatMap((ag) => {
+    const entry = ag.services;
+    if (!entry || entry.error) return [];
+    return serviceRows(entry.result).map((s) => ({ ...s, agent: agentRef(ag), completedAt: entry.completed_at }));
+  }), [fleetNet]);
 
-  const handleExecuteRoleAction = async () => {
-    if (!selectedRole) return;
-    setRoleActionExecuting(true);
-    try {
-      const isInstalled = selectedRole.installed;
-      const fn = isInstalled ? api.uninstallRole : api.installRole;
-      const res = await fn(selectedRole.name, true);
-      if (res.ok) {
-        toast(`${t('تم بنجاح أمر ')}${isInstalled ? t('إزالة') : t('تثبيت')}${t(' الدور [')}${selectedRole.display_name}].`, 'success');
-        setRoleModalOpen(false);
-        fetchRoles(true);
-      } else {
-        toast(res.error || t('فشلت معالجة طلب الدور'), 'error');
-      }
-    } catch (err: any) {
-      toast(err.message || t('خطأ أثناء تنفيذ الإجراء'), 'error');
-    } finally {
-      setRoleActionExecuting(false);
-    }
-  };
+  const fleetFeatures = useMemo<FeatureFleetRow[]>(() => fleetNet.flatMap((ag) => {
+    const entry = ag.features;
+    if (!entry || entry.error) return [];
+    return asItemArray(entry.result, 'items', 'features').map((f) => {
+      const state = String(pickField(f, 'state', 'State') || '');
+      return {
+        agent: agentRef(ag),
+        completedAt: entry.completed_at,
+        name: String(pickField(f, 'name', 'Name', 'FeatureName') || '?'),
+        state,
+        installed: /^enabled/i.test(state),
+        available: /^disabled/i.test(state),
+      };
+    });
+  }), [fleetNet]);
 
-  // Services Actions
-  const handleControlService = async (serviceName: string, action: 'start' | 'stop' | 'restart') => {
-    setControllingService(serviceName);
-    try {
-      const res = await api.controlServiceAction(serviceName, action);
-      if (res.ok) {
-        toast(`${t('تم إرسال أمر ')}${action}${t(' للخدمة [')}${serviceName}${t('] بنجاح')}`, 'success');
-        fetchServices(serviceSearch);
-      } else {
-        toast(res.error || `${t('فشل أمر ')}${action}${t(' للخدمة')}`, 'error');
-      }
-    } catch (err: any) {
-      toast(err.message || t('خطأ أثناء التحكم بالخدمة'), 'error');
-    } finally {
-      setControllingService(null);
-    }
-  };
+  const fleetTasks = useMemo<TaskFleetRow[]>(() => fleetNet.flatMap((ag) => {
+    const entry = ag.tasks;
+    if (!entry || entry.error) return [];
+    return asItemArray(entry.result, 'tasks', 'items').map((tk) => ({
+      agent: agentRef(ag),
+      completedAt: entry.completed_at,
+      name: String(pickField(tk, 'TaskName', 'name', 'taskName') || '?'),
+      path: String(pickField(tk, 'TaskPath', 'path') || ''),
+      state: String(pickField(tk, 'State', 'state') || ''),
+    }));
+  }), [fleetNet]);
 
-  // Filters
-  const filteredRoles = roles.filter((r) => {
-    const matchesSearch =
-      (r.display_name || '').toLowerCase().includes(rolesSearch.toLowerCase()) ||
-      (r.name || '').toLowerCase().includes(rolesSearch.toLowerCase());
-    if (!matchesSearch) return false;
-    if (rolesFilter === 'installed') return r.installed;
-    if (rolesFilter === 'available') return !r.installed;
+  const fleetHotfixes = useMemo<HotfixFleetRow[]>(() => fleetNet.flatMap((ag) => {
+    const entry = ag.hotfixes;
+    if (!entry || entry.error) return [];
+    return asItemArray(entry.result, 'items', 'hotfixes').map((f) => ({
+      agent: agentRef(ag),
+      completedAt: entry.completed_at,
+      id: String(pickField(f, 'id', 'HotFixID', 'hotfix_id') || '?'),
+      description: String(pickField(f, 'description', 'Description') || ''),
+      installedOn: String(pickField(f, 'installed_on', 'InstalledOn', 'installedOn') || ''),
+    }));
+  }), [fleetNet]);
+
+  // --- Filters ---
+  const agentMatches = (agent: AgentRef, q: string) =>
+    agent.label.toLowerCase().includes(q) || agent.hostname.toLowerCase().includes(q);
+
+  const filteredFeatures = fleetFeatures.filter((f) => {
+    const q = rolesSearch.toLowerCase();
+    const match = !q || f.name.toLowerCase().includes(q) || agentMatches(f.agent, q);
+    if (!match) return false;
+    if (rolesFilter === 'installed') return f.installed;
+    if (rolesFilter === 'available') return f.available;
     return true;
   });
 
-  const filteredServices = services.filter((s) => {
-    const matchesSearch =
-      (s.display_name || '').toLowerCase().includes(serviceSearch.toLowerCase()) ||
-      (s.name || '').toLowerCase().includes(serviceSearch.toLowerCase());
-    if (!matchesSearch) return false;
-    if (serviceStatusFilter === 'running') return s.status === 'running';
-    if (serviceStatusFilter === 'stopped') return s.status === 'stopped';
+  const filteredServices = fleetServices.filter((s) => {
+    const q = serviceSearch.toLowerCase();
+    const match = !q
+      || s.display.toLowerCase().includes(q)
+      || s.name.toLowerCase().includes(q)
+      || agentMatches(s.agent, q);
+    if (!match) return false;
+    if (serviceStatusFilter === 'running') return isServiceRunning(s.status);
+    if (serviceStatusFilter === 'stopped') return isServiceStopped(s.status);
     return true;
   });
 
-  const filteredTasks = tasks.filter((t) =>
-    (t.name || '').toLowerCase().includes(tasksSearch.toLowerCase()) ||
-    (t.path || '').toLowerCase().includes(tasksSearch.toLowerCase())
+  const filteredTasks = fleetTasks.filter((tk) => {
+    const q = tasksSearch.toLowerCase();
+    return !q || tk.name.toLowerCase().includes(q) || tk.path.toLowerCase().includes(q) || agentMatches(tk.agent, q);
+  });
+
+  // Honest empty state: per-agent collector status + raw payload fallback.
+  const renderCollectorEmpty = (key: 'services' | 'features' | 'tasks' | 'hotfixes', label: string) => (
+    <Card style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+        {t('لا توجد صفوف من جامع')} {label}{t(' بعد. أرسله من صفحة الوكلاء ثم حدّث.')}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {fleetNet.map((ag) => {
+          const entry = ag[key];
+          const name = ag.linked_asset?.name || ag.name;
+          if (!entry) {
+            return <div key={ag.id} style={{ fontSize: 11, color: 'var(--text-3)' }}>{name} — {t('لم يُرسل الجامع بعد')}</div>;
+          }
+          if (entry.error) {
+            return <div key={ag.id} className="text-status-danger" style={{ fontSize: 11 }}>{name} — {entry.error}</div>;
+          }
+          return (
+            <details key={ag.id} style={{ fontSize: 11 }}>
+              <summary style={{ cursor: 'pointer', color: 'var(--text-3)' }}>{name} — {t('نتيجة مستلمة — عرض خام')}</summary>
+              <pre dir="ltr" style={{ margin: '8px 0 0', fontSize: 10, fontFamily: 'var(--font-telemetry)', color: 'var(--text-2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflowY: 'auto' }}>
+                {JSON.stringify(entry.result, null, 2)}
+              </pre>
+            </details>
+          );
+        })}
+      </div>
+      <div>
+        <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+          {t('إدارة الوكلاء وإرسال الجامعين')} ←
+        </NavLink>
+      </div>
+    </Card>
+  );
+
+  const renderNoAgents = () => (
+    <Card style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+        {t('لا يوجد وكلاء ASAAS مسجلون بعد. سجّل وكيلاً من صفحة الوكلاء لتفعيل بيانات الأسطول هنا.')}
+      </div>
+      <div>
+        <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
+          {t('إدارة الوكلاء')} ←
+        </NavLink>
+      </div>
+    </Card>
+  );
+
+  const agentCell = (agent: AgentRef, completedAt: string | null) => (
+    <td style={{ padding: '12px 16px' }}>
+      <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-1)' }}>{agent.label}</div>
+      <div
+        style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}
+        title={completedAt ? `${t('آخر قياس')}: ${new Date(completedAt).toLocaleString('ar-SA')}` : undefined}
+      >
+        {agent.hostname}
+      </div>
+    </td>
   );
 
   return (
@@ -330,10 +387,10 @@ export function InfrastructurePage() {
             <span>{t('البنية التحتية والخدمات (Windows Server Core & SCM)')}</span>
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-3)' }}>
-            {t('لوحة إدارة مركزية لأدوار وميزات السيرفر، خدمات Windows Service Control Manager، المهام المجدولة، والتحديثات.')}
+            {t('لوحة إدارة مركزية لأدوار وميزات السيرفر، خدمات Windows Service Control Manager، المهام المجدولة، والتحديثات — بيانات حية من وكلاء أساس.')}
           </p>
         </div>
-        <Button variant="ghost" onClick={fetchTabData} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Button variant="ghost" onClick={refreshAll} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <RefreshCw size={15} className={loading ? 'spin' : ''} />
           <span>{t('تحديث')}</span>
         </Button>
@@ -416,7 +473,7 @@ export function InfrastructurePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Cog size={18} style={{ color: 'var(--accent)' }} />
               <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>{t('خدمات وكلاء أساس')}</h3>
-              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('service.list حقيقية: حالة وخدمة بدء كل خدمة على كل وكيل')}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{t('service.list حقيقية: حالة ونوع بدء كل خدمة على كل وكيل')}</span>
             </div>
             <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
               {t('إدارة الوكلاء')} ←
@@ -425,7 +482,7 @@ export function InfrastructurePage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
             {fleetNet.map((ag) => {
               const svcs = ag.services && !ag.services.error ? serviceRows(ag.services.result) : [];
-              const running = svcs.filter((s) => /run|active|started/i.test(s.status)).length;
+              const running = svcs.filter((s) => isServiceRunning(s.status)).length;
               return (
                 <div key={ag.id} style={{ border: '1px solid var(--hairline)', borderRadius: 12, padding: '14px 16px', background: 'var(--glass-tint)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -458,7 +515,7 @@ export function InfrastructurePage() {
                           </span>
                           <span style={{ display: 'flex', gap: 6, flexShrink: 0, color: 'var(--text-3)' }}>
                             {s.start && <span style={{ fontSize: 9 }}>{s.start}</span>}
-                            <span style={{ color: /run|active|started/i.test(s.status) ? 'var(--paid)' : 'var(--unpaid)' }}>{s.status || '—'}</span>
+                            <span style={{ color: isServiceRunning(s.status) ? 'var(--paid)' : 'var(--unpaid)' }}>{s.status || '—'}</span>
                           </span>
                         </div>
                       ))}
@@ -490,10 +547,10 @@ export function InfrastructurePage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
             {fleetNet.map((ag) => {
-              const feats = ag.features && !ag.features.error ? agentRows(ag.features.result, 'items', 'features') : [];
-              const featEnabled = feats.filter((f) => /enable/i.test(String(pickField(f, 'state', 'State'))));
-              const tasks = ag.tasks && !ag.tasks.error ? agentRows(ag.tasks.result, 'tasks', 'items') : [];
-              const fixes = ag.hotfixes && !ag.hotfixes.error ? agentRows(ag.hotfixes.result, 'items', 'hotfixes') : [];
+              const feats = ag.features && !ag.features.error ? asItemArray(ag.features.result, 'items', 'features') : [];
+              const featEnabled = feats.filter((f) => /^enabled/i.test(String(pickField(f, 'state', 'State'))));
+              const tasks = ag.tasks && !ag.tasks.error ? asItemArray(ag.tasks.result, 'tasks', 'items') : [];
+              const fixes = ag.hotfixes && !ag.hotfixes.error ? asItemArray(ag.hotfixes.result, 'items', 'hotfixes') : [];
               const anyData = feats.length + tasks.length + fixes.length;
               const lastAt = [ag.features?.completed_at, ag.tasks?.completed_at, ag.hotfixes?.completed_at]
                 .filter(Boolean).sort().pop();
@@ -526,7 +583,7 @@ export function InfrastructurePage() {
                             {t('الأدوار والميزات المفعّلة')} ({featEnabled.length}/{feats.length})
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 90, overflowY: 'auto' }}>
-                            {feats.filter((f) => /enable/i.test(String(pickField(f, 'state', 'State')))).slice(0, 12).map((f, i) => (
+                            {feats.filter((f) => /^enabled/i.test(String(pickField(f, 'state', 'State')))).slice(0, 12).map((f, i) => (
                               <div key={i} style={{ fontSize: 10, color: 'var(--text-2)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {pickField(f, 'name', 'Name', 'FeatureName')}
                               </div>
@@ -619,7 +676,7 @@ export function InfrastructurePage() {
           }}
         >
           <Cog size={16} />
-          <span>{t('خدمات Windows')} (Services - {services.length})</span>
+          <span>{t('خدمات Windows')} (Services - {fleetServices.length})</span>
         </button>
 
         <button
@@ -686,311 +743,268 @@ export function InfrastructurePage() {
         </button>
       </div>
 
-      {/* Tab 1: Roles & Features */}
+      {/* Tab 1: Roles & Features (windows.features collector) */}
       {activeTab === 'roles' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, maxWidth: 420 }}>
-              <div style={{ position: 'relative', width: '100%' }}>
-                <Search size={16} style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-3)' }} />
-                <TextInput
-                  value={rolesSearch}
-                  onChange={(e) => setRolesSearch(e.target.value)}
-                  placeholder={t('بحث في الأدوار والميزات...')}
-                  style={{ paddingRight: 36 }}
-                />
-              </div>
-            </div>
+          {fleetNet.length === 0 ? renderNoAgents() : fleetFeatures.length === 0 ? renderCollectorEmpty('features', 'windows.features') : (
+            <>
+              {/* Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, maxWidth: 420 }}>
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <Search size={16} style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-3)' }} />
+                    <TextInput
+                      value={rolesSearch}
+                      onChange={(e) => setRolesSearch(e.target.value)}
+                      placeholder={t('بحث في الأدوار والميزات أو الوكلاء...')}
+                      style={{ paddingRight: 36 }}
+                    />
+                  </div>
+                </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button
-                variant={rolesFilter === 'installed' ? 'primary' : 'ghost'}
-                onClick={() => setRolesFilter('installed')}
-                style={{ fontSize: 12 }}
-              >
-                {t('المثبتة فقط')}
-              </Button>
-              <Button
-                variant={rolesFilter === 'available' ? 'primary' : 'ghost'}
-                onClick={() => setRolesFilter('available')}
-                style={{ fontSize: 12 }}
-              >
-                {t('المتاحة للتثبيت')}
-              </Button>
-              <Button
-                variant={rolesFilter === 'all' ? 'primary' : 'ghost'}
-                onClick={() => setRolesFilter('all')}
-                style={{ fontSize: 12 }}
-              >
-                {t('الكل')} ({roles.length})
-              </Button>
-            </div>
-          </div>
-
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
-                <thead>
-                  <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الدور / الميزة')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المعرف التقني')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>{t('إجراء المعالج')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRoles.map((r, i) => (
-                    <tr key={r.name || i} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{r.display_name}</div>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
-                        {r.name}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span className={`badge ${r.installed ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
-                          {r.installed ? t('مثبّت ونشط') : t('متاح للتثبيت')}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'end' }}>
-                        <Button
-                          variant={r.installed ? 'secondary' : 'primary'}
-                          onClick={() => handleToggleRoleModal(r)}
-                          style={{ fontSize: 11, padding: '4px 10px' }}
-                        >
-                          {r.installed ? t('إزالة الدور') : t('تثبيت الدور')}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Tab 2: Windows Services (SCM) */}
-      {activeTab === 'services' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, maxWidth: 420 }}>
-              <div style={{ position: 'relative', width: '100%' }}>
-                <Search size={16} style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-3)' }} />
-                <TextInput
-                  value={serviceSearch}
-                  onChange={(e) => {
-                    setServiceSearch(e.target.value);
-                    fetchServices(e.target.value);
-                  }}
-                  placeholder={t('بحث سريع في الخدمات (مثال: RpcSs, TermService, WinRM)...')}
-                  style={{ paddingRight: 36 }}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button
-                variant={serviceStatusFilter === 'running' ? 'primary' : 'ghost'}
-                onClick={() => setServiceStatusFilter('running')}
-                style={{ fontSize: 12 }}
-              >
-                {t('قيد التشغيل (Running)')}
-              </Button>
-              <Button
-                variant={serviceStatusFilter === 'stopped' ? 'primary' : 'ghost'}
-                onClick={() => setServiceStatusFilter('stopped')}
-                style={{ fontSize: 12 }}
-              >
-                {t('متوقفة (Stopped)')}
-              </Button>
-              <Button
-                variant={serviceStatusFilter === 'all' ? 'primary' : 'ghost'}
-                onClick={() => setServiceStatusFilter('all')}
-                style={{ fontSize: 12 }}
-              >
-                {t('كافة الخدمات')} ({services.length})
-              </Button>
-            </div>
-          </div>
-
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto', maxHeight: '600px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                  <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الخدمة')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الاسم البرمجي')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نوع البدء')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700, textAlign: 'end' }}>{t('التحكم بالخدمة')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredServices.map((s) => (
-                    <tr key={s.name} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{s.display_name || s.name}</div>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
-                        {s.name}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
-                        <span className="badge badge--neutral" style={{ fontSize: 10 }}>
-                          {s.start_type || '—'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span className={`badge ${s.status === 'running' ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
-                          {s.status === 'running' ? t('قيد التشغيل') : t('متوقفة')}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'end' }}>
-                        <div style={{ display: 'inline-flex', gap: 6 }}>
-                          {s.status !== 'running' && (
-                            <Button
-                              variant="ghost"
-                              disabled={controllingService === s.name}
-                              onClick={() => handleControlService(s.name, 'start')}
-                              style={{ color: 'var(--status-safe)', padding: 6 }}
-                              title={t('تشغيل الخدمة')}
-                            >
-                              <Play size={14} />
-                            </Button>
-                          )}
-                          {s.status === 'running' && (
-                            <Button
-                              variant="ghost"
-                              disabled={controllingService === s.name}
-                              onClick={() => handleControlService(s.name, 'stop')}
-                              style={{ color: 'var(--status-danger)', padding: 6 }}
-                              title={t('إيقاف الخدمة')}
-                            >
-                              <Square size={14} />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            disabled={controllingService === s.name}
-                            onClick={() => handleControlService(s.name, 'restart')}
-                            style={{ color: 'var(--accent)', padding: 6 }}
-                            title={t('إعادة تشغيل الخدمة')}
-                          >
-                            <RotateCw size={14} className={controllingService === s.name ? 'spin' : ''} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Tab 3: Scheduled Tasks */}
-      {activeTab === 'tasks' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ position: 'relative', maxWidth: 420 }}>
-            <Search size={16} style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-3)' }} />
-            <TextInput
-              value={tasksSearch}
-              onChange={(e) => setTasksSearch(e.target.value)}
-              placeholder={t('بحث في المهام المجدولة...')}
-              style={{ paddingRight: 36 }}
-            />
-          </div>
-
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
-                <thead>
-                  <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم المهمة')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المسار في Task Scheduler')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTasks.map((t, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
-                        {t.name}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
-                        {t.path}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span className={`badge ${t.state === 'Ready' || t.state === 'Running' ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
-                          {t.state}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Tab 4: Windows Updates */}
-      {activeTab === 'updates' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {updatesData?.pending_reboot && (
-            <div style={{ padding: 14, borderRadius: 8, background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.3)', display: 'flex', alignItems: 'center', gap: 10, color: 'var(--accent)' }}>
-              <AlertTriangle size={20} />
-              <div>
-                <strong>{t('تنبيه: يتطلب النظام إعادة تشغيل لإكمال تطبيق تحديثات الأمان!')}</strong>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                  {t('سجل Windows Registry يشير إلى وجود تحديثات مجمعة مثبتة بانتظار إعادة التشغيل.')}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button
+                    variant={rolesFilter === 'installed' ? 'primary' : 'ghost'}
+                    onClick={() => setRolesFilter('installed')}
+                    style={{ fontSize: 12 }}
+                  >
+                    {t('المثبتة فقط')}
+                  </Button>
+                  <Button
+                    variant={rolesFilter === 'available' ? 'primary' : 'ghost'}
+                    onClick={() => setRolesFilter('available')}
+                    style={{ fontSize: 12 }}
+                  >
+                    {t('المتاحة للتثبيت')}
+                  </Button>
+                  <Button
+                    variant={rolesFilter === 'all' ? 'primary' : 'ghost'}
+                    onClick={() => setRolesFilter('all')}
+                    style={{ fontSize: 12 }}
+                  >
+                    {t('الكل')} ({fleetFeatures.length})
+                  </Button>
                 </div>
               </div>
-            </div>
-          )}
 
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
-              {t('سجل التحديثات المثبتة (Hotfixes & Security Patches)')}
-            </div>
-            <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
-                <thead>
-                  <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('معرف التحديث (HotFix ID)')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوصف')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('تاريخ التثبيت')}</th>
-                    <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('مثبت بواسطة')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(updatesData?.hotfixes || []).map((h: any, i: number) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: 'var(--accent)' }}>
-                        {h.HotFixID}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
-                        {h.Description || '—'}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
-                        {h.InstalledOn || t('غير محدد')}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
-                        {h.InstalledBy || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+              <Card style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الدور / الميزة')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المعرف التقني')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredFeatures.map((f, i) => (
+                        <tr key={`${f.agent.id}:${f.name}:${i}`} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{f.name}</div>
+                          </td>
+                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
+                            {f.name}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span className={`badge ${f.installed ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
+                              {f.installed ? t('مثبّت ونشط') : f.state || t('متاح للتثبيت')}
+                            </span>
+                          </td>
+                          {agentCell(f.agent, f.completedAt)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
+          )}
         </div>
       )}
 
-      {/* Tab 5: Certificates */}
+      {/* Tab 2: Windows Services (service.list collector — read-only) */}
+      {activeTab === 'services' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {fleetNet.length === 0 ? renderNoAgents() : fleetServices.length === 0 ? renderCollectorEmpty('services', 'service.list') : (
+            <>
+              {/* Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, maxWidth: 420 }}>
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <Search size={16} style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-3)' }} />
+                    <TextInput
+                      value={serviceSearch}
+                      onChange={(e) => setServiceSearch(e.target.value)}
+                      placeholder={t('بحث في الخدمات أو الوكلاء (مثال: RpcSs, WinRM)...')}
+                      style={{ paddingRight: 36 }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button
+                    variant={serviceStatusFilter === 'running' ? 'primary' : 'ghost'}
+                    onClick={() => setServiceStatusFilter('running')}
+                    style={{ fontSize: 12 }}
+                  >
+                    {t('قيد التشغيل (Running)')}
+                  </Button>
+                  <Button
+                    variant={serviceStatusFilter === 'stopped' ? 'primary' : 'ghost'}
+                    onClick={() => setServiceStatusFilter('stopped')}
+                    style={{ fontSize: 12 }}
+                  >
+                    {t('متوقفة (Stopped)')}
+                  </Button>
+                  <Button
+                    variant={serviceStatusFilter === 'all' ? 'primary' : 'ghost'}
+                    onClick={() => setServiceStatusFilter('all')}
+                    style={{ fontSize: 12 }}
+                  >
+                    {t('كافة الخدمات')} ({fleetServices.length})
+                  </Button>
+                </div>
+              </div>
+
+              <Card style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto', maxHeight: '600px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                      <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الخدمة')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الاسم البرمجي')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('نوع البدء')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredServices.map((s, i) => (
+                        <tr key={`${s.agent.id}:${s.name}:${i}`} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-1)' }}>{s.display || s.name}</div>
+                          </td>
+                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
+                            {s.name}
+                          </td>
+                          <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
+                            <span className="badge badge--neutral" style={{ fontSize: 10 }}>
+                              {s.start || '—'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span className={`badge ${isServiceRunning(s.status) ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
+                              {isServiceRunning(s.status) ? t('قيد التشغيل') : isServiceStopped(s.status) ? t('متوقفة') : (s.status || '—')}
+                            </span>
+                          </td>
+                          {agentCell(s.agent, s.completedAt)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Scheduled Tasks (scheduled.tasks collector) */}
+      {activeTab === 'tasks' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {fleetNet.length === 0 ? renderNoAgents() : fleetTasks.length === 0 ? renderCollectorEmpty('tasks', 'scheduled.tasks') : (
+            <>
+              <div style={{ position: 'relative', maxWidth: 420 }}>
+                <Search size={16} style={{ position: 'absolute', right: 12, top: 10, color: 'var(--text-3)' }} />
+                <TextInput
+                  value={tasksSearch}
+                  onChange={(e) => setTasksSearch(e.target.value)}
+                  placeholder={t('بحث في المهام المجدولة أو الوكلاء...')}
+                  style={{ paddingRight: 36 }}
+                />
+              </div>
+
+              <Card style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم المهمة')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المسار في Task Scheduler')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الحالة')}</th>
+                        <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTasks.map((tk, i) => (
+                        <tr key={`${tk.agent.id}:${tk.name}:${tk.path}:${i}`} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>
+                            {tk.name}
+                          </td>
+                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
+                            {tk.path || '—'}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span className={`badge ${tk.state === 'Ready' || tk.state === 'Running' ? 'badge--success' : 'badge--neutral'}`} style={{ fontSize: 11 }}>
+                              {tk.state || '—'}
+                            </span>
+                          </td>
+                          {agentCell(tk.agent, tk.completedAt)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab 4: Windows Updates (hotfix.list collector) */}
+      {activeTab === 'updates' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {fleetNet.length === 0 ? renderNoAgents() : fleetHotfixes.length === 0 ? renderCollectorEmpty('hotfixes', 'hotfix.list') : (
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
+                {t('سجل التحديثات المثبتة (Hotfixes & Security Patches)')}
+              </div>
+              <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('معرف التحديث (HotFix ID)')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوصف')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('تاريخ التثبيت')}</th>
+                      <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوكيل')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fleetHotfixes.map((h, i) => (
+                      <tr key={`${h.agent.id}:${h.id}:${i}`} style={{ borderBottom: '1px solid var(--glass-rim-low)' }}>
+                        <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: 'var(--accent)' }}>
+                          {h.id}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)' }}>
+                          {h.description || '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)' }}>
+                          {h.installedOn || t('غير محدد')}
+                        </td>
+                        {agentCell(h.agent, h.completedAt)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Tab 5: Certificates (legacy local-server API — no fleet collector yet) */}
       {activeTab === 'certs' && (
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--glass-rim)', fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>
@@ -1028,33 +1042,6 @@ export function InfrastructurePage() {
           </div>
         </Card>
       )}
-
-      {/* Modal: Role Action Confirmation */}
-      <Modal
-        open={roleModalOpen}
-        onClose={() => setRoleModalOpen(false)}
-        title={selectedRole?.installed ? t('إزالة دور من الخادم') : t('تثبيت دور وميزة على الخادم')}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            هل ترغب في {selectedRole?.installed ? t('إلغاء تثبيت') : t('تثبيت')} الدور التالي عبر Server Manager؟
-          </div>
-          <div style={{ padding: 12, borderRadius: 8, background: 'var(--glass-tint)', border: '1px solid var(--glass-rim)' }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-1)' }}>{selectedRole?.display_name}</div>
-            <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--accent)', marginTop: 2 }}>{selectedRole?.name}</div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
-            <Button variant="ghost" onClick={() => setRoleModalOpen(false)}>{t('إلغاء')}</Button>
-            <Button
-              variant={selectedRole?.installed ? 'danger' : 'primary'}
-              disabled={roleActionExecuting}
-              onClick={handleExecuteRoleAction}
-            >
-              {roleActionExecuting ? t('جارٍ المعالجة عبر Action Engine...') : (selectedRole?.installed ? t('تأكيد الإزالة') : t('تأكيد التثبيت'))}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
