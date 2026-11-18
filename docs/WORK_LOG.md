@@ -619,3 +619,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - **`tests/test_enterprise_v25.py` + `v30.py`**: إزالة hardcode `127.0.0.1:8765` و`admin`/`admin@asaas2026` → متغيرات بيئة `ASAAS_TEST_BASE_URL`/`ASAAS_TEST_USER`/`ASAAS_TEST_PASS` (نفس القيم افتراضياً — لا كسر للتوافق).
 - **تحقق**: شُغّل backend حي على :8766 (`ASAAS_PORT`) مع حساب `e2e-admin` → `python -m unittest discover -s tests` = **34/34 OK** (v25: 8/8، v30: 11/11، البقية: عقود/أمن/منافذ/telemetry).
 - السبب الجذري للفشل السابق: المنفذ 8765 كان مشغولاً بنسخة `zimam-backend.exe` قديمة بقاعدة بيانات مختلفة — لم يكن عيب كود بل بيئة اختبار.
+
+### 12.27 anti-mock-audit — النتائج الكاملة
+
+- **Semgrep** (rules مخصصة: أزرار بلا onClick، setTimeout نجاح وهمي): 0 نتائج في `frontend/src`.
+- **Knip/static**: لا `onClick={() => {}}`، لا `href="#"`, لا «قيد التطوير» stubs — مؤكد في §12.23.
+- **Runtime wiring audit (جديد `frontend/e2e/wiring-audit.spec.ts`)**: 20 صفحة رئيسية × تحميل حقيقي بجلسة admin → **20/20 PASS** — صفر أخطاء JS غير ملتقطة، صفر redirect لـ /login. يرفض الفشل فقط على أخطاء console حقيقية (يتجاهل ضجيج `Failed to load resource` و404 الخاصة بـ `/api/v1` عند غياب control plane).
+- **Gremlins/Backstop**: مؤجلان — يحتاجان بيئة staging مستقرة؛ المصفوفة البصرية مغطاة بـ 72 screenshot في §12.22.
