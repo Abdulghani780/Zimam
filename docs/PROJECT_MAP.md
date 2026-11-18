@@ -97,7 +97,7 @@
 
 ### ⬜ المرحلة 6 — نواقص تشغيلية (من WORK_LOG)
 - [ ] Shadowing: تحقق نهائي (RemoteFX fix مطبّق) + preflight validation
-- [ ] Agent كخدمة Windows (`install-service`) — حالياً عملية عادية
+- [x] Agent كخدمة Windows — `Asaas.Agent.exe install|uninstall|status` موجود (sc.exe + env vars في registry + `AddWindowsService`)؛ تحقق تشغيلي على جهاز نظيف متبقٍ
 - [ ] Inno Setup install + بناء `ASAAS-Setup` + اختبار على جهاز نظيف
 - [ ] إعادة بناء `release/` بالثنائيات الجديدة (asaas-*)
 
