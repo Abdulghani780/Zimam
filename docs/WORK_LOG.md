@@ -411,3 +411,11 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 
 - `npm run build` (tsc + vite) ✅
 - `oxlint` ✅ — نفس التحذيرين القديمين فقط
+
+---
+
+## 10. Phase 0.6/0.7 — تغطية e2e للموبايل/الـ viewports (2026-11-18)
+
+- وُجد مسبقاً: `mobile-responsiveness.spec.ts` (390px: tabbar/drawer/no-overflow على `/` فقط) و`visual-audit.spec.ts` (screenshots 13 صفحة @ desktop).
+- **أُضيف `frontend/e2e/viewport-matrix.spec.ts`**: فحص horizontal overflow لكل الصفحات عند 375/768/900/1280px + تحقق `.mobile-tabbar` ظاهر ≤900px ومخفي >900px + مصفوفة screenshots كاملة 375/768/1280 × light/dark → `docs/visual-audit-screenshots/matrix/`.
+- **لم تُشغَّل بعد** — تتطلب backend حي على `:8765` (كان متوقفاً وقت الكتابة). بعد توفر الخادم: `npx playwright test viewport-matrix` ثم تعليم 0.6/0.7 في PROJECT_MAP.
