@@ -93,7 +93,7 @@
 - screen/terminal recording + replay
 - AD/LDAP sync
 - off-box backup replication
-- production mTLS issuance
+- ~~production mTLS issuance~~ ✅ `asaas_control/mtls.py` — CA محلي ECDSA + `POST /pki/ca` + `POST /agents/{id}/cert` + `GET /pki/ca.crt`؛ إنفاذ client-cert على TLS terminator خطوة نشر
 
 ### ⬜ المرحلة 6 — نواقص تشغيلية (من WORK_LOG)
 - [ ] Shadowing: تحقق نهائي (RemoteFX fix مطبّق) + preflight validation

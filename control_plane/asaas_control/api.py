@@ -25,6 +25,7 @@ from .gateway import DEFAULT_PORTS, SUPPORTED_PROTOCOLS, enabled as gateway_enab
 from .identity import verify_legacy_password
 from .license import LicenseError, activate_license, deactivate_license, get_license_state
 from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, JitGrantRow, User
+from .mtls import ca_cert_pem, ca_status, ensure_ca, issue_client_cert, rotate_ca
 from .permissions import AccessContext, AccessPolicy, PermissionEngine
 from .security import hash_password, new_token, token_hash, verify_password
 from .signing import get_job_signer
@@ -987,6 +988,76 @@ def enroll_agent(name: str, x_agent_enrollment_token: str | None = Header(defaul
         agent = Agent(id=uuid.uuid4().hex, name=name, enrollment_hash=token_hash(raw), status="enrolled", inventory_json="{}")
         db.add(agent)
         return {"agent_id": agent.id, "agent_key": raw, "signing_public_key": get_job_signer().public_key_hex(), "warning": "Store this key once; it is not shown again."}
+
+
+# --- mTLS CA / client certificate issuance (admin only) ---------------------
+
+
+@router.get("/pki/status")
+def pki_status(user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    return ca_status()
+
+
+@router.post("/pki/ca", status_code=201)
+def pki_init_ca(user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    ca_cert, _ = ensure_ca()
+    with db_session() as db:
+        append_audit(db, actor_id=user.id, action="pki.ca.init", payload={"subject": ca_cert.subject.rfc4514_string()})
+    return ca_status()
+
+
+@router.post("/pki/ca/rotate")
+def pki_rotate_ca(user: User = Depends(_current_user)) -> dict:
+    _require_admin(user)
+    result = rotate_ca()
+    with db_session() as db:
+        append_audit(db, actor_id=user.id, action="pki.ca.rotate")
+    return result
+
+
+@router.get("/pki/ca.crt")
+def pki_ca_cert(user: User = Depends(_current_user)) -> Response:
+    _require_admin(user)
+    pem = ca_cert_pem()
+    if pem is None:
+        raise HTTPException(status_code=404, detail="PKI CA not initialized; POST /pki/ca first")
+    return Response(content=pem, media_type="application/x-pem-file")
+
+
+@router.post("/agents/{agent_id}/cert", status_code=201)
+def issue_agent_cert(agent_id: str, user: User = Depends(_current_user)) -> dict:
+    """Issue an mTLS client certificate for an enrolled agent.
+
+    Returns the PEM bundle once; the pair is also persisted under
+    ``<pki>/issued/`` for redeploy. Agents present it on their HTTP client
+    once the TLS terminator enforces client certificates.
+    """
+    _require_admin(user)
+    with db_session() as db:
+        agent = db.get(Agent, agent_id)
+        if agent is None:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        agent_name = agent.name
+    issued = issue_client_cert(f"agent-{agent_name}", san_dns=())
+    with db_session() as db:
+        append_audit(
+            db,
+            actor_id=user.id,
+            action="pki.agent_cert.issue",
+            target_id=agent_id,
+            payload={"serial": issued.serial, "expires_at": issued.expires_at.isoformat()},
+        )
+    return {
+        "agent_id": agent_id,
+        "serial": issued.serial,
+        "common_name": issued.common_name,
+        "expires_at": issued.expires_at.isoformat(),
+        "cert_pem": issued.cert_pem,
+        "key_pem": issued.key_pem,
+        "paths": {"cert": str(issued.cert_path), "key": str(issued.key_path)},
+    }
 
 
 @router.post("/agents/{agent_id}/heartbeat")

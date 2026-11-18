@@ -437,3 +437,19 @@ Backend:     127.0.0.1:8765 (loopback فقط)
 - `ISCC.exe packaging\asaas.iss` نجح في 23.6s → `installer-out\ASAAS-Setup-1.0.0.exe` (**75.7MB**، gitignored).
 - تحذير Inno غير حرج: `PrivilegesRequired=admin` مع per-user areas — مراجعة اختيارية لاحقاً.
 - **المتبقي الوحيد في Phase 6**: اختبار التثبيت على VM نظيف.
+
+---
+
+## 12. Phase 5 — Redis tokens + mTLS issuance (2026-11-18)
+
+### 12.1 Redis-backed token consumption
+
+- `ConnectionTokenStore._used` كان set في الذاكرة — غير آمن عبر multi-worker.
+- الآن: `ASAAS_REDIS_URL` → استهلاك nonce ذرّي `SET NX EX`؛ بدونها fallback للذاكرة (single-worker فقط). `redis>=5,<7` في requirements. 10/10 tests ✅
+
+### 12.2 mTLS issuance
+
+- `control_plane/asaas_control/mtls.py` جديد: CA محلي ECDSA P-256 تحت `ASAAS_MTLS_DIR` (افتراضي `data/pki`) — `ca.crt/ca.key` (key بـ0600) + شهادات مصدرة في `issued/`.
+- Endpoints (admin فقط): `GET /pki/status`، `POST /pki/ca`، `POST /pki/ca/rotate` (أرشفة القديمة)، `GET /pki/ca.crt`، `POST /agents/{id}/cert` → PEM bundle + حفظ على القرص + audit.
+- **تحقق**: `ensure_ca` + `issue_client_cert` جُرّبتا فعلياً (serial/expiry صحيحان)؛ 10/10 control_plane tests ✅.
+- **متبقٍ كنشر**: إنفاذ client-cert على الـ TLS terminator (proxy/uvicorn) + تحميل الوكيل لشهادته — موثق في CONTROL_PLANE.md.
