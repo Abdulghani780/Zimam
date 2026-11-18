@@ -177,6 +177,10 @@ jobs:
           .\.venv\Scripts\python.exe -m pip install --upgrade pip
           .\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt -r control_plane\requirements.txt pyinstaller
 
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
       - name: Build staged release payload
         run: powershell -ExecutionPolicy Bypass -File tools\build-release.ps1
 

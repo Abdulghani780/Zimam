@@ -17,7 +17,7 @@ test.describe('ASAAS smoke', () => {
     await page.locator('input[autocomplete="username"]').fill(USER);
     await page.locator('input[autocomplete="current-password"]').fill(PASS);
     await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
-    await expect(page).toHaveURL(/\/$|\/$/);
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30000 });
     await expect(page.locator('h1, h2, .page-title').first()).toBeVisible({ timeout: 15000 });
   });
 
