@@ -462,3 +462,10 @@ Backend:     127.0.0.1:8765 (loopback فقط)
   - الصلاحيات: فتح الجلسة يتطلب policy بـ action `connect`؛ عمليات الملفات تتطلب action `sftp` (list/stat/download/upload/mkdir/rename/delete)؛ admin يتجاوز كالمعتاد؛ audit على الفتح/الفشل.
   - `paramiko>=3.4,<4` في requirements + ثُبّت في `.venv` (3.5.1).
 - **تحقق**: `py_compile` + `import asaas_control.api` ✅ في venv؛ session manager (get/wrong-user/close) ✅؛ 10/10 control_plane tests ✅. اختبار SFTP حي على سيرفر SSH حقيقي متبقٍ.
+
+### 12.4 Screen/terminal recording + replay
+
+- `asaas_control/recording.py`: `SessionRecorder` يلتقط كل instruction من guacd→client أثناء `pump_to_client` في `data/recordings/<id>.jsonl` (JSONL: `{t_ms, instruction}`) + `meta.json` جانبي؛ `ASAAS_GW_RECORD` (افتراضي on).
+- `gateway.py`: `pump_to_client(send_text, recorder=...)` — التسجيل لا يعطّل الجلسة الحية (try/except).
+- Endpoints: `GET /recordings` (non-admin يرى تسجيلاته فقط)، `GET /recordings/{id}`، `DELETE` (admin)، `WS /recordings/{id}/replay` — يعيد بث التعليمات المسجلة بنفس التوقيت لـ guacamole-common-js (cookie auth عبر `_current_user`).
+- **تحقق**: record→list→replay→delete roundtrip فعلي ✅؛ compile+imports+10/10 tests ✅. replay بصري حقيقي يحتاج جلسة guacd حية.

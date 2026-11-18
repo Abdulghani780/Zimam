@@ -24,6 +24,7 @@ from .connection_tokens import ConnectionTokenStore
 from .gateway import DEFAULT_PORTS, SUPPORTED_PROTOCOLS, enabled as gateway_enabled, open_session, parse_instruction
 from .identity import verify_legacy_password
 from .license import LicenseError, activate_license, deactivate_license, get_license_state
+from . import recording as session_recording
 from . import sftp as sftp_path
 from .models import AccessPolicyRow, Account, Agent, AgentJob, AppSession, Asset, JitGrantRow, User
 from .mtls import ca_cert_pem, ca_status, ensure_ca, issue_client_cert, rotate_ca
@@ -556,11 +557,24 @@ async def gateway_session(websocket: WebSocket, protocol: str, token: str = "") 
                 return await _recv()
         return message
 
+    recorder = None
+    if session_recording.recording_enabled():
+        try:
+            recorder = session_recording.SessionRecorder(
+                uuid.uuid4().hex,
+                protocol=protocol,
+                asset_id=asset.id,
+                account_id=account.id,
+                user_id=claims.user_id,
+            )
+        except Exception as exc:
+            log.warning("recording init failed: %s", exc)
+
     async def _send(text: str) -> None:
         await websocket.send_text(text)
 
     try:
-        pump_out = asyncio.create_task(session.pump_to_client(_send))
+        pump_out = asyncio.create_task(session.pump_to_client(_send, recorder=recorder))
         pump_in = asyncio.create_task(session.pump_from_client(_recv))
         done, pending = await asyncio.wait({pump_out, pump_in}, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
@@ -571,6 +585,11 @@ async def gateway_session(websocket: WebSocket, protocol: str, token: str = "") 
                 log.debug("gateway pump ended: %s", exc)
     finally:
         session.close()
+        if recorder is not None:
+            try:
+                recorder.close()
+            except Exception:
+                pass
         with db_session() as db:
             append_audit(db, actor_id=claims.user_id, action="gateway.session_close", target_id=asset.id, payload={"protocol": protocol})
         await _close(1000, "session ended")
@@ -662,8 +681,65 @@ def terminate_session_legacy_path(session_id: str, _: User = Depends(_current_us
 
 
 @router.get("/recordings")
-def list_recordings(_: User = Depends(_current_user)) -> dict:
-    return {"items": [], "count": 0, "storage_status": "not_configured"}
+def list_recordings(user: User = Depends(_current_user)) -> dict:
+    items = session_recording.list_recordings()
+    if not user.is_admin:
+        items = [i for i in items if i.get("user_id") == user.id]
+    return {"items": items, "count": len(items), "storage_status": "active"}
+
+
+@router.get("/recordings/{recording_id}")
+def get_recording(recording_id: str, user: User = Depends(_current_user)) -> dict:
+    meta = session_recording.get_meta(recording_id)
+    if meta is None or (not user.is_admin and meta.get("user_id") != user.id):
+        raise HTTPException(status_code=404, detail="Recording not found")
+    return meta
+
+
+@router.delete("/recordings/{recording_id}", status_code=204)
+def delete_recording(recording_id: str, user: User = Depends(_current_user)) -> Response:
+    _require_admin(user)
+    if not session_recording.delete_recording(recording_id):
+        raise HTTPException(status_code=404, detail="Recording not found")
+    return Response(status_code=204)
+
+
+@router.websocket("/recordings/{recording_id}/replay")
+async def replay_recording(websocket: WebSocket, recording_id: str, user: User = Depends(_current_user)) -> None:
+    """Stream a recorded guacd->client instruction stream back to a client.
+
+    The replaying client still performs its own Guacamole handshake against
+    this socket; inbound instructions are ignored and recorded outbound
+    instructions are replayed paced by their original timing. Non-admin users
+    may only replay their own recordings.
+    """
+    meta = session_recording.get_meta(recording_id)
+    if meta is None or (not user.is_admin and meta.get("user_id") != user.id):
+        raise HTTPException(status_code=404, detail="Recording not found")
+    offered = websocket.headers.get("sec-websocket-protocol", "")
+    subprotocol = "guacamole" if "guacamole" in offered else None
+    await websocket.accept(subprotocol=subprotocol)
+
+    async def _recv():
+        try:
+            return await websocket.receive_text()
+        except WebSocketDisconnect:
+            return None
+
+    async def _send(text: str) -> None:
+        await websocket.send_text(text)
+
+    pump = asyncio.create_task(session_recording.stream_replay(recording_id, _send))
+    drain = asyncio.create_task(_recv())
+    try:
+        done, pending = await asyncio.wait({pump, drain}, return_when=asyncio.FIRST_COMPLETED)
+        for task in pending:
+            task.cancel()
+    finally:
+        try:
+            await websocket.close(code=1000, reason="replay ended")
+        except Exception:
+            pass
 
 
 @router.post("/directory/sync")

@@ -116,13 +116,22 @@ class GuacdSession:
                 values.append(params.get(name, ""))
         await self._send(encode_instruction("connect", *values))
 
-    async def pump_to_client(self, send_text) -> None:
-        """Forward guacd instructions to the websocket until EOF."""
+    async def pump_to_client(self, send_text, recorder=None) -> None:
+        """Forward guacd instructions to the websocket until EOF.
+
+        When ``recorder`` is a ``recording.SessionRecorder`` every outbound
+        instruction is also appended to the session recording.
+        """
         while True:
             instr = await self._reader.read_instruction()
             if instr is None:
                 return
             await send_text(instr)
+            if recorder is not None:
+                try:
+                    recorder.record(instr)
+                except Exception:
+                    pass  # recording must never break the live session
 
     async def pump_from_client(self, receive_text) -> None:
         """Forward websocket instructions to guacd until the socket closes."""

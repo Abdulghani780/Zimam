@@ -90,7 +90,7 @@
 - ~~SSH/SFTP proxy data path~~ ✅ SSH عبر guacd gateway؛ SFTP عبر `asaas_control/sftp.py` (paramiko sessions + `/api/v1/sftp/*` — list/stat/download/upload/mkdir/rename/delete)
 - ~~Redis-backed token consumption (multi-worker)~~ ✅ `ASAAS_REDIS_URL` → atomic `SET NX EX` في `ConnectionTokenStore`؛ fallback ذاكرة للـ single-worker
 - ~~live session terminate~~ ✅ (signed `session.logoff`/`session.disconnect` agent jobs via `/api/v1/sessions/*`)
-- screen/terminal recording + replay
+- ~~screen/terminal recording + replay~~ ✅ `asaas_control/recording.py` — guacd instruction stream → `data/recordings/*.jsonl` + replay WebSocket؛ `ASAAS_GW_RECORD`
 - AD/LDAP sync
 - off-box backup replication
 - ~~production mTLS issuance~~ ✅ `asaas_control/mtls.py` — CA محلي ECDSA + `POST /pki/ca` + `POST /agents/{id}/cert` + `GET /pki/ca.crt`؛ إنفاذ client-cert على TLS terminator خطوة نشر
