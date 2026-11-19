@@ -1,17 +1,18 @@
 import { useState, useEffect, Component, type ReactNode } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { HeaderBar } from './HeaderBar';
 import { MobileNavigation } from './MobileNavigation';
 import { BroadcastModal } from './BroadcastModal';
 import { AiDiagModal } from './AiDiagModal';
 import { UserAccountModal } from './UserAccountModal';
-import { Ambient } from '../asaas-ui';
 import { AssistantWidget } from '../asaas-ui/assistant/AssistantWidget';
 import { useTelemetry } from '../lib/useTelemetry';
 import { api, type AppUser } from '../lib/api';
 import { CheckCircle2, Server, Wrench } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { NAV_ITEMS } from './navigation';
+import { recoverFailedChunk } from '../lib/chunkRecovery';
 
 class PageErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error?: Error }> {
   constructor(props: { children: ReactNode }) {
@@ -21,6 +22,10 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
 
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    recoverFailedChunk(error);
   }
 
   render() {
@@ -56,6 +61,7 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
 
 export function Layout() {
   const { isConnected, health, snapshot, refresh } = useTelemetry();
+  const location = useLocation();
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [aiDiagOpen, setAiDiagOpen] = useState(false);
   const [userAccountOpen, setUserAccountOpen] = useState(false);
@@ -71,14 +77,17 @@ export function Layout() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const page = NAV_ITEMS.find((item) => item.end ? item.to === location.pathname : location.pathname.startsWith(item.to));
+    document.title = `${t(page?.label || 'لوحة القيادة')} · ${t('زمام')}`;
+  }, [location.pathname]);
+
   const runningServices = snapshot?.services?.filter((service) => service.status === 'Running').length ?? 0;
   const activeSessions = snapshot?.sessions?.filter((session) => (session.state || session.status) === 'Active').length ?? 0;
   const hostname = snapshot?.host?.hostname;
 
   return (
     <div className="app-shell">
-      <Ambient />
-
       <div className="app-body">
         <Sidebar />
 
@@ -95,7 +104,7 @@ export function Layout() {
           />
 
           <main className="page-container">
-            <PageErrorBoundary>
+            <PageErrorBoundary key={location.pathname}>
               <Outlet />
             </PageErrorBoundary>
           </main>
@@ -118,7 +127,7 @@ export function Layout() {
         </div>
       </div>
 
-      <MobileNavigation isAdmin={health?.is_admin} />
+      <MobileNavigation currentUser={currentUser} isElevated={health?.is_admin} />
 
       <BroadcastModal
         open={broadcastOpen}
@@ -154,12 +163,17 @@ export function Layout() {
         ]}
         ask={async (messages) => {
           const userQuery = messages[messages.length - 1]?.content || '';
-          const diag = await api.getAiDiagnosis().catch(() => null);
-          const rec = diag?.recommendations?.[0];
-          const text = rec
-            ? `${t('تحليل ذكاء زمام: ')}${diag.summary || t('النظام يعمل بحالة مستقرة.')}${t('\\n\\nالتوصية بخصوص (')}${userQuery}): ${rec}`
-            : `${t('زمام تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ')}${userQuery}`;
-          return { reply: text };
+          try {
+            const diag = await api.getAiDiagnosis();
+            const rec = diag?.recommendations?.[0];
+            const summary = diag?.summary || t('لم يرجع التشخيص ملخصاً للحالة الحالية.');
+            const text = rec
+              ? `${t('تحليل ذكاء زمام: ')}${summary}${t('\\n\\nالتوصية بخصوص (')}${userQuery}): ${rec}`
+              : `${summary}${t('\\n\\nلا توجد توصية محددة لهذا الاستفسار: ')}${userQuery}`;
+            return { reply: text };
+          } catch {
+            return { reply: t('تعذّر الحصول على تشخيص مباشر الآن. تحقق من اتصال الخادم ثم أعد المحاولة؛ لم يتم تأكيد حالة المنظومة.') };
+          }
         }}
       />
     </div>

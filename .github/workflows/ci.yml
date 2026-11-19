@@ -162,7 +162,7 @@ jobs:
         env:
           E2E_USER: e2e-admin
           E2E_PASS: E2E!Smoke#Passw0rd2026!
-        run: npx playwright test e2e/smoke.spec.ts --project="Desktop Chromium"
+        run: npx playwright test e2e/smoke.spec.ts e2e/workspace.spec.ts --project="Desktop Chromium"
 
   release-package:
     name: Build Release Payload + Installer

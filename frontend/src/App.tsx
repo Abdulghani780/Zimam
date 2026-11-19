@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { RequireAuth } from './components/RequireAuth';
 import { apiV1 } from './lib/apiV1';
+import { t } from './lib/i18n';
 
 const lazyPage = <T extends Record<string, React.ComponentType>>(loader: () => Promise<T>, name: keyof T) =>
   lazy(() => loader().then((m) => ({ default: m[name] as React.ComponentType })));
@@ -33,8 +34,9 @@ const PerimeterLockoutPage = lazyPage(() => import('./pages/PerimeterLockoutPage
 const SetupWizardPage = lazyPage(() => import('./pages/SetupWizardPage'), 'SetupWizardPage');
 
 const PageFallback = () => (
-  <div style={{ display: 'grid', placeItems: 'center', minHeight: '40vh', color: 'var(--text-3)' }}>
-    جارٍ تحميل الصفحة…
+  <div className="route-loading" role="status" aria-live="polite">
+    <span className="route-loading__mark" aria-hidden="true" />
+    <span>{t('جارٍ تحميل مساحة العمل…')}</span>
   </div>
 );
 

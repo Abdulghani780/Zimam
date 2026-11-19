@@ -182,11 +182,10 @@ export function HeaderBar({
             type="button"
             className="header-icon-btn"
             onClick={onOpenBroadcast}
-            aria-label={t('التنبيهات والبث الإداري')}
-            title={t('التنبيهات والبث الإداري')}
+            aria-label={t('بث تنبيه إداري')}
+            title={t('بث تنبيه إداري')}
           >
             <Bell size={18} />
-            <span className="header-icon-btn__badge">3</span>
           </button>
 
           <button

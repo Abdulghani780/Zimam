@@ -1,11 +1,13 @@
 import './styles/app.css';
 import './asaas-ui/styles/index.css';
+import './styles/workspace.css';
 import { StrictMode, Component, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider, Ambient } from './asaas-ui';
 import { useLang } from './lib/i18n';
 import App from './App';
+import { recoverFailedChunk } from './lib/chunkRecovery';
 
 /** Applies lang/dir to <html> and remounts the tree on language switch so
  *  every t() call re-evaluates against the new dictionary. */
@@ -29,6 +31,7 @@ class GlobalErrorBoundary extends Component<{ children: ReactNode }, { hasError:
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
+    recoverFailedChunk(error);
     console.error('ASAAS Critical Runtime Error caught by GlobalErrorBoundary:', error, errorInfo);
   }
 

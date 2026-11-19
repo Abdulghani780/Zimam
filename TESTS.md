@@ -31,6 +31,7 @@ Controlled purposes: `rule protection`, `critical path`, `regression protection`
 | **Bastion Command Risk ACL Interceptor** | unit | security protection, rule protection | Security Suite | None | `tests/test_bastion_security.py` | required |
 | **Dual-Key API Data Models (Contract)** | contract | regression protection, rule protection | Contract Suite | None | `tests/test_api_contracts.py` | required |
 | **Frontend SPA Build & Type Safety** | contract, smoke | rule protection, smoke | Frontend Suite | Vite, TypeScript | `frontend/src/` | required |
+| **Workspace Shell & Honest Failure States** | E2E, regression protection | navigation, responsive layout, accessibility, chunk recovery, diagnostics failures | Playwright Suite | Live isolated backend and test admin | `frontend/e2e/workspace.spec.ts` | required |
 | **Zero-Console Silent Launcher** | integration | regression protection | Launcher Suite | Windows, wscript | `launcher/launch.vbs` | required |
 
 ---

@@ -1773,4 +1773,17 @@ export const EN: Record<string, string> = {
   'مساعد زمام الذكي': 'Zimam smart assistant',
   'ترحيب بك في زمام': 'Welcome to Zimam',
   'تحليل ذكاء زمام: ': 'Zimam intelligence analysis: ',
-  'زمام تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ': 'Zimam is running at peak efficiency. All resource engines, databases, and the firewall are in a safe running state. Query: ',};
+  'زمام تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ': 'Zimam is running at peak efficiency. All resource engines, databases, and the firewall are in a safe running state. Query: ',
+  'نظرة عامة': 'Overview',
+  'العمليات التشغيلية': 'Operations',
+  'الوصول والحماية': 'Access & security',
+  'النظام والتدقيق': 'System & audit',
+  'جميع أقسام المنظومة': 'All system sections',
+  'بث تنبيه إداري': 'Broadcast administrative alert',
+  'جارٍ تحميل مساحة العمل…': 'Loading workspace…',
+  'لم يرجع التشخيص ملخصاً للحالة الحالية.': 'The diagnostic did not return a summary of the current state.',
+  '\\n\\nلا توجد توصية محددة لهذا الاستفسار: ': '\n\nNo specific recommendation is available for this query: ',
+  'تعذّر الحصول على تشخيص مباشر الآن. تحقق من اتصال الخادم ثم أعد المحاولة؛ لم يتم تأكيد حالة المنظومة.': 'Live diagnostics are unavailable right now. Check the server connection and try again; system health has not been confirmed.',
+  'لا توجد سيرفرات مسجلة بعد.': 'No servers are registered yet.',
+  'تعذّر تحميل قائمة السيرفرات. أعد المحاولة.': 'The server list could not be loaded. Try again.',
+};

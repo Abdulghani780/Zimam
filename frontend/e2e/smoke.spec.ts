@@ -20,16 +20,10 @@ test.describe('ASAAS smoke', () => {
       (r) => r.url().includes('/api/auth/login'),
       { timeout: 20000 },
     ).catch(() => null);
-    page.on('request', (r) => {
-      if (r.url().includes('/api/auth/login')) {
-        console.log(`[SMK-01] login request body: ${r.postData()?.slice(0, 200)}`);
-      }
-    });
     await page.getByRole('button', { name: /دخول إلى لوحة التحكم/ }).click();
     const loginResp = await loginRespPromise;
     if (loginResp) {
-      const body = await loginResp.text().catch(() => '<unreadable>');
-      console.log(`[SMK-01] login POST ${loginResp.url()} -> ${loginResp.status()} ${body.slice(0, 300)}`);
+      console.log(`[SMK-01] login POST -> ${loginResp.status()}`);
     } else {
       console.log('[SMK-01] no /api/auth/login request observed');
     }

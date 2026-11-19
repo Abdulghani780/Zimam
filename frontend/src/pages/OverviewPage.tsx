@@ -136,6 +136,7 @@ export function OverviewPage() {
   const [history, setHistory] = useState<HistoricalPoint[]>([]);
   const [systemHistory, setSystemHistory] = useState<SystemHistory | null>(null);
   const [servers, setServers] = useState<ManagedServer[]>([]);
+  const [serversState, setServersState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
   const [securityStats, setSecurityStats] = useState<SecurityStats | null>(null);
@@ -167,7 +168,12 @@ export function OverviewPage() {
       api.getDatabaseBackups().catch(() => null),
       apiV1.fleetSummary().catch(() => null),
     ]);
-    if (serverRes?.servers) setServers(serverRes.servers);
+    if (serverRes?.servers) {
+      setServers(serverRes.servers);
+      setServersState('ready');
+    } else {
+      setServersState('error');
+    }
     if (Array.isArray(auditRes)) setAuditLogs(auditRes);
     if (Array.isArray(securityRes)) setSecurityEvents(securityRes);
     if (securityStatRes) setSecurityStats(securityStatRes);
@@ -287,53 +293,51 @@ export function OverviewPage() {
       </div>
 
       {fleet && (
-        <section style={{ marginBottom: 22 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Bot size={18} style={{ color: 'var(--accent)' }} />
-              <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>{t('أسطول أساس')}</h2>
-              <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-telemetry)' }}>
-                {fleet.totals.online}/{fleet.totals.agents} {t('متصل')} · {fleet.totals.with_results} {t('بقياسات')}
-              </span>
+        <section className="panel fleet-section" aria-labelledby="fleet-title">
+          <header className="panel__head fleet-section__head">
+            <div className="fleet-section__title">
+              <span className="fleet-section__icon"><Bot size={18} /></span>
+              <div>
+                <h2 className="panel__title" id="fleet-title">{t('أسطول أساس')}</h2>
+                <p>
+                  {fleet.totals.online}/{fleet.totals.agents} {t('متصل')} · {fleet.totals.with_results} {t('بقياسات')}
+                </p>
+              </div>
             </div>
-            <NavLink to="/agents" style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>
-              {t('إدارة الوكلاء')} ←
+            <NavLink to="/agents" className="panel__action">
+              {t('إدارة الوكلاء')} <ChevronLeft size={14} />
             </NavLink>
-          </div>
-          {fleet.agents.length === 0 ? (
-            <div style={{ border: '1px dashed var(--accent-soft)', borderRadius: 14, padding: '18px 20px', color: 'var(--text-3)', fontSize: 13 }}>
-              {t('لا يوجد وكلاء مسجلون بعد — ثبّت Asaas.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.')}
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-              {fleet.agents.map((ag) => (
-                <NavLink
-                  key={ag.id}
-                  to="/agents"
-                  style={{ textDecoration: 'none', border: '1px solid var(--accent-soft)', borderRadius: 14, padding: '14px 16px', background: 'var(--glass-rim-low)', display: 'block' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)' }}>{ag.name}</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: ag.status === 'online' ? 'var(--status-safe-surface, rgba(34,197,94,.15))' : 'var(--surface-glass-tint)', color: ag.status === 'online' ? 'var(--status-safe, #22c55e)' : 'var(--text-3)' }}>
-                      {ag.status}
+          </header>
+          <div className="panel__body">
+            {fleet.agents.length === 0 ? (
+              <div className="fleet-empty">
+                {t('لا يوجد وكلاء مسجلون بعد — ثبّت Asaas.Agent على خوادمك لتبدأ القياسات الحقيقية هنا.')}
+              </div>
+            ) : (
+              <div className="fleet-list">
+                {fleet.agents.map((agent) => (
+                  <NavLink key={agent.id} to="/agents" className="fleet-agent">
+                    <div className="fleet-agent__top">
+                      <strong>{agent.name}</strong>
+                      <span className={`pill-status ${agent.status === 'online' ? 'pill-status--on' : 'pill-status--off'}`}>
+                        <span className="badge-dot" />{agent.status}
+                      </span>
+                    </div>
+                    <span className="fleet-agent__host" dir="ltr">{agent.hostname || agent.id.slice(0, 8)}</span>
+                    <span className="fleet-agent__meta">
+                      {agent.os ? String(agent.os).slice(0, 48) : '—'}
+                      {agent.linked_asset ? ` · ${agent.linked_asset.name}` : ''}
                     </span>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: 'var(--font-telemetry)', direction: 'ltr', textAlign: 'left' }}>
-                    {ag.hostname || ag.id.slice(0, 8)}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>
-                    {ag.os ? String(ag.os).slice(0, 48) : '—'}
-                    {ag.linked_asset ? ` · ${ag.linked_asset.name}` : ''}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6 }}>
-                    {ag.collector_count > 0
-                      ? `${ag.collector_count} ${t('قياس')} · ${ag.last_collection_at ? new Date(ag.last_collection_at).toLocaleString('ar-SA') : ''}`
-                      : t('لا قياسات بعد')}
-                  </div>
-                </NavLink>
-              ))}
-            </div>
-          )}
+                    <span className="fleet-agent__meta">
+                      {agent.collector_count > 0
+                        ? `${agent.collector_count} ${t('قياس')} · ${agent.last_collection_at ? new Date(agent.last_collection_at).toLocaleString('ar-SA') : ''}`
+                        : t('لا قياسات بعد')}
+                    </span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       )}
 
@@ -343,7 +347,7 @@ export function OverviewPage() {
             <span className="kpi__label">{t('المعالج (CPU)')}</span>
             <span className="kpi__icon"><Cpu size={19} /></span>
           </div>
-          <div className="kpi__value">{cpuValue}%</div>
+          <div className="kpi__value num" dir="ltr">{cpuValue}%</div>
           <div className="kpi__foot">{shellTop} {t('نواة')}</div>
           <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, cpuValue))}%` }} /></div>
         </article>
@@ -353,7 +357,7 @@ export function OverviewPage() {
             <span className="kpi__label">{t('الذاكرة (RAM)')}</span>
             <span className="kpi__icon"><MemoryStick size={19} /></span>
           </div>
-          <div className="kpi__value">{ramValue}%</div>
+          <div className="kpi__value num" dir="ltr">{ramValue}%</div>
           <div className="kpi__foot">{t('من')} {formatGb(host?.totalRam ?? 0)} GB</div>
           <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, ramValue))}%` }} /></div>
         </article>
@@ -363,7 +367,7 @@ export function OverviewPage() {
             <span className="kpi__label">{t('القرص (C:)')}</span>
             <span className="kpi__icon"><HardDrive size={19} /></span>
           </div>
-          <div className="kpi__value">{diskValue}%</div>
+          <div className="kpi__value num" dir="ltr">{diskValue}%</div>
           <div className="kpi__foot">{t('من')} {formatGb(diskTotal)} GB</div>
           <div className="kpi__meter meter"><div className="meter__fill" style={{ width: `${Math.min(100, Math.max(2, diskValue))}%` }} /></div>
         </article>
@@ -373,7 +377,7 @@ export function OverviewPage() {
             <span className="kpi__label">{t('الشبكة')}</span>
             <span className="kpi__icon"><Network size={19} /></span>
           </div>
-          <div className="kpi__value">{formatMbps(networkTotal)} <small>Mbps</small></div>
+          <div className="kpi__value num" dir="ltr">{formatMbps(networkTotal)} <small>Mbps</small></div>
           <div className="kpi__foot">
             <span className="up">↑ {formatSpeed(networkTx)}</span>
             <span className="down">↓ {formatSpeed(networkRx)}</span>
@@ -386,17 +390,17 @@ export function OverviewPage() {
             <span className="kpi__label">{t('جلسات RDP النشطة')}</span>
             <span className="kpi__icon"><Users size={19} /></span>
           </div>
-          <div className="kpi__value">{activeSessions.length}</div>
+          <div className="kpi__value num" dir="ltr">{activeSessions.length}</div>
           <div className="kpi__foot">{t('من أصل')} {totalSessions} {t('جلسة مسجلة')}</div>
           <div className="kpi__meter meter"><div className="meter__fill meter__fill--green" style={{ width: `${totalSessions ? Math.max(3, (activeSessions.length / totalSessions) * 100) : 0}%` }} /></div>
         </article>
 
-        <article className="kpi kpi--danger">
+        <article className={`kpi ${securityAlerts.length ? 'kpi--danger' : ''}`}>
           <div className="kpi__top">
             <span className="kpi__label">{t('التنبيهات الأمنية')}</span>
             <span className="kpi__icon"><ShieldCheck size={19} /></span>
           </div>
-          <div className="kpi__value">{securityAlerts.length}</div>
+          <div className="kpi__value num" dir="ltr">{securityAlerts.length}</div>
           <div className="kpi__foot">{securityAlerts.length ? t('بحاجة إلى مراجعة') : t('لا توجد تنبيهات معلقة')}</div>
           <div className="kpi__meter meter"><div className="meter__fill meter__fill--red" style={{ width: `${Math.min(100, securityAlerts.length * 8 + (securityAlerts.length ? 6 : 0))}%` }} /></div>
         </article>
@@ -492,7 +496,11 @@ export function OverviewPage() {
                   {servers.length === 0 && (
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: 30, color: 'var(--text-3)' }}>
-                        {t('جارٍ تحميل سجل السيرفرات…')}
+                        {serversState === 'loading'
+                          ? t('جارٍ تحميل سجل السيرفرات…')
+                          : serversState === 'error'
+                            ? t('تعذّر تحميل قائمة السيرفرات. أعد المحاولة.')
+                            : t('لا توجد سيرفرات مسجلة بعد.')}
                       </td>
                     </tr>
                   )}
