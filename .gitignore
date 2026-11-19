@@ -102,3 +102,5 @@ launcher/AsaasLauncher.exe
 launcher/AsaasLauncher.dll
 launcher/AsaasLauncher.deps.json
 launcher/AsaasLauncher.runtimeconfig.json
+
+backend/data/
