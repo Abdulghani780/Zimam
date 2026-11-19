@@ -59,10 +59,10 @@ export function ZeroTrustLoginPage() {
   return (
     <main className="auth-page">
       <header className="auth-page__topbar">
-        <a href="/login" className="brand auth-brand" aria-label={t('أساس')}>
+        <a href="/login" className="brand auth-brand" aria-label={t('زمام')}>
           <span className="brand__mark" aria-hidden="true" />
           <span>
-            <strong className="brand__name">{t('أساس')}</strong>
+            <strong className="brand__name">{t('زمام')}</strong>
             <small className="brand__tag">{t('إدارة الوصول والخوادم')}</small>
           </span>
         </a>
@@ -155,7 +155,7 @@ export function ZeroTrustLoginPage() {
       </section>
 
       <footer className="auth-page__footer">
-        <span>ASAAS</span>
+        <span>زمام</span>
         <span>{t('واجهة عربية · تشغيل محلي · صلاحيات حسب الدور')}</span>
       </footer>
     </main>

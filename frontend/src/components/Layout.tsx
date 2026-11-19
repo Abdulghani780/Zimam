@@ -102,7 +102,7 @@ export function Layout() {
 
           <footer className="app-footer">
             <div className="app-footer__group">
-              <span dir="ltr">v{health?.version || '—'} | ASAAS</span>
+              <span dir="ltr">v{health?.version || '—'} | زمام</span>
             </div>
             <div className="app-footer__group">
               <span><Server size={13} /> {t('الجلسات النشطة:')} {activeSessions}</span>
@@ -145,7 +145,7 @@ export function Layout() {
           id: currentUser?.username || 'guest',
           displayName: currentUser?.full_name || currentUser?.username || t('مدير النظام'),
         }}
-        title={t('مساعد أساس الذكي')}
+        title={t('مساعد زمام الذكي')}
         subtitle={t('الروبوت السيادي لإدارة وتحليل Windows Server')}
         suggestions={[
           t('ما هي حالة الموارد واستهلاك المعالج حالياً؟'),
@@ -157,8 +157,8 @@ export function Layout() {
           const diag = await api.getAiDiagnosis().catch(() => null);
           const rec = diag?.recommendations?.[0];
           const text = rec
-            ? `${t('تحليل ذكاء أساس: ')}${diag.summary || t('النظام يعمل بحالة مستقرة.')}${t('\\n\\nالتوصية بخصوص (')}${userQuery}): ${rec}`
-            : `${t('أساس تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ')}${userQuery}`;
+            ? `${t('تحليل ذكاء زمام: ')}${diag.summary || t('النظام يعمل بحالة مستقرة.')}${t('\\n\\nالتوصية بخصوص (')}${userQuery}): ${rec}`
+            : `${t('زمام تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ')}${userQuery}`;
           return { reply: text };
         }}
       />

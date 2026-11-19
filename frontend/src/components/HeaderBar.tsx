@@ -19,6 +19,7 @@ import {
   Languages,
 } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { Brand } from './Brand';
 
 interface HeaderBarProps {
   isConnected: boolean;
@@ -100,12 +101,8 @@ export function HeaderBar({
   return (
     <header className="site-header">
       <div className="header-inner">
-        <NavLink to="/" className="header-brand header-brand--mobile" aria-label={t('أساس - لوحة القيادة')}>
-          <img className="header-brand__logo" src="/logo-light.png" alt="" width={36} height={36} />
-          <span className="header-brand__text">
-            <strong>ASAAS</strong>
-            <span>Server Control</span>
-          </span>
+        <NavLink to="/" className="header-brand header-brand--mobile" aria-label={t('زمام - لوحة القيادة')}>
+          <Brand size={34} />
         </NavLink>
 
         <div className="header-center">

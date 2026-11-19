@@ -1767,4 +1767,10 @@ export const EN: Record<string, string> = {
   'لا خدمات أو عمليات قواعد بيانات مكتشفة على هذا الوكيل.': 'No database services or processes detected on this agent.',
   'غير معروفة UNKNOWN': 'Unknown',
   'غير متاح (—)': 'Unavailable (—)',
-};
+  'زمام': 'Zimam',
+  'زمام - لوحة القيادة': 'Zimam - command dashboard',
+  'إدارة الخوادم والتحكم': 'Server management & control',
+  'مساعد زمام الذكي': 'Zimam smart assistant',
+  'ترحيب بك في زمام': 'Welcome to Zimam',
+  'تحليل ذكاء زمام: ': 'Zimam intelligence analysis: ',
+  'زمام تعمل بكفاءة قصوى. جميع محركات الموارد وقواعد البيانات والجدار الناري في حالة تشغيل آمنة. الاستفسار: ': 'Zimam is running at peak efficiency. All resource engines, databases, and the firewall are in a safe running state. Query: ',};

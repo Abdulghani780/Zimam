@@ -8,10 +8,10 @@ export function PerimeterLockoutPage() {
 
   return (
     <main className="access-state-page" dir="rtl">
-      <a href="/" className="brand access-state-page__brand" aria-label={t('أساس')}>
+      <a href="/" className="brand access-state-page__brand" aria-label={t('زمام')}>
         <span className="brand__mark" />
         <span>
-          <strong className="brand__name">{t('أساس')}</strong>
+          <strong className="brand__name">{t('زمام')}</strong>
           <small className="brand__tag">{t('إدارة الوصول والخوادم')}</small>
         </span>
       </a>

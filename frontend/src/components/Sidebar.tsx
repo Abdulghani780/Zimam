@@ -23,6 +23,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { Brand } from './Brand';
 
 const NAV_ITEMS = [
   { to: '/', label: 'لوحة القيادة', icon: LayoutDashboard, end: true },
@@ -51,18 +52,8 @@ const NAV_ITEMS = [
 export function Sidebar() {
   return (
     <aside className="app-sidebar" aria-label={t('شريط التنقل الجانبي')}>
-      <NavLink to="/" className="sidebar-brand" aria-label={t('أساس - لوحة القيادة')}>
-        <span className="sidebar-brand__text">
-          <strong>ASAAS</strong>
-          <span>Server Control</span>
-        </span>
-        <img
-          className="sidebar-brand__logo"
-          src="/logo-light.png"
-          alt=""
-          width={46}
-          height={46}
-        />
+      <NavLink to="/" className="sidebar-brand" aria-label={t('زمام - لوحة القيادة')}>
+        <Brand size={44} />
       </NavLink>
 
       <nav className="sidebar-nav">

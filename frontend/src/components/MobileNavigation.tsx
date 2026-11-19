@@ -27,6 +27,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { t } from '../lib/i18n';
+import { Brand } from './Brand';
 
 interface MobileNavigationProps {
   isAdmin?: boolean;
@@ -125,11 +126,7 @@ export function MobileNavigation({ isAdmin }: MobileNavigationProps) {
           >
             <div className="mobile-drawer__header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <img src="/logo-light.png" alt="" width="28" height="28" style={{ objectFit: 'contain' }} />
-                <div>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>ASAAS</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-3)', display: 'block' }}>{t('بوابة التحكم الآمن')}</span>
-                </div>
+                <Brand size={30} />
               </div>
               <button type="button" onClick={closeDrawer} className="mobile-drawer__close" aria-label={t('إغلاق القائمة')}>
                 <X size={20} />

@@ -49,10 +49,10 @@ export function SetupWizardPage() {
   return (
     <main className="auth-page">
       <header className="auth-page__topbar">
-        <span className="brand auth-brand" aria-label={t('أساس')}>
+        <span className="brand auth-brand" aria-label={t('زمام')}>
           <span className="brand__mark" aria-hidden="true" />
           <span>
-            <strong className="brand__name">{t('أساس')}</strong>
+            <strong className="brand__name">{t('زمام')}</strong>
             <small className="brand__tag">{t('إعداد أول تشغيل')}</small>
           </span>
         </span>
@@ -64,7 +64,7 @@ export function SetupWizardPage() {
 
       <section className="auth-page__content" aria-labelledby="setup-title">
         <div className="auth-intro">
-          <span className="auth-intro__eyebrow"><Sparkles size={16} /> {t('ترحيب بك في ASAAS')}</span>
+          <span className="auth-intro__eyebrow"><Sparkles size={16} /> {t('ترحيب بك في زمام')}</span>
           <p className="auth-intro__greeting" aria-hidden="true">
             <Stretch before={t('مس')} after={t('اء')} length={3} /> {t('الخير')}
           </p>
@@ -135,7 +135,7 @@ export function SetupWizardPage() {
       </section>
 
       <footer className="auth-page__footer">
-        <span>ASAAS</span>
+        <span>زمام</span>
         <span>{t('أول تشغيل · رخصةoffline · عربي وإنجليزي')}</span>
       </footer>
     </main>
