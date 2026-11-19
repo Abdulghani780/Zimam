@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, Select, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, Select, Segmented, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -239,7 +239,7 @@ export function ServersPage() {
   return (
     <div className="page">
       {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-head-hero">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Server size={24} style={{ color: 'var(--accent)' }} />
@@ -423,62 +423,30 @@ export function ServersPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 10, borderBottom: '1px solid var(--glass-rim)', paddingBottom: 8 }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('servers')}
-          style={{
-            background: activeTab === 'servers' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'servers' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Server size={16} />
-          <span>{t('كافة الخوادم المدارة')} ({servers.length})</span>
-        </button>
+<div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+<Segmented
+value={activeTab}
+onChange={setActiveTab}
+label={t('أقسام الخوادم')}
+options={[
+{ value: 'servers', label: t('كافة الخوادم المدارة'), count: servers.length },
+{ value: 'groups', label: t('مجموعات الخوادم'), count: groups.length },
+]}
+/>
+<Button
+size="sm"
+variant="glass"
+onClick={handleCheckServers}
+loading={probing}
+disabled={loading}
+style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+title={t('فحص TCP حقيقي لكل خادم وتحديث الحالة وزمن الاستجابة')}
+>
+<RefreshCw size={14} />
+<span>{t('فحص صحة الخوادم الآن')}</span>
+</Button>
+</div>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('groups')}
-          style={{
-            background: activeTab === 'groups' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'groups' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <FolderTree size={16} />
-          <span>{t('مجموعات الخوادم')} ({groups.length})</span>
-        </button>
-
-        <Button
-          size="sm"
-          variant="glass"
-          onClick={handleCheckServers}
-          loading={probing}
-          disabled={loading}
-          style={{ marginInlineStart: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          title={t('فحص TCP حقيقي لكل خادم وتحديث الحالة وزمن الاستجابة')}
-        >
-          <RefreshCw size={14} />
-          <span>{t('فحص صحة الخوادم الآن')}</span>
-        </Button>
-      </div>
 
       {/* Tab 1: All Servers Table */}
       {activeTab === 'servers' && (

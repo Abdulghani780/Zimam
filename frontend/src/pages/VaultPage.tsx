@@ -141,21 +141,9 @@ export function VaultPage() {
   };
 
   return (
-    <div dir="rtl" className="page" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div dir="rtl" className="page">
       {/* Hero Header */}
-      <section
-        style={{
-          padding: 24,
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, var(--glass-tint-strong), var(--surface-ground))',
-          border: '1px solid var(--accent-soft)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
+      <section className="page-head-hero">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--paid)', fontWeight: 700, fontSize: 13 }}>
             <ShieldCheck size={16} /> {t('خزنة السيادة المركزية (Sovereign Encrypted Vault)')}

@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -487,7 +487,8 @@ button, input, select, textarea, .btn, .badge {
   min-width: 0;
 }
 
-.page-hero {
+.page-hero,
+.page-head-hero {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -503,7 +504,8 @@ button, input, select, textarea, .btn, .badge {
   backdrop-filter: blur(22px) saturate(130%);
 }
 
-.page-hero::after {
+.page-hero::after,
+.page-head-hero::after {
   content: '';
   position: absolute;
   z-index: -1;
@@ -515,19 +517,23 @@ button, input, select, textarea, .btn, .badge {
   pointer-events: none;
 }
 
-.page-hero h1 {
+.page-hero h1,
+.page-head-hero h1 {
   font-family: var(--font-display) !important;
   font-size: clamp(24px, 2.2vw, 34px) !important;
   color: var(--text) !important;
   letter-spacing: 0 !important;
 }
 
-.page-hero p { color: var(--text-2) !important; }
+.page-hero p,
+.page-head-hero p { color: var(--text-2) !important; }
 
 @media (max-width: 640px) {
   .page { gap: 16px; }
-  .page-hero { border-radius: var(--radius-lg) !important; }
-  .page-hero::after { display: none; }
+  .page-hero,
+  .page-head-hero { border-radius: var(--radius-lg) !important; }
+  .page-hero::after,
+.page-head-hero::after { display: none; }
 }
 
 /* Stat Grid */

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, useToast } from '../asaas-ui';
+import { Card, Button, Segmented, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import { NavLink } from 'react-router-dom';
@@ -120,7 +120,7 @@ export function ContainersPage() {
   return (
     <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-head-hero">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Boxes size={24} style={{ color: 'var(--accent)' }} />
@@ -137,51 +137,16 @@ export function ContainersPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--glass-rim)', paddingBottom: 8 }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('docker')}
-          style={{
-            background: activeTab === 'docker' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'docker' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Boxes size={16} />
-          <span>{t('حاويات Docker')} ({dockerData?.containers?.length || 0})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('hyperv')}
-          style={{
-            background: activeTab === 'hyperv' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'hyperv' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Server size={16} />
-          <span>{t('بيئة الافتراضية Hyper-V')}</span>
-        </button>
-      </div>
-
-      {/* Tab 1: Docker */}
+<Segmented
+value={activeTab}
+onChange={setActiveTab}
+label={t('أقسام الحاويات')}
+options={[
+{ value: 'docker', label: t('حاويات Docker'), count: dockerData?.containers?.length || 0 },
+{ value: 'hyperv', label: t('بيئة الافتراضية Hyper-V') },
+]}
+/>
+{/* Tab 1: Docker */}
       {activeTab === 'docker' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Docker Engine Status Card */}

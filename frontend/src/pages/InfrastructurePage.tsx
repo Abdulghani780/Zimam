@@ -8,15 +8,13 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Button, TextInput, useToast } from '../asaas-ui';
+import { Card, Button, TextInput, Segmented, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
   Layers,
   Cog,
-  Calendar,
   ShieldCheck,
-  Award,
   RefreshCw,
   Search,
   Bot,
@@ -469,7 +467,7 @@ export function InfrastructurePage() {
   return (
     <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-head-hero">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Layers size={24} style={{ color: 'var(--accent)' }} />
@@ -744,112 +742,19 @@ export function InfrastructurePage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--glass-rim)', paddingBottom: 8, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('roles')}
-          style={{
-            background: activeTab === 'roles' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'roles' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Layers size={16} />
-          <span>{t('أدوار وميزات السيرفر (Roles & Features)')}</span>
-        </button>
+<Segmented
+value={activeTab}
+onChange={setActiveTab}
+label={t('أقسام البنية التحتية')}
+options={[
+{ value: 'roles', label: t('أدوار وميزات السيرفر (Roles & Features)') },
+{ value: 'services', label: t('خدمات Windows') },
+{ value: 'tasks', label: t('المهام المجدولة (Task Scheduler)'), count: fleetTasks.length },
+{ value: 'updates', label: t('تحديثات النظام (Windows Updates)') },
+{ value: 'certs', label: t('خزنة الشهادات (Certificates)') },
+]}
+/>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('services')}
-          style={{
-            background: activeTab === 'services' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'services' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Cog size={16} />
-          <span>{t('خدمات Windows')} (Services - {fleetServices.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('tasks')}
-          style={{
-            background: activeTab === 'tasks' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'tasks' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Calendar size={16} />
-          <span>{t('المهام المجدولة (Task Scheduler)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('updates')}
-          style={{
-            background: activeTab === 'updates' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'updates' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <ShieldCheck size={16} />
-          <span>{t('تحديثات النظام (Windows Updates)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('certs')}
-          style={{
-            background: activeTab === 'certs' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'certs' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Award size={16} />
-          <span>{t('خزنة الشهادات (Certificates)')}</span>
-        </button>
-      </div>
 
       {/* Tab 1: Roles & Features (windows.features collector) */}
       {activeTab === 'roles' && (

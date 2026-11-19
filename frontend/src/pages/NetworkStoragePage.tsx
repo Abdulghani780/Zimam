@@ -5,17 +5,14 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, Segmented, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
   HardDrive,
   Bot,
   Network,
-  Shield,
-  FolderTree,
   Share2,
-  Activity,
   Search,
   Plus,
   Trash2,
@@ -435,7 +432,7 @@ export function NetworkStoragePage() {
   return (
     <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-head-hero">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <HardDrive size={24} style={{ color: 'var(--accent)' }} />
@@ -532,154 +529,21 @@ export function NetworkStoragePage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--glass-rim)', paddingBottom: 8, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('disks')}
-          style={{
-            background: activeTab === 'disks' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'disks' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 14px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <HardDrive size={15} />
-          <span>{t('الأقراص الفيزيائية')} (Disks - {disks.length})</span>
-        </button>
+<Segmented
+value={activeTab}
+onChange={setActiveTab}
+label={t('أقسام التخزين والشبكات')}
+options={[
+{ value: 'disks', label: t('الأقراص الفيزيائية') },
+{ value: 'volumes', label: t('وحدات التخزين'), count: fleetVolumes.length },
+{ value: 'shares', label: t('مشاركات SMB (File Shares)') },
+{ value: 'explorer', label: t('مستعرض ملفات السيرفر (Explorer)') },
+{ value: 'adapters', label: t('محولات الشبكة (Adapters)') },
+{ value: 'firewall', label: t('الجدار الناري (Firewall)') },
+{ value: 'diagnostics', label: t('فحص وتشخيص الشبكة (Ping & TCP)') },
+]}
+/>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('volumes')}
-          style={{
-            background: activeTab === 'volumes' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'volumes' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 14px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <HardDrive size={15} />
-          <span>{t('وحدات التخزين')} ({fleetVolumes.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('shares')}
-          style={{
-            background: activeTab === 'shares' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'shares' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 14px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Share2 size={15} />
-          <span>{t('مشاركات SMB (File Shares)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('explorer')}
-          style={{
-            background: activeTab === 'explorer' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'explorer' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 14px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <FolderTree size={15} />
-          <span>{t('مستعرض ملفات السيرفر (Explorer)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('adapters')}
-          style={{
-            background: activeTab === 'adapters' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'adapters' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 14px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Network size={15} />
-          <span>{t('محولات الشبكة (Adapters)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('firewall')}
-          style={{
-            background: activeTab === 'firewall' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'firewall' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 14px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Shield size={15} />
-          <span>{t('الجدار الناري (Firewall)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('diagnostics')}
-          style={{
-            background: activeTab === 'diagnostics' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'diagnostics' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 14px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Activity size={15} />
-          <span>{t('فحص وتشخيص الشبكة (Ping & TCP)')}</span>
-        </button>
-      </div>
 
       {/* Fleet physical disks — disk.physical collector + disk.state write jobs */}
       {activeTab === 'disks' && fleetAgents.length > 0 && (

@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, Segmented, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import { NavLink } from 'react-router-dom';
@@ -394,99 +394,18 @@ export function DatabasesPage() {
       )}
 
       {/* Navigation Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          borderBottom: '1px solid var(--glass-rim-low)',
-          paddingBottom: 10,
-          marginBottom: 16,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setActiveTab('tables')}
-          style={{
-            background: activeTab === 'tables' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'tables' ? 'var(--on-accent)' : 'var(--text-2)',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            padding: '6px 14px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Table size={14} />
-          {t('مستكشف الجداول والبيانات')} ({tables.length})
-        </button>
+<Segmented
+value={activeTab}
+onChange={setActiveTab}
+label={t('أقسام قواعد البيانات')}
+options={[
+{ value: 'tables', label: t('مستكشف الجداول والبيانات'), count: tables.length },
+{ value: 'query', label: t('محرر استعلامات SQL المباشر (Console)') },
+{ value: 'backups', label: t('النسخ الاحتياطية والصيانة'), count: backups.length },
+{ value: 'engines', label: t('محركات قواعد البيانات بالسيرفر') },
+]}
+/>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('query')}
-          style={{
-            background: activeTab === 'query' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'query' ? 'var(--on-accent)' : 'var(--text-2)',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            padding: '6px 14px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Terminal size={14} />
-          {t('محرر استعلامات SQL المباشر (Console)')}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('backups')}
-          style={{
-            background: activeTab === 'backups' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'backups' ? 'var(--on-accent)' : 'var(--text-2)',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            padding: '6px 14px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Save size={14} />
-          {t('النسخ الاحتياطية والصيانة')} ({backups.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('engines')}
-          style={{
-            background: activeTab === 'engines' ? 'var(--accent)' : 'transparent',
-            color: activeTab === 'engines' ? 'var(--on-accent)' : 'var(--text-2)',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            padding: '6px 14px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <Server size={14} />
-          {t('محركات قواعد البيانات بالسيرفر')}
-        </button>
-      </div>
 
       {/* Tab 1: Tables & Data Explorer */}
       {activeTab === 'tables' && (

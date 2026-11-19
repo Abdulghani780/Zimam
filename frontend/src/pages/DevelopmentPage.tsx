@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Card, Button, Modal, TextInput, Select, useToast } from '../asaas-ui';
+import { Card, Button, Modal, TextInput, Select, Segmented, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import {
   Code,
@@ -16,10 +16,7 @@ import {
   Plus,
   RefreshCw,
   ExternalLink,
-  Radio,
-  Sliders,
   ShieldCheck,
-  Layers,
 } from 'lucide-react';
 import { t } from '../lib/i18n';
 
@@ -196,7 +193,7 @@ export function DevelopmentPage() {
   return (
     <div className="page">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <div className="page-head-hero">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Code size={24} style={{ color: 'var(--accent)' }} />
@@ -219,93 +216,18 @@ export function DevelopmentPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--glass-rim)', paddingBottom: 8, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setActiveTab('projects')}
-          style={{
-            background: activeTab === 'projects' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'projects' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <FolderGit2 size={16} />
-          <span>{t('مشاريع المطورين النشطة')} ({projects.length})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('orchestrator')}
-          style={{
-            background: activeTab === 'orchestrator' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'orchestrator' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Radio size={16} />
-          <span>{t('منسق المنافذ الذكي (Smart Port Sentinel)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('quotas')}
-          style={{
-            background: activeTab === 'quotas' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'quotas' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Sliders size={16} />
-          <span>{t('حصص الموارد وعزل الأداء (Quotas)')}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('gateway')}
-          style={{
-            background: activeTab === 'gateway' ? 'var(--accent-soft)' : 'transparent',
-            color: activeTab === 'gateway' ? 'var(--accent)' : 'var(--text-3)',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <Layers size={16} />
-          <span>{t('بوابة التطبيقات السحابية (Gateway Routes)')}</span>
-        </button>
-      </div>
-
-      {/* Tab 1: Projects List */}
+<Segmented
+value={activeTab}
+onChange={setActiveTab}
+label={t('أقسام بيئات المطورين')}
+options={[
+{ value: 'projects', label: t('مشاريع المطورين النشطة'), count: projects.length },
+{ value: 'orchestrator', label: t('منسق المنافذ الذكي (Smart Port Sentinel)') },
+{ value: 'quotas', label: t('حصص الموارد وعزل الأداء (Quotas)') },
+{ value: 'gateway', label: t('بوابة التطبيقات السحابية (Gateway Routes)') },
+]}
+/>
+{/* Tab 1: Projects List */}
       {activeTab === 'projects' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {projects.length === 0 ? (

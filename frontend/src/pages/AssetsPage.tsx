@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Button, Modal, Field, TextInput, Glass, useToast } from '../asaas-ui';
+import { Button, Modal, Field, TextInput, Glass, Segmented, useToast } from '../asaas-ui';
 import { api, type AssetItem } from '../lib/api';
 import { apiV1, type V1Asset, type V1Account, type V1Agent } from '../lib/apiV1';
 import { RemoteSession } from '../components/RemoteSession';
@@ -305,37 +305,20 @@ export function AssetsPage() {
         </div>
       </div>
 
-      {/* 2. Filter Tabs (Stitch _11 L10-L15) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--accent-soft)', paddingBottom: 12 }}>
-        {[
-          { key: 'all', label: `${t('الكل (')}${assets.length})` },
-          { key: 'windows', label: `${t('خوادم ويندوز (')}${assets.filter((a) => matchesTab(a, 'windows')).length})` },
-          { key: 'linux', label: `${t('خوادم لينكس (')}${assets.filter((a) => matchesTab(a, 'linux')).length})` },
-          { key: 'db', label: `${t('قواعد البيانات (')}${assets.filter((a) => matchesTab(a, 'db')).length})` },
-          { key: 'k8s', label: `${t('حاويات K8s (')}${assets.filter((a) => matchesTab(a, 'k8s')).length})` },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key as any)}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 9999, whiteSpace: 'nowrap',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              border: activeTab === tab.key ? '1px solid var(--accent)' : '1px solid transparent',
-              background: activeTab === tab.key ? 'var(--accent-soft)' : 'var(--glass-rim-low)',
-              color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-3)',
-              transition: 'all 0.2s',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 3. Server Assets Cards Grid (Stitch _11) */}
+      {/* 2. Filter Tabs */}
+<Segmented
+value={activeTab}
+onChange={(v) => setActiveTab(v as typeof activeTab)}
+label={t('تصفية الأصول')}
+options={[
+{ value: 'all', label: t('الكل'), count: assets.length },
+{ value: 'windows', label: t('خوادم ويندوز'), count: assets.filter((a) => matchesTab(a, 'windows')).length },
+{ value: 'linux', label: t('خوادم لينكس'), count: assets.filter((a) => matchesTab(a, 'linux')).length },
+{ value: 'db', label: t('قواعد البيانات'), count: assets.filter((a) => matchesTab(a, 'db')).length },
+{ value: 'k8s', label: t('حاويات K8s'), count: assets.filter((a) => matchesTab(a, 'k8s')).length },
+]}
+/>
+{/* 3. Server Assets Cards Grid (Stitch _11) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 16 }}>
         {filteredAssets.map((a) => (
           <Glass
