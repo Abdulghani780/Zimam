@@ -220,36 +220,18 @@ export function DatabasesPage() {
   return (
     <div className="page">
       {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 8,
-                background: 'var(--accent)',
-                color: 'var(--on-accent)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: 'var(--accent-glow)',
-              }}
-            >
-              <Database size={20} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: 'var(--text-1)' }}>
-                {t('إدارة محركات وقواعد البيانات السيادية (Database Studio)')}
-              </h1>
-              <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '2px 0 0' }}>
-                {t('مراقبة محركات SQL Server وPostgreSQL، استكشاف الجداول، محرر SQL مباشر، والنسخ الاحتياطي المشفر')}
-              </p>
-            </div>
+      <div className="page-head">
+        <div className="page-head__title">
+          <span className="page-head__icon"><Database size={20} /></span>
+          <div>
+            <h1>
+              {t('إدارة محركات وقواعد البيانات السيادية')} <span className="page-head__latin">(Database Studio)</span>
+            </h1>
+            <p>{t('مراقبة محركات SQL Server وPostgreSQL، استكشاف الجداول، محرر SQL مباشر، والنسخ الاحتياطي المشفر')}</p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="page-head__actions">
           <Button
             variant="ghost"
             onClick={fetchOverview}
