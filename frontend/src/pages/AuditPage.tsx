@@ -233,9 +233,9 @@ export function AuditPage() {
         {/* Card 1: Tamper Resistance */}
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               {t('ضمان عدم التلاعب (Tamper Resistance)')}
-            </h4>
+            </h2>
             <span style={{ fontSize: 11, color: v1Verify ? (v1Verify.chain_intact ? 'var(--paid)' : 'var(--unpaid)') : 'var(--text-3)', fontWeight: 700 }}>
               {v1Verify ? (v1Verify.chain_intact ? t('سلسلة v1 سليمة') : t('سلسلة v1 مكسورة')) : t('لم يُتحقق بعد')}
             </span>
@@ -248,9 +248,9 @@ export function AuditPage() {
         {/* Card 2: Operations by NCA Classification */}
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               {t('توزيع العمليات حسب تصنيف NCA')}
-            </h4>
+            </h2>
             <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{logs.length} {t('سجل تشغيلي')}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, fontSize: 11, marginTop: 4 }}>
@@ -263,9 +263,9 @@ export function AuditPage() {
         {/* Card 3: Cold Vault Archive */}
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               {t('مستودع الأرشيف البارد (Cold Vault)')}
-            </h4>
+            </h2>
             <span style={{ fontSize: 11, color: 'var(--chart-out)', fontWeight: 700 }}>{t('365 يوم احتفاظ')}</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
@@ -292,7 +292,7 @@ export function AuditPage() {
           </div>
         }
       >
-        <TableContainer className="max-h-[560px]">
+        <TableContainer className="max-h-[560px]" tabIndex={0}>
           <Table>
             <TableHeader>
               <TableRow>

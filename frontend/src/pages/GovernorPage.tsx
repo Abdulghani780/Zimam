@@ -320,6 +320,7 @@ export function GovernorPage() {
               <label className="toggle-switch">
                 <input
                   type="checkbox"
+                  aria-label={t('تفعيل التقليص التلقائي للموارد')}
                   checked={autoTrimChecked}
                   onChange={(e) => handleToggleAutoTrim(e.target.checked)}
                 />
@@ -418,6 +419,7 @@ export function GovernorPage() {
               <label className="toggle-switch">
                 <input
                   type="checkbox"
+                  aria-label={t('تفعيل الفصل التلقائي للجلسات الخاملة')}
                   checked={autoDiscChecked}
                   onChange={(e) => handleToggleAutoDisconnect(e.target.checked)}
                 />
@@ -448,6 +450,7 @@ export function GovernorPage() {
               <label className="toggle-switch">
                 <input
                   type="checkbox"
+                  aria-label={t('تفعيل تسجيل الخروج اليومي التلقائي')}
                   checked={dailyLogoffChecked}
                   onChange={(e) => handleToggleDailyLogoff(e.target.checked)}
                 />

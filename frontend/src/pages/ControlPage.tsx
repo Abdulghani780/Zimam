@@ -769,10 +769,10 @@ export function ControlPage() {
                             —
                           </span>
                         </td>
-                        <td className="cell-mono" style={{ color: 'var(--text-muted)' }}>
+                        <td className="cell-mono">
                           {formatLoginTimestamp(session.login_time || session.login)}
                         </td>
-                        <td className="cell-mono" style={{ color: 'var(--text-muted)' }}>
+                        <td className="cell-mono">
                           {formatSessionDuration(session.login_time || session.login, now)}
                         </td>
                         <td>

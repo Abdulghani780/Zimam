@@ -242,6 +242,7 @@ export function SessionReplayPage() {
                 <span style={{ fontSize: 11, fontFamily: 'var(--font)', color: 'var(--text-3)' }}>04:12</span>
                 <input
                   type="range"
+                  aria-label={t('موضع تشغيل Recording')}
                   min="0"
                   max="100"
                   value={progress}
@@ -316,7 +317,7 @@ export function SessionReplayPage() {
         {/* Keystroke & Event Timeline (4 cols) */}
         <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Card title={t('سجل نقرات المفاتيح والأحداث')} icon="list">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 420, overflowY: 'auto' }}>
+            <div tabIndex={0} style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 420, overflowY: 'auto' }}>
               {keystrokes.map((k, idx) => (
                 <div
                   key={idx}

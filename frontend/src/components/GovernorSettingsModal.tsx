@@ -81,6 +81,7 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
           <label className="toggle-switch">
             <input
               type="checkbox"
+              aria-label={t('تفعيل التقليص التلقائي للموارد')}
               checked={autoTrim}
               onChange={(e) => setAutoTrim(e.target.checked)}
             />
@@ -116,6 +117,7 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
           <label className="toggle-switch">
             <input
               type="checkbox"
+              aria-label={t('تفعيل الفصل التلقائي للجلسات الخاملة')}
               checked={autoDisconnect}
               onChange={(e) => setAutoDisconnect(e.target.checked)}
             />
@@ -151,6 +153,7 @@ export function GovernorSettingsModal({ open, onClose, onSaved }: GovernorSettin
           <label className="toggle-switch">
             <input
               type="checkbox"
+              aria-label={t('تفعيل تسجيل الخروج اليومي التلقائي')}
               checked={autoLogoff}
               onChange={(e) => setAutoLogoff(e.target.checked)}
             />

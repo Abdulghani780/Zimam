@@ -82,6 +82,9 @@ test.describe('ASAAS - Screenshot matrix 375/768/1280 × light/dark', () => {
   for (const theme of THEMES) {
     for (const width of SHOT_WIDTHS) {
       test(`Screenshots @ ${width}px ${theme}`, async ({ page }) => {
+        // 12 pages × navigation + screenshot exceeds the default 30s on the
+        // emulated Mobile project; desktop finishes well under it.
+        test.setTimeout(120_000);
         await setTheme(page, theme);
         await page.setViewportSize({ width, height: width <= 768 ? 844 : 900 });
         for (const p of pagesToAudit) {

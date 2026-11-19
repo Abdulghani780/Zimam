@@ -362,8 +362,9 @@ export function JitElevationPage() {
 
             <form onSubmit={handleSubmitRequest} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Field label={t('الدور المطلوب الترقية إليه')}>
-                {() => (
+                {(id) => (
                   <select
+                    id={id}
                     value={targetRole}
                     onChange={(e) => setTargetRole(e.target.value)}
                     className="text-input"

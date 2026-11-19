@@ -164,6 +164,7 @@
   --status-safe:               var(--primitive-color-emerald-500);
   --status-safe-surface:       var(--primitive-color-emerald-50);
   --status-safe-border:        rgba(34, 197, 94, 0.35);
+  --status-safe-ink:           var(--primitive-color-emerald-400);
 
   --status-warning:            var(--primitive-color-amber-500);
   --status-warning-surface:    var(--primitive-color-amber-50);
@@ -172,6 +173,7 @@
   --status-danger:             var(--primitive-color-crimson-500);
   --status-danger-surface:     var(--primitive-color-crimson-50);
   --status-danger-border:      rgba(239, 68, 68, 0.35);
+  --status-danger-ink:         #f87171;
 
   --status-info:               var(--primitive-color-sky-400);
   --status-info-surface:       var(--primitive-color-sky-50);
@@ -285,6 +287,10 @@
   --warn:                   #b8860b;
   --brand-mark:             url('/logo.png');
   --nav-active-gradient:    linear-gradient(135deg, rgba(186, 149, 85, 0.18), rgba(186, 149, 85, 0.06));
+
+  /* Light-theme status ink: emerald-700 keeps AA contrast on paper surfaces */
+  --status-safe-ink:        #047857;
+  --status-danger-ink:      #b91c1c;
 }
 
 :root[dir='ltr'] {

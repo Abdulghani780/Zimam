@@ -1246,7 +1246,7 @@ export function PortsPage() {
                     <th>{t('الحالة')}</th>
                     <th>{t('حالة التعارض')}</th>
                     <th>PID</th>
-                    <th aria-label={t('إجراءات')} />
+                    <th><span className="sr-only">{t('إجراءات')}</span></th>
                   </tr>
                 </thead>
                 <tbody>

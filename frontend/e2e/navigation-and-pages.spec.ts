@@ -28,7 +28,7 @@ test.describe('ASAAS - Navigation & Core Pages Journeys', () => {
     await page.goto('/ports');
     await expect(page).toHaveURL(/.*ports/);
 
-    await expect(page.getByText(/عزل المنافذ/).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /عزل المنافذ/ })).toBeVisible();
     await expect(page.getByText(/إدارة وتوزيع منافذ المشاريع/i)).toBeVisible();
     await expect(page.getByText(/حالة المنافذ على السيرفر/i)).toBeVisible();
   });

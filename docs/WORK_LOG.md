@@ -674,3 +674,14 @@ Backend:     127.0.0.1:8765 (loopback فقط)
   - `dashboard-telemetry`: أعيدت كتابتها لتطابق OverviewPage الجديد — `.conn-pill` بدل «متصل مباشر»، `.kpi-grid` بست بطاقات KPI، لوحة «حالة السيرفر»/«السيرفرات والخدمات»/«النشاط الأخير» بدل البانرات والجداول القديمة. لوحة «أسطول أساس» شرطية على `/api/v1` فلم تُختبر.
   - `modals-and-dialogs`: MD-01 يفتح قائمة «إعدادات سريعة» ثم menuitem «رادار الذكاء الاصطناعي» + timeout 15s لإشارات التشخيص غير المتزامنة؛ MD-03 ينقر `.header-user` وزر الإغلاق «إغلاق».
 - **التحقق**: المجموعة الكاملة `npx playwright test --project="Desktop Chromium"` على backend حي :8766 = **65/65** (بعد إعادة تشغيل العيّنين المتقطعين viewport-matrix التي نجحت منفردة — timeout بيئي تحت حمل المجموعة).
+
+### 12.35 حملة اختبار شاملة ذاتية — builds + e2e + أمن + وصولية (axe)
+
+- **النطاق**: backend :8765 + control plane :8876 (.venv) + SPA مبنية حديثاً؛ اختبار يدوي كامل من كل النواحي.
+- **Builds**: agent `dotnet build` (SDK 10.0.402) 0/0 ✅؛ control_plane unittest 10/10 ✅؛ backend unittest 34/34 ✅ (ضد backend حي + e2e-admin).
+- **Playwright كامل (مشروعين)**: 120 ناجح / 10 فاشل → بعد الإصلاحات أعيد تشغيل المناطق الفاشلة = 28/28 ✅ + عينة screenshot موبايل ✅. الفشلان البيئيان الوحيدان المتبقيان المفترضان: لا شيء — viewport-matrix على Mobile اجتاز بمهلة 120s.
+- **إصلاحات أمنية/وصولية حقيقية وُجدت بالمختبر:**
+  - **علة UI حرجة**: kit `.modal-backdrop` z-index 50 < `.mobile-tabbar` 100 → الـ bottom-sheet modal على الموبايل كانت أزراره مغطاة بشريط التنقل (فشل MD-01/MD-02 على Mobile). رُفع إلى 130.
+  - **axe-core على 21 صفحة**: صفر violations نهائياً. الإصلاحات: aria-label لـ 11 toggle-switch + select الجلسة + range input؛ h4→h2 في Audit/Users؛ tabIndex=0 على مناطق scrollable؛ `--status-safe-ink`/`--status-danger-ink` tokens جديدة لتباين AA؛ توحيد ألوان `--text-muted/--text-3` الفاشلة إلى `--text-2` في data-table th / detail-row / quickbar / legend / panel-action / policy code.
+  - **أمن API**: 12/12 endpoint محمي → 401 بدون جلسة؛ viewer → 403 على POST إنشاء مستخدم (رسالة عربية واضحة)؛ لا تسرّب password_hash/salt في /api/users؛ استعلامات parameterized (probes injection → 200 فارغة لا أخطاء)؛ rate-limit brute-force موجود (5 محاولات/10min) مع إعفاء loopback موثّق؛ npm audit = 0 ثغرات؛ لا secrets مثبتة.
+- **إصلاحات specs متقادمة**: عنوان الصفحة `/أساس/` → `/زمام/`؛ NAV-02 يستخدم heading role (النص القديم كان يطابق 사이بار المخفي على الموبايل)؛ viewport-matrix screenshot tests مهلة 120s للمشروع المحمول.

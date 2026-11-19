@@ -664,7 +664,7 @@ select.input option {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 130;
   display: grid;
   place-items: center;
   padding: 20px;

@@ -372,9 +372,9 @@ export function UsersPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               {t('سياسات أمان الحسابات وتصليب كلمات المرور')}
-            </h4>
+            </h2>
             <span style={{ fontSize: 11, color: 'var(--paid)', fontWeight: 700 }}>{t('مفعلة Enforced')}</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
@@ -384,9 +384,9 @@ export function UsersPage() {
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               {t('جلسات RDP والحصة المتزامنة')}
-            </h4>
+            </h2>
             <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{t('غير محدودة Unlimited')}</span>
           </div>
           <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0 }}>
@@ -396,9 +396,9 @@ export function UsersPage() {
 
         <Glass style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', margin: 0 }}>
               {t('بيئة تشغيل السيرفر')}
-            </h4>
+            </h2>
             <span style={{ fontSize: 11, color: 'var(--chart-out)', fontWeight: 700 }}>
               {domainProfile?.is_domain_controller ? 'Domain Controller' : 'Sovereign Standalone Host'}
             </span>

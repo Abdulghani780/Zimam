@@ -17,7 +17,7 @@ test.describe('ASAAS - Dashboard & Live Telemetry Journeys', () => {
   });
 
   test('TC-01: Page title and connection status pill', async ({ page }) => {
-    await expect(page).toHaveTitle(/أساس/);
+    await expect(page).toHaveTitle(/زمام/);
 
     // Connection pill in header shows live/disconnected state
     const connPill = page.locator('.conn-pill');

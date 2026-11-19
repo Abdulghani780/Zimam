@@ -817,7 +817,7 @@ export function SecurityPage() {
           </form>
         }
       >
-        <TableContainer className="max-h-[360px]">
+        <TableContainer className="max-h-[360px]" tabIndex={0}>
           <Table>
             <TableHeader>
               <TableRow>
@@ -882,7 +882,7 @@ export function SecurityPage() {
 
       {/* 5. Real Security Event Stream */}
       <Card title={t('سجل الأحداث الأمنية الفعلي (Security Event Stream)')} icon="alert">
-        <TableContainer className="max-h-[360px]">
+        <TableContainer className="max-h-[360px]" tabIndex={0}>
           <Table>
             <TableHeader>
               <TableRow>

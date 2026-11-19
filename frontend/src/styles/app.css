@@ -1444,7 +1444,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
 }
 
 .server-select__meta {
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
@@ -1824,7 +1824,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   padding: 11px 20px;
   border-top: 1px solid var(--panel-line);
   background: var(--surface-canvas);
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 11px;
 }
 
@@ -1847,7 +1847,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
 }
 
 .app-footer .ok {
-  color: var(--status-safe);
+  color: var(--status-safe-ink);
 }
 
 /* ---------- Page heading ---------- */
@@ -2365,7 +2365,7 @@ textarea.ui-input {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 11px;
 }
 
@@ -2871,7 +2871,7 @@ textarea.ui-input {
   background: var(--surface-ground) !important;
   border-bottom: 1px solid var(--surface-container-high) !important;
   border-top: 1px solid var(--panel-line-soft) !important;
-  color: var(--text-muted);
+  color: var(--text-2);
   font-size: 11px !important;
   font-weight: 600 !important;
   text-align: start;
@@ -3485,7 +3485,7 @@ textarea.ui-input {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-muted);
+  color: var(--text-2);
   font-size: 11px;
   font-weight: 500;
   flex: none;
@@ -3625,7 +3625,7 @@ textarea.ui-input {
 
 .rdp-quickbar__label {
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
   white-space: nowrap;
 }
 
@@ -3983,7 +3983,7 @@ textarea.ui-input {
 
 .pam-stat__label {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--text-2);
   line-height: 1.4;
 }
 
@@ -4366,7 +4366,7 @@ textarea.ui-input {
   gap: 14px;
   margin-top: 9px;
   font-size: 9.5px;
-  color: var(--text-muted);
+  color: var(--text-2);
 }
 
 .range-legend span {
@@ -4904,7 +4904,7 @@ textarea.ui-input {
 .policy-row__code code {
   direction: ltr;
   font-size: 9px;
-  color: var(--status-danger);
+  color: var(--status-danger-ink, var(--status-danger));
 }
 
 .policy-foot a {

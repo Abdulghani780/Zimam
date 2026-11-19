@@ -156,7 +156,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, ThHTMLAttributes<HTMLT
           padding: '12px 16px',
           fontSize: '12px',
           fontWeight: 700,
-          color: 'var(--text-3)',
+          color: 'var(--text-2)',
           letterSpacing: '0.03em',
           display: 'table-cell',
           textAlign: 'start',
@@ -219,7 +219,7 @@ export function TableEmpty({
         style={{
           padding: '48px 16px',
           textAlign: 'center',
-          color: 'var(--text-3)',
+          color: 'var(--text-2)',
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
@@ -233,7 +233,7 @@ export function TableEmpty({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--text-3)',
+              color: 'var(--text-2)',
             }}
           >
             {icon || <Inbox size={22} />}
@@ -256,7 +256,7 @@ export const TableCaption = forwardRef<HTMLTableCaptionElement, HTMLAttributes<H
           captionSide: 'bottom',
           padding: '8px 16px',
           textAlign: 'start',
-          color: 'var(--text-3)',
+          color: 'var(--text-2)',
           fontSize: '12px',
           ...style,
         }}

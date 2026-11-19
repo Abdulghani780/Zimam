@@ -230,6 +230,7 @@ export function SettingsPage() {
               <label className="toggle-switch">
                 <input
                   type="checkbox"
+                  aria-label={t('تفعيل قنوات الإخطار الفوري')}
                   checked={telegramEnabled}
                   onChange={(e) => setTelegramEnabled(e.target.checked)}
                 />
@@ -424,6 +425,7 @@ export function SettingsPage() {
             <label className="toggle-switch">
               <input
                 type="checkbox"
+                aria-label={t('تفعيل رصد هجمات التخمين والحظر')}
                 checked={ruleBruteForce}
                 onChange={(e) => setRuleBruteForce(e.target.checked)}
               />
@@ -454,6 +456,7 @@ export function SettingsPage() {
             <label className="toggle-switch">
               <input
                 type="checkbox"
+                aria-label={t('تفعيل محلل مخاطر الأوامر')}
                 checked={ruleCommandRisk}
                 onChange={(e) => setRuleCommandRisk(e.target.checked)}
               />
@@ -484,6 +487,7 @@ export function SettingsPage() {
             <label className="toggle-switch">
               <input
                 type="checkbox"
+                aria-label={t('تفعيل كشف طوفان المنافذ و SYN')}
                 checked={rulePortFlood}
                 onChange={(e) => setRulePortFlood(e.target.checked)}
               />
@@ -514,6 +518,7 @@ export function SettingsPage() {
             <label className="toggle-switch">
               <input
                 type="checkbox"
+                aria-label={t('تفعيل مراقبة تعطل الخدمات الحرجة')}
                 checked={ruleServiceCrash}
                 onChange={(e) => setRuleServiceCrash(e.target.checked)}
               />
