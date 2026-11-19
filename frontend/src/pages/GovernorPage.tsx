@@ -658,7 +658,7 @@ export function GovernorPage() {
         }
       >
         <div className="table-wrap">
-          <table className="app-table">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>{t('اسم الخدمة (Service Name)')}</th>
@@ -802,7 +802,7 @@ export function GovernorPage() {
         }
       >
         <div className="table-wrap" style={{ maxHeight: 460 }}>
-          <table className="app-table">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>PID</th>

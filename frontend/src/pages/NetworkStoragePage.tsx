@@ -640,7 +640,7 @@ options={[
             {t('الأقراص الفيزيائية المتصلة (Windows Physical Disks via Get-Disk)')}
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+            <table className="data-table">
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                   <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('رقم القرص')}</th>
@@ -689,7 +689,7 @@ options={[
             {t('وحدات التخزين عبر وكلاء أساس (disk.list — بيانات حية لكل وكيل)')}
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+            <table className="data-table">
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                   <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الوحدة')}</th>
@@ -763,7 +763,7 @@ options={[
 
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+              <table className="data-table">
                 <thead>
                   <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                     <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم المشاركة (Share Name)')}</th>
@@ -836,7 +836,7 @@ options={[
 
           {/* Directory Content Table */}
           <div style={{ overflowX: 'auto', maxHeight: '500px', border: '1px solid var(--glass-rim)', borderRadius: 8 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+            <table className="data-table">
               <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
                   <th style={{ padding: '10px 14px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الاسم')}</th>
@@ -975,7 +975,7 @@ options={[
             </div>
 
             <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+              <table className="data-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
                     <th style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم القاعدة')}</th>

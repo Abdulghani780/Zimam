@@ -802,7 +802,7 @@ options={[
 
               <Card style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                  <table className="data-table">
                     <thead>
                       <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الدور / الميزة')}</th>
@@ -906,7 +906,7 @@ options={[
 
               <Card style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto', maxHeight: '600px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                  <table className="data-table">
                     <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                       <tr style={{ background: 'var(--surface-ground)', borderBottom: '1px solid var(--glass-rim)' }}>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم الخدمة')}</th>
@@ -987,7 +987,7 @@ options={[
 
               <Card style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                  <table className="data-table">
                     <thead>
                       <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                         <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('اسم المهمة')}</th>
@@ -1054,7 +1054,7 @@ options={[
                 {t('سجل التحديثات المثبتة (Hotfixes & Security Patches)')}
               </div>
               <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                <table className="data-table">
                   <thead>
                     <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                       <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('معرف التحديث (HotFix ID)')}</th>
@@ -1175,7 +1175,7 @@ options={[
             {t('شهادات الأمان المحلية')} (LocalMachine\My Store)
           </div>
           <div style={{ overflowX: 'auto', maxHeight: '500px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+            <table className="data-table">
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                   <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('الموضوع (Subject)')}</th>

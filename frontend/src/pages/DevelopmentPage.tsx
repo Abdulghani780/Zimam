@@ -387,7 +387,7 @@ options={[
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+                <table className="data-table">
                   <thead>
                     <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                       <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('المنفذ المتنازع عليه')}</th>
@@ -493,7 +493,7 @@ options={[
             {t('جدول الوصول المباشر لبيئات المطورين (Direct Port Routing Map)')}
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'start' }}>
+            <table className="data-table">
               <thead>
                 <tr style={{ background: 'var(--glass-tint)', borderBottom: '1px solid var(--glass-rim)' }}>
                   <th style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-3)', fontWeight: 700 }}>{t('رابط الوصول المباشر')}</th>

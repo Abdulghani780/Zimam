@@ -189,7 +189,7 @@ export function VaultPage() {
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="data-table">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--glass-rim)', textAlign: 'right' }}>
                   <th style={{ padding: '12px 14px', color: 'var(--text-2)', fontSize: 13 }}>{t('الأصل / الخادم')}</th>

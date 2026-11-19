@@ -537,7 +537,7 @@ options={[
             {/* Render Columns & Rows */}
             {tableData?.rows && tableData.rows.length > 0 ? (
               <div style={{ overflowX: 'auto', maxHeight: 520 }}>
-                <table className="table" style={{ width: '100%', fontSize: 11 }}>
+                <table className="data-table">
                   <thead>
                     <tr>
                       {tableData.columns.map((col: string) => (
@@ -684,7 +684,7 @@ options={[
 
               {queryResult.is_select && queryResult.rows && queryResult.rows.length > 0 ? (
                 <div style={{ overflowX: 'auto', maxHeight: 420 }}>
-                  <table className="table" style={{ width: '100%', fontSize: 11 }}>
+                  <table className="data-table">
                     <thead>
                       <tr>
                         {queryResult.columns.map((c: string) => (

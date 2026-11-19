@@ -452,7 +452,7 @@ title={t('فحص TCP حقيقي لكل خادم وتحديث الحالة وزم
       {activeTab === 'servers' && (
         <Card style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--glass-rim)' }}>
           <div className="table-wrap">
-            <table className="app-table">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>{t('الخادم')}</th>
