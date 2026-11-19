@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useToast } from '../asaas-ui';
+import { Segmented, useToast } from '../asaas-ui';
 import { api, type AssetItem, type JitGrant, type LocalUser } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -655,28 +655,15 @@ export function BastionPage() {
         </div>
 
         <div className="page-head__actions">
-          <div className="pam-tabs" role="tablist" aria-label={t('أقسام بوابة الوصول الآمن')}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'requests'}
-              data-active={tab === 'requests' ? 'true' : undefined}
-              onClick={() => setTab('requests')}
-            >
-              {t('طلبات الوصول')}
-              <span className="pam-tabs__count">{grants.length}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'assets'}
-              data-active={tab === 'assets' ? 'true' : undefined}
-              onClick={() => setTab('assets')}
-            >
-              {t('الأصول والبروتوكولات')}
-              <span className="pam-tabs__count">{assets.length}</span>
-            </button>
-          </div>
+          <Segmented
+value={tab}
+onChange={setTab}
+label={t('أقسام بوابة الوصول الآمن')}
+options={[
+{ value: 'requests', label: t('طلبات الوصول'), count: grants.length },
+{ value: 'assets', label: t('الأصول والبروتوكولات'), count: assets.length },
+]}
+/>
 
           <button type="button" className="icon-btn" onClick={handleRefresh} disabled={refreshing} aria-label={t('تحديث البيانات')}>
             <RefreshCw size={15} className={refreshing ? 'spin' : ''} />
