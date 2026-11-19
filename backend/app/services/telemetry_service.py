@@ -11,6 +11,7 @@ Enriches telemetry with GNOME/Ubuntu System Monitor 4-panel metrics:
 from __future__ import annotations
 
 import collections
+import logging
 import os
 import platform
 import socket
@@ -157,8 +158,22 @@ class TelemetryService:
                             active_sessions=sess_count,
                         )
                         AlertService.evaluate_telemetry_thresholds(avg_cpu, mem_pct, disk_usage.percent)
+                        connections = collections.Counter(
+                            conn.raddr.ip
+                            for conn in psutil.net_connections(kind='tcp')
+                            if conn.raddr and conn.status in {'ESTABLISHED', 'SYN_SENT', 'SYN_RECV'}
+                        )
+                        AlertService.evaluate_port_flood(dict(connections))
+                        if os.name == 'nt':
+                            services = {
+                                service.name(): service.status()
+                                for service in psutil.win_service_iter()
+                                if service.name().lower() in {'termservice', 'mssqlserver', 'w3svc'}
+                            }
+                            AlertService.evaluate_critical_services(services)
                     except Exception:
-                        pass
+                        logger = logging.getLogger('asaas.telemetry')
+                        logger.exception("Failed to persist metrics or evaluate alert rules")
 
                 self._cleanup_counter += 1
                 if self._cleanup_counter >= 3600:

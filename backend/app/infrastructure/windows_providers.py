@@ -791,7 +791,7 @@ class UpdateProvider:
                 'installed_updates': raw.get('InstalledUpdates') or [],
                 'status': 'Reboot Required' if raw.get('RebootPending') else 'Up to date'
             }
-        return {'ok': True, 'reboot_pending': False, 'installed_updates': [], 'status': 'Up to date'}
+        return {'ok': False, 'reboot_pending': None, 'installed_updates': [], 'status': 'Unavailable', 'error': 'تعذر قراءة حالة Windows Update من PowerShell.'}
 
 
 # =====================================================================

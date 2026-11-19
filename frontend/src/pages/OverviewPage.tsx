@@ -144,6 +144,7 @@ export function OverviewPage() {
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [fleet, setFleet] = useState<FleetSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
 
   const host = snapshot?.host;
   const sessions = snapshot?.sessions ?? [];
@@ -153,33 +154,41 @@ export function OverviewPage() {
     try {
       const res = await api.getHistoricalMetrics(selectedRange);
       setHistory(Array.isArray(res.history) ? res.history : []);
-    } catch {
+      setDataError(null);
+    } catch (err: any) {
       setHistory([]);
+      setDataError(err.message || t('تعذر تحميل القياسات التاريخية.'));
     }
   }, []);
 
   const loadLiveExtras = useCallback(async () => {
-    const [serverRes, auditRes, securityRes, securityStatRes, firewallRes, backupRes, fleetRes] = await Promise.all([
-      api.getServers().catch(() => null),
-      api.getAuditLogs(8).catch(() => []),
-      api.getSecurityEvents().catch(() => []),
-      api.getSecurityStats().catch(() => null),
-      api.getFirewallStatus().catch(() => null),
-      api.getDatabaseBackups().catch(() => null),
-      apiV1.fleetSummary().catch(() => null),
-    ]);
-    if (serverRes?.servers) {
-      setServers(serverRes.servers);
-      setServersState('ready');
-    } else {
+    try {
+      const [serverRes, auditRes, securityRes, securityStatRes, firewallRes, backupRes, fleetRes] = await Promise.all([
+        api.getServers(),
+        api.getAuditLogs(8),
+        api.getSecurityEvents(),
+        api.getSecurityStats(),
+        api.getFirewallStatus(),
+        api.getDatabaseBackups(),
+        apiV1.fleetSummary(),
+      ]);
+      if (serverRes?.servers) {
+        setServers(serverRes.servers);
+        setServersState('ready');
+      } else {
+        setServersState('error');
+      }
+      if (Array.isArray(auditRes)) setAuditLogs(auditRes);
+      if (Array.isArray(securityRes)) setSecurityEvents(securityRes);
+      if (securityStatRes) setSecurityStats(securityStatRes);
+      if (firewallRes) setFirewall(firewallRes as FirewallStatus);
+      if (backupRes?.backups) setBackups(backupRes.backups as BackupRecord[]);
+      if (fleetRes) setFleet(fleetRes);
+      setDataError(null);
+    } catch (err: any) {
       setServersState('error');
+      setDataError(err.message || t('تعذر تحميل بيانات اللوحة الإضافية.'));
     }
-    if (Array.isArray(auditRes)) setAuditLogs(auditRes);
-    if (Array.isArray(securityRes)) setSecurityEvents(securityRes);
-    if (securityStatRes) setSecurityStats(securityStatRes);
-    if (firewallRes) setFirewall(firewallRes as FirewallStatus);
-    if (backupRes?.backups) setBackups(backupRes.backups as BackupRecord[]);
-    if (fleetRes) setFleet(fleetRes);
   }, []);
 
   useEffect(() => {
@@ -291,6 +300,8 @@ export function OverviewPage() {
           </button>
         </div>
       </div>
+
+      {dataError && <div role="alert" style={{ padding: 14, color: 'var(--unpaid)', border: '1px solid var(--unpaid)', borderRadius: 10, marginBottom: 16 }}>{dataError}</div>}
 
       {fleet && (
         <section className="panel fleet-section" aria-labelledby="fleet-title">

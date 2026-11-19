@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { apiV1 } from '../lib/apiV1';
+import { apiV1, type V1Agent } from '../lib/apiV1';
 import { Card, Button, Glass, Field, TextInput, useToast } from '../asaas-ui';
 import {
   CheckCircle2,
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { t, isRtl } from '../lib/i18n';
 
-type JitStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'PENDING' | 'REJECTED' | 'UNKNOWN';
+type JitStatus = 'ACTIVE' | 'EXPIRED' | 'EXPIRED_UNREVOKED' | 'REVOKED' | 'PENDING' | 'REJECTED' | 'ACTIVATING' | 'REVOKING' | 'FAILED' | 'UNKNOWN';
 
 interface JitGrant {
   id: string;
@@ -39,6 +39,14 @@ const statusLabel = (status: JitStatus): string => {
       return t('نشطة ACTIVE');
     case 'PENDING':
       return t('بانتظار الاعتماد PENDING');
+    case 'ACTIVATING':
+      return t('جارٍ تفعيل الصلاحية على الوكيل');
+    case 'REVOKING':
+      return t('جارٍ سحب الصلاحية على الوكيل');
+    case 'FAILED':
+      return t('فشل تنفيذ الصلاحية');
+    case 'EXPIRED_UNREVOKED':
+      return t('انتهت المدة وسحب الصلاحية معلق');
     case 'REJECTED':
       return t('مرفوضة REJECTED');
     case 'REVOKED':
@@ -55,7 +63,11 @@ const statusColor = (status: JitStatus): { color: string; background: string } =
     case 'ACTIVE':
       return { color: 'var(--paid)', background: 'var(--paid-bg)' };
     case 'PENDING':
+    case 'ACTIVATING':
+    case 'REVOKING':
       return { color: 'var(--partial)', background: 'var(--partial-bg)' };
+    case 'FAILED':
+    case 'EXPIRED_UNREVOKED':
     case 'REJECTED':
     case 'REVOKED':
       return { color: 'var(--unpaid)', background: 'var(--unpaid-bg)' };
@@ -69,6 +81,9 @@ export function JitElevationPage() {
   const [grants, setGrants] = useState<JitGrant[]>([]);
   const [currentRole, setCurrentRole] = useState<string>('viewer');
   const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [agents, setAgents] = useState<V1Agent[]>([]);
+  const [agentId, setAgentId] = useState('');
 
   const [targetRole, setTargetRole] = useState('Local Administrator');
   const [durationMins, setDurationMins] = useState(30);
@@ -82,6 +97,7 @@ export function JitElevationPage() {
     try {
       const res = await apiV1.jitGrants();
       if (res && Array.isArray(res.grants)) {
+        setLoadError(null);
         setGrants(res.grants.map((g) => ({
           id: g.id,
           user: g.user || '—',
@@ -95,8 +111,8 @@ export function JitElevationPage() {
           created_at: g.created_at || '',
         })));
       }
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setLoadError(err.message || t('تعذر تحميل طلبات الصلاحيات.'));
     }
   };
 
@@ -105,14 +121,19 @@ export function JitElevationPage() {
       const res = await apiV1.me();
       const role = res?.is_admin ? 'admin' : (res?.role || 'viewer');
       setCurrentRole(role);
-    } catch {
-      // viewer remains the safe default
+    } catch (err: any) {
+      setLoadError(err.message || t('تعذر تحميل هوية المستخدم.'));
     }
   };
 
   useEffect(() => {
     fetchGrants();
     fetchIdentity();
+    apiV1.agents().then((res) => {
+      const list = Array.isArray(res) ? res : res.agents || [];
+      setAgents(list);
+      setAgentId((current) => current || list.find((agent) => agent.status === 'online')?.id || list[0]?.id || '');
+    }).catch((err) => toast(err.message || t('تعذر تحميل الوكلاء المستهدفين'), 'error'));
     const poll = setInterval(fetchGrants, 10_000);
     const timer = setInterval(() => {
       setGrants((prev) =>
@@ -137,7 +158,7 @@ export function JitElevationPage() {
     try {
       const res = await apiV1.revokeJitGrant(id);
       if (res && res.ok) {
-        toast(`${t('تم سحب الصلاحيات المؤقتة للمستخدم [')}${user}${t('] فوراً.')}`, 'success');
+        toast(res.message || `${t('تم إرسال سحب الصلاحيات المؤقتة للمستخدم [')}${user}${t('] إلى الوكيل.')}`, 'success');
         fetchGrants();
       } else {
         toast(t('فشل سحب الصلاحيات.'), 'error');
@@ -171,12 +192,17 @@ export function JitElevationPage() {
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agentId) {
+      toast(t('اختر وكيلاً مستهدفاً قبل إرسال الطلب.'), 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await apiV1.requestJitGrant({
         target_role: targetRole,
         reason,
         duration_mins: durationMins,
+        agent_id: agentId,
       });
       if (res && res.ok) {
         toast(res.message || `${t('تم تسجيل طلب الترقية المؤقتة لمدة (')}${durationMins}${t(' دقيقة).')}`, 'success');
@@ -329,6 +355,8 @@ export function JitElevationPage() {
         </Card>
       )}
 
+      {loadError && <Glass role="alert" style={{ padding: 16, color: 'var(--unpaid)', marginBottom: 16 }}>{loadError}</Glass>}
+
       {/* 2. Top Grid: Request Form (5 cols) & Active Grants (7 cols) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: 20 }}>
         {/* Form: Request Temporary Elevation (5 cols) */}
@@ -361,6 +389,14 @@ export function JitElevationPage() {
             </div>
 
             <form onSubmit={handleSubmitRequest} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Field label={t('الخادم المستهدف عبر الوكيل')}>
+                {(id) => (
+                  <select id={id} value={agentId} onChange={(e) => setAgentId(e.target.value)} className="text-input" style={{ width: '100%' }} required>
+                    <option value="">{t('اختر وكيلاً')}</option>
+                    {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name || agent.id} ({agent.status || 'unknown'})</option>)}
+                  </select>
+                )}
+              </Field>
               <Field label={t('الدور المطلوب الترقية إليه')}>
                 {(id) => (
                   <select
@@ -371,7 +407,6 @@ export function JitElevationPage() {
                     style={{ width: '100%' }}
                   >
                     <option value="Local Administrator">{t('مدير محلي كامل (Local Administrator)')}</option>
-                    <option value="SQL SysAdmin">{t('مدير قواعد بيانات (SQL Server SysAdmin)')}</option>
                     <option value="Network Operator">{t('مشغل شبكة وجدار حماية (Network Operator)')}</option>
                     <option value="Backup Operator">{t('مشغل نسخ احتياطي (Backup Operator)')}</option>
                   </select>
@@ -423,9 +458,9 @@ export function JitElevationPage() {
                 )}
               </Field>
 
-              <Button size="sm" variant="primary" loading={submitting} type="submit" style={{ marginTop: 6 }}>
+              <Button size="sm" variant="primary" loading={submitting} type="submit" disabled={!agentId || submitting} style={{ marginTop: 6 }}>
                 <Send size={13} />
-                <span>{isAdmin ? t('اعتماد وترقية الصلاحية فوراً (مدير النظام)') : t('تقديم طلب الترقية لاعتماد مدير النظام')}</span>
+                <span>{isAdmin ? t('إرسال التفعيل الموقع إلى الوكيل') : t('تقديم طلب الترقية لاعتماد مدير النظام')}</span>
               </Button>
             </form>
           </Glass>
@@ -494,7 +529,7 @@ export function JitElevationPage() {
                         </span>
                       </td>
                       <td style={{ textAlign: 'end' }}>
-                        {g.status === 'ACTIVE' && (
+                        {(g.status === 'ACTIVE' || g.status === 'FAILED') && (
                           <Button
                             size="sm"
                             variant="ghost"

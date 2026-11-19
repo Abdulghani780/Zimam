@@ -122,11 +122,9 @@ class MfaVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=8)
 
 
-# Read-only job types the agent is allowed to execute. Write/destructive
-# Read-only collectors plus one reviewed write job (session.logoff, which
-# requires an explicit session_id payload). Everything else stays behind the
-# legacy ActionEngine until a reviewed allowlist and confirmation flow exist.
-ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect", "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update", "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms", "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle", "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove", "local.user", "software.uninstall"}
+# Explicit allowlist for signed collectors and reviewed administrative jobs.
+# Every write job is dispatched to one enrolled agent and confirmed by its result.
+ALLOWED_JOB_TYPES = {"system.info", "process.list", "service.list", "disk.list", "inventory.collect", "session.list", "session.logoff", "session.disconnect", "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update", "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms", "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle", "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove", "local.user", "software.uninstall", "jit.grant", "jit.revoke"}
 
 
 class JobCreateRequest(BaseModel):
@@ -316,16 +314,22 @@ def setup_mfa(user: User = Depends(_current_user)) -> dict:
     secret = pyotp.random_base32()
     with db_session() as db:
         row = db.get(User, user.id)
-        row.mfa_secret = secret
-    return {"enabled": True, "secret": secret, "otpauth_uri": pyotp.TOTP(secret).provisioning_uri(name=user.username, issuer_name="ASAAS")}
+        row.mfa_pending_secret = secret
+        append_audit(db, actor_id=user.id, action="mfa.setup_started", target_id=user.id)
+    return {"enabled": False, "pending_verification": True, "secret": secret, "otpauth_uri": pyotp.TOTP(secret).provisioning_uri(name=user.username, issuer_name="ASAAS")}
 
 
 @router.post("/auth/mfa/verify")
 def verify_mfa(payload: MfaVerifyRequest, user: User = Depends(_current_user)) -> dict:
     import pyotp
-    if not user.mfa_secret or not pyotp.TOTP(user.mfa_secret).verify(payload.code):
-        raise HTTPException(status_code=401, detail="Invalid MFA code")
-    return {"verified": True}
+    with db_session() as db:
+        row = db.get(User, user.id)
+        if not row.mfa_pending_secret or not pyotp.TOTP(row.mfa_pending_secret).verify(payload.code):
+            raise HTTPException(status_code=401, detail="Invalid MFA code")
+        row.mfa_secret = row.mfa_pending_secret
+        row.mfa_pending_secret = None
+        append_audit(db, actor_id=user.id, action="mfa.enabled", target_id=user.id)
+    return {"verified": True, "enabled": True}
 
 
 @router.get("/assets")
@@ -644,19 +648,23 @@ class SessionTerminateRequest(BaseModel):
     session_id: int = Field(gt=0)
 
 
+def _insert_signed_job(db, *, user: User, agent_id: str, job_type: str, payload: dict) -> AgentJob:
+    if db.get(Agent, agent_id) is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    job_id = uuid.uuid4().hex
+    signature = get_job_signer().sign(_job_signature_payload(job_id, agent_id, job_type, payload_json)).hex()
+    job = AgentJob(id=job_id, agent_id=agent_id, job_type=job_type, payload_json=payload_json, signature=signature, created_by=user.username, created_at=datetime.now(UTC))
+    db.add(job)
+    return job
+
+
 def _queue_session_job(user: User, agent_id: str, session_id: int, job_type: str) -> dict:
     _require_writer(user)
     with db_session() as db:
-        if db.get(Agent, agent_id) is None:
-            raise HTTPException(status_code=404, detail="Agent not found")
-    job_payload = json.dumps({"session_id": session_id}, sort_keys=True, separators=(",", ":"))
-    job_id = uuid.uuid4().hex
-    signature = get_job_signer().sign(_job_signature_payload(job_id, agent_id, job_type, job_payload)).hex()
-    with db_session() as db:
-        job = AgentJob(id=job_id, agent_id=agent_id, job_type=job_type, payload_json=job_payload, signature=signature, created_by=user.username, created_at=datetime.now(UTC))
-        db.add(job)
-        append_audit(db, actor_id=user.id, action=f"session.{job_type.split('.', 1)[1]}", target_id=job_id, payload={"agent_id": agent_id, "session_id": session_id})
-    return {"job_id": job_id, "status": "queued", "agent_id": agent_id, "session_id": session_id, "job_type": job_type}
+        job = _insert_signed_job(db, user=user, agent_id=agent_id, job_type=job_type, payload={"session_id": session_id})
+        append_audit(db, actor_id=user.id, action=f"session.{job_type.split('.', 1)[1]}", target_id=job.id, payload={"agent_id": agent_id, "session_id": session_id})
+        return {"job_id": job.id, "status": "queued", "agent_id": agent_id, "session_id": session_id, "job_type": job_type}
 
 
 @router.post("/sessions/terminate", status_code=202)
@@ -685,7 +693,7 @@ def list_recordings(user: User = Depends(_current_user)) -> dict:
     items = session_recording.list_recordings()
     if not user.is_admin:
         items = [i for i in items if i.get("user_id") == user.id]
-    return {"items": items, "count": len(items), "storage_status": "active"}
+    return {"items": items, "count": len(items), "storage_status": "active" if session_recording.recording_enabled() else "disabled"}
 
 
 @router.get("/recordings/{recording_id}")
@@ -694,6 +702,17 @@ def get_recording(recording_id: str, user: User = Depends(_current_user)) -> dic
     if meta is None or (not user.is_admin and meta.get("user_id") != user.id):
         raise HTTPException(status_code=404, detail="Recording not found")
     return meta
+
+
+@router.get("/recordings/{recording_id}/export")
+def export_recording(recording_id: str, user: User = Depends(_current_user)) -> FileResponse:
+    meta = session_recording.get_meta(recording_id)
+    path = session_recording.recording_file(recording_id)
+    if meta is None or path is None or (not user.is_admin and meta.get("user_id") != user.id):
+        raise HTTPException(status_code=404, detail="Recording not found")
+    with db_session() as db:
+        append_audit(db, actor_id=user.id, action="recording.export", target_id=recording_id, payload={"protocol": meta.get("protocol")})
+    return FileResponse(path, media_type="application/x-ndjson", filename=f"asaas-{recording_id}.jsonl")
 
 
 @router.delete("/recordings/{recording_id}", status_code=204)
@@ -874,9 +893,10 @@ def db_scalar_user(username: str) -> User | None:
 
 class JitRequest(BaseModel):
     target_role: str = Field(default="Local Administrator", max_length=128)
-    reason: str = Field(default="", max_length=2000)
+    reason: str = Field(default="", min_length=5, max_length=2000)
     duration_mins: int = Field(default=30, ge=1, le=480)
     username: str | None = Field(default=None, max_length=128)
+    agent_id: str = Field(min_length=32, max_length=64)
 
 
 class JitDecision(BaseModel):
@@ -890,7 +910,7 @@ def _jit_view(row: JitGrantRow) -> dict:
         expires = expires.replace(tzinfo=UTC)
     status = row.status
     if status == "active" and expires is not None and expires <= now:
-        status = "expired"
+        status = "expired_unrevoked"
     remaining = max(0, int((expires - now).total_seconds())) if status == "active" and expires else 0
     requested = row.requested_at
     if requested is not None and requested.tzinfo is None:
@@ -902,6 +922,7 @@ def _jit_view(row: JitGrantRow) -> dict:
         "id": row.id,
         "user": row.username,
         "user_id": row.user_id,
+        "agent_id": row.agent_id,
         "target": row.target_role,
         "target_role": row.target_role,
         "role": row.target_role,
@@ -914,7 +935,26 @@ def _jit_view(row: JitGrantRow) -> dict:
         "created_at": requested.isoformat() if requested else None,
         "decided_at": decided.isoformat() if decided else None,
         "expires_at": expires.isoformat() if expires else None,
+        "membership_added": bool(row.membership_added),
+        "last_error": row.last_error,
     }
+
+
+def _queue_jit_job(db, *, row: JitGrantRow, user: User, job_type: str) -> AgentJob:
+    if not row.agent_id:
+        raise HTTPException(status_code=409, detail="JIT grant has no target agent")
+    payload = {
+        "grant_id": row.id,
+        "username": row.username,
+        "target_role": row.target_role,
+    }
+    if job_type == "jit.revoke":
+        payload["membership_added"] = bool(row.membership_added)
+    job = _insert_signed_job(db, user=user, agent_id=row.agent_id, job_type=job_type, payload=payload)
+    row.status = "activating" if job_type == "jit.grant" else "revoking"
+    row.last_error = None
+    append_audit(db, actor_id=user.id, action=f"{job_type}.queued", target_id=row.id, payload={"agent_id": row.agent_id, "job_id": job.id, "user": row.username})
+    return job
 
 
 @router.get("/jit-grants")
@@ -930,8 +970,9 @@ def list_jit_grants(user: User = Depends(_current_user)) -> dict:
 @router.post("/jit-grants", status_code=201)
 def create_jit_grant(payload: JitRequest, user: User = Depends(_current_user)) -> dict:
     now = datetime.now(UTC)
-    # Admins may request on behalf of another user; that grant still needs a
-    # second admin's approval, mirroring the legacy PAM workflow.
+    reason = payload.reason.strip()
+    if len(reason) < 5:
+        raise HTTPException(status_code=422, detail="A clear reason is required")
     target_user_id, target_username = user.id, user.username
     on_behalf = False
     if payload.username and payload.username.strip() and payload.username.strip() != user.username:
@@ -947,19 +988,24 @@ def create_jit_grant(payload: JitRequest, user: User = Depends(_current_user)) -
         id=uuid.uuid4().hex,
         user_id=target_user_id,
         username=target_username,
+        agent_id=payload.agent_id,
         target_role=payload.target_role.strip() or "Local Administrator",
-        reason=payload.reason.strip(),
+        reason=reason,
         duration_mins=payload.duration_mins,
-        status="active" if auto else "pending",
+        status="pending",
         approver=f"Admin Policy Engine ({user.username})" if auto else "Pending Admin Approval",
         requested_at=now,
         decided_at=now if auto else None,
-        expires_at=now + timedelta(minutes=payload.duration_mins) if auto else None,
+        expires_at=None,
+        membership_added=False,
     )
     with db_session() as db:
         db.add(row)
-        append_audit(db, actor_id=user.id, action="jit.request", target_id=row.id, payload={"role": row.target_role, "duration_mins": row.duration_mins, "auto": auto})
-    return {"ok": True, "grant": _jit_view(row), "message": "JIT grant activated" if auto else "JIT request submitted for approval"}
+        append_audit(db, actor_id=user.id, action="jit.request", target_id=row.id, payload={"role": row.target_role, "agent_id": row.agent_id, "duration_mins": row.duration_mins, "auto": auto})
+        if auto:
+            _queue_jit_job(db, row=row, user=user, job_type="jit.grant")
+    message = "JIT activation queued; waiting for agent confirmation" if auto else "JIT request submitted for approval"
+    return {"ok": True, "grant": _jit_view(row), "message": message}
 
 
 @router.post("/jit-grants/{grant_id}/decision")
@@ -970,35 +1016,55 @@ def decide_jit_grant(grant_id: str, payload: JitDecision, user: User = Depends(_
         row = db.get(JitGrantRow, grant_id)
         if not row or row.status != "pending":
             raise HTTPException(status_code=404, detail="Pending JIT request not found")
+        row.approver = user.username
+        row.decided_at = now
         if payload.approve:
-            row.status = "active"
-            row.approver = user.username
-            row.decided_at = now
-            row.expires_at = now + timedelta(minutes=row.duration_mins)
+            _queue_jit_job(db, row=row, user=user, job_type="jit.grant")
             action = "jit.approve"
+            message = "JIT activation queued; waiting for agent confirmation"
         else:
             row.status = "rejected"
-            row.approver = user.username
-            row.decided_at = now
             action = "jit.reject"
+            message = "JIT request rejected"
         append_audit(db, actor_id=user.id, action=action, target_id=row.id, payload={"user": row.username})
-        return {"ok": True, "grant": _jit_view(row)}
+        return {"ok": True, "grant": _jit_view(row), "message": message}
 
 
 @router.post("/jit-grants/{grant_id}/revoke")
 def revoke_jit_grant(grant_id: str, user: User = Depends(_current_user)) -> dict:
-    now = datetime.now(UTC)
     with db_session() as db:
         row = db.get(JitGrantRow, grant_id)
-        if not row or row.status not in {"active", "pending"}:
-            raise HTTPException(status_code=404, detail="Active JIT grant not found")
+        if not row or row.status not in {"active", "pending", "failed", "revoking"}:
+            raise HTTPException(status_code=404, detail="Revocable JIT grant not found")
         if not user.is_admin and row.user_id != user.id:
             raise HTTPException(status_code=403, detail="Cannot revoke another user's grant")
-        row.status = "revoked"
-        row.decided_at = now
+        if row.status == "pending":
+            row.status = "revoked"
+            row.decided_at = datetime.now(UTC)
+            row.approver = user.username if user.is_admin else row.approver
+            append_audit(db, actor_id=user.id, action="jit.cancel", target_id=row.id, payload={"user": row.username})
+            return {"ok": True, "grant": _jit_view(row), "message": "JIT request cancelled before privilege activation"}
+        if row.status == "revoking":
+            raise HTTPException(status_code=409, detail="JIT revocation is already queued")
+        _queue_jit_job(db, row=row, user=user, job_type="jit.revoke")
+        row.decided_at = datetime.now(UTC)
         row.approver = user.username if user.is_admin else row.approver
-        append_audit(db, actor_id=user.id, action="jit.revoke", target_id=row.id, payload={"user": row.username})
-        return {"ok": True, "grant": _jit_view(row)}
+        return {"ok": True, "grant": _jit_view(row), "message": "JIT revocation queued; waiting for agent confirmation"}
+
+
+def revoke_expired_jit_grants() -> int:
+    now = datetime.now(UTC)
+    queued = 0
+    with db_session() as db:
+        rows = list(db.scalars(select(JitGrantRow).where(JitGrantRow.status == "active", JitGrantRow.expires_at.is_not(None))))
+        for row in rows:
+            expires = row.expires_at if row.expires_at and row.expires_at.tzinfo else row.expires_at.replace(tzinfo=UTC) if row.expires_at else None
+            if expires is None or expires > now:
+                continue
+            system_user = User(id="system", username="system", password_hash="", is_admin=True, is_active=True, role="admin", full_name="System", created_at=now)
+            _queue_jit_job(db, row=row, user=system_user, job_type="jit.revoke")
+            queued += 1
+    return queued
 
 
 @router.get("/groups")
@@ -1412,15 +1478,9 @@ def create_job(payload: JobCreateRequest, user: User = Depends(_current_user)) -
             job_payload = {"version": manifest["version"], "sha256": manifest["sha256"]}
         elif str(job_payload.get("sha256", "")).lower() != str(manifest["sha256"]).lower() or str(job_payload.get("version")) != str(manifest["version"]):
             raise HTTPException(status_code=400, detail="agent.update payload must match the published bundle version/sha256")
-    job_id = uuid.uuid4().hex
-    payload_json = json.dumps(job_payload, sort_keys=True, separators=(",", ":"))
-    signature = get_job_signer().sign(_job_signature_payload(job_id, payload.agent_id, payload.job_type, payload_json)).hex()
     with db_session() as db:
-        if not db.get(Agent, payload.agent_id):
-            raise HTTPException(status_code=404, detail="Agent not found")
-        job = AgentJob(id=job_id, agent_id=payload.agent_id, job_type=payload.job_type, payload_json=payload_json, signature=signature, created_by=user.username, created_at=datetime.now(UTC))
-        db.add(job)
-        append_audit(db, actor_id=user.id, action="agent.job_create", target_id=job_id, payload={"agent_id": payload.agent_id, "job_type": payload.job_type})
+        job = _insert_signed_job(db, user=user, agent_id=payload.agent_id, job_type=payload.job_type, payload=job_payload)
+        append_audit(db, actor_id=user.id, action="agent.job_create", target_id=job.id, payload={"agent_id": payload.agent_id, "job_type": payload.job_type})
         return {"id": job.id, "agent_id": job.agent_id, "job_type": job.job_type, "status": "pending"}
 
 
@@ -1473,6 +1533,23 @@ def submit_job_result(agent_id: str, job_id: str, payload: AgentJobResult, x_age
         job.status = payload.status
         job.result_json = json.dumps({"result": payload.result, "error": payload.error}, ensure_ascii=False)
         job.completed_at = datetime.now(UTC)
+        if job.job_type in {"jit.grant", "jit.revoke"}:
+            job_payload = json.loads(job.payload_json)
+            grant = db.get(JitGrantRow, str(job_payload.get("grant_id", "")))
+            if grant is not None:
+                if payload.status == "failed":
+                    grant.status = "failed"
+                    grant.last_error = payload.error or "Agent rejected the JIT operation"
+                elif job.job_type == "jit.grant" and grant.status == "activating":
+                    grant.status = "active"
+                    grant.membership_added = bool(payload.result.get("added")) if isinstance(payload.result, dict) else False
+                    grant.expires_at = job.completed_at + timedelta(minutes=grant.duration_mins)
+                    grant.last_error = None
+                elif job.job_type == "jit.revoke" and grant.status == "revoking":
+                    grant.status = "revoked"
+                    grant.membership_added = False
+                    grant.last_error = None
+                append_audit(db, actor_id="system", action=f"{job.job_type}.{payload.status}", target_id=grant.id, payload={"job_id": job.id, "status": grant.status})
         return {"accepted": True, "job_id": job.id, "status": job.status}
 
 

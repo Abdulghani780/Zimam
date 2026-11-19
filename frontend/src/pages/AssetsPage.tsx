@@ -68,8 +68,9 @@ export function AssetsPage() {
       const res = await apiV1.assets();
       const raw = Array.isArray(res) ? res : (res as { assets?: V1Asset[] })?.assets || [];
       setAssets(raw.map(toAssetItem));
-    } catch {
+    } catch (err: any) {
       setAssets([]);
+      toast(err.message || t('تعذر تحميل الأصول.'), 'error');
     }
   };
 
@@ -185,8 +186,8 @@ export function AssetsPage() {
         }
         setDrawerResults(rr);
       }
-    } catch {
-      // telemetry is best-effort; the drawer still shows honest empty states
+    } catch (err: any) {
+      toast(err.message || t('تعذر تحميل قياسات الوكيل للأصل.'), 'error');
     } finally {
       setDrawerResultsLoading(false);
     }

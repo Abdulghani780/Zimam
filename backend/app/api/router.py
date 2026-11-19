@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 
-from ..core.config import FRONTEND_DIST_DIR, LEGACY_DIST_DIR
+from ..core.config import FRONTEND_DIST_DIR, LEGACY_DIST_DIR, PROJECT_ROOT
 from ..domain.models import ManagedAsset
 from ..infrastructure.db import (
     init_db,
@@ -46,9 +46,6 @@ from ..infrastructure.db import (
     db_change_user_password,
     db_get_historical_metrics,
     db_list_jit_grants,
-    db_create_jit_grant,
-    db_approve_jit_grant,
-    db_revoke_jit_grant,
     db_verify_audit_chain,
     db_refresh_server_health,
 )
@@ -103,6 +100,7 @@ logger = logging.getLogger('asaas.router')
 
 # Initialize database on startup
 init_db()
+PortIsolationService.load_persisted_claims()
 AlertService.initialize()
 
 # Shared service instances
@@ -485,7 +483,11 @@ class AsaasApiHandler(SimpleHTTPRequestHandler):
 
         # --- Bastion Assets ---
         if path in ('/api/assets', '/api/bastion/assets'):
-            assets = BastionService.list_assets()
+            try:
+                assets = BastionService.list_assets()
+            except Exception:
+                logger.exception("Failed to list Bastion assets")
+                return self.respond_json(500, {'ok': False, 'error': 'تعذر قراءة الأصول من قاعدة البيانات.'})
             return self.respond_json(200, {
                 'ok': True,
                 'assets': [a.to_dict() for a in assets],
@@ -738,9 +740,9 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
                 'firewall_active': True,
                 'failed_logins_today': len(failed),
                 'failed_attempts_count': len(failed),
-                'auto_ban_enabled': True,
+                'auto_ban_enabled': AlertService.is_rule_enabled('rule_brute_force'),
                 'fail_threshold': 5,
-                'ban_duration_hours': round(600 / 3600, 2),
+                'ban_duration_hours': 0,
                 'threat_level': threat,
             })
 
@@ -836,7 +838,8 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             return self.respond_json(200, {'ok': True, 'tasks': TaskSchedulerProvider.get_tasks()})
 
         if path in ('/api/updates', '/api/updates/status'):
-            return self.respond_json(200, UpdateProvider.get_update_status())
+            res = UpdateProvider.get_update_status()
+            return self.respond_json(200 if res.get('ok') else 503, res)
 
         if path == '/api/certificates':
             return self.respond_json(200, {'ok': True, 'certificates': CertificatesProvider.get_certificates()})
@@ -1036,11 +1039,32 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
         # --- Elevation Endpoint ---
         if path == '/api/system/elevate':
             is_adm = Win32WtsService.is_admin()
-            db_add_security_event('ELEVATION_CHECK', client_ip, f'فحص صلاحيات المسؤول للنظام: {is_adm}', 'INFO')
-            return self.respond_json(200, {
+            if is_adm:
+                return self.respond_json(200, {
+                    'ok': True,
+                    'already_admin': True,
+                    'message': 'السيرفر يعمل بصلاحيات مسؤول كاملة.',
+                })
+            if sys.platform != 'win32':
+                return self.respond_json(503, {'ok': False, 'error': 'ترقية العملية عبر UAC متاحة على Windows فقط.'})
+            script = PROJECT_ROOT / 'scripts' / 'restart-elevated.ps1'
+            if not script.is_file():
+                return self.respond_json(503, {'ok': False, 'error': 'أداة ترقية الخدمة غير مثبتة.'})
+            try:
+                from ..infrastructure.silent_subprocess import popen_silent
+                popen_silent([
+                    'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                    '-File', str(script),
+                ], cwd=str(PROJECT_ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as exc:
+                logger.error("Failed to start elevated service helper: %s", exc)
+                return self.respond_json(500, {'ok': False, 'error': 'تعذر إطلاق طلب الترقية عبر UAC.'})
+            db_add_security_event('ELEVATION_REQUESTED', client_ip, f'طلب إعادة تشغيل الخدمات بصلاحيات مسؤول بواسطة {username}', 'WARNING')
+            return self.respond_json(202, {
                 'ok': True,
-                'already_admin': is_adm,
-                'message': 'السيرفر يعمل بصلاحيات تشغيلية آمنة. كافة العمليات الإدارية الحساسة تخضع لمحرك Action Engine ووسيط العمليات المميزة.' if not is_adm else 'السيرفر يعمل بصلاحيات مسؤول كاملة.',
+                'already_admin': False,
+                'status': 'elevation_requested',
+                'message': 'تم إطلاق طلب UAC. وافق عليه في شاشة الخادم؛ ستُعاد تهيئة الخدمات ثم يُعاد فحص الصلاحيات.',
             })
 
         # --- Storage Cleanup & Lock Check (Story 9) ---
@@ -1051,8 +1075,18 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             return self.respond_json(200, res)
 
         if path == '/api/storage/check-file-lock':
-            check_path = body.get('path', '')
-            lockers = StorageService.get_processes_locking_file(check_path)
+            check_path = str(body.get('path', '')).strip()
+            if not check_path:
+                return self.respond_json(422, {'ok': False, 'error': 'مسار الملف مطلوب.'})
+            try:
+                lockers = StorageService.get_processes_locking_file(check_path, strict=True)
+            except FileNotFoundError:
+                return self.respond_json(404, {'ok': False, 'error': 'الملف غير موجود.'})
+            except RuntimeError as exc:
+                return self.respond_json(503, {'ok': False, 'error': str(exc)})
+            except Exception:
+                logger.exception("Restart Manager query failed")
+                return self.respond_json(500, {'ok': False, 'error': 'فشل استعلام Restart Manager.'})
             return self.respond_json(200, {
                 'ok': True,
                 'path': check_path,
@@ -1159,17 +1193,18 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
 
         if path in ('/api/ports/guard/claim', '/api/ports/claim'):
             req_port = int(body.get('requested_port', body.get('preferred_port', body.get('port', 3000))))
-            user_claimant = body.get('username', username)
+            user_claimant = str(body.get('username', '')).strip() if user_role == 'admin' and body.get('username') else username
             sid = body.get('session_id')
             pname = body.get('project_name', '')
             res = PortIsolationService.claim_port(req_port, user_claimant, sid, pname)
-            return self.respond_json(200, res)
+            return self.respond_json(200 if res.get('ok') else 500, res)
 
         if path in ('/api/ports/guard/release', '/api/ports/release'):
             port = int(body.get('port', 0))
-            user_claimant = body.get('username', username)
+            user_claimant = str(body.get('username', '')).strip() if user_role == 'admin' and body.get('username') else username
             res = PortIsolationService.release_port(port, user_claimant)
-            return self.respond_json(200, res)
+            status_code = 200 if res.get('ok') else 403 if 'مستخدم آخر' in res.get('error', '') else 404 if 'غير محجوز' in res.get('error', '') else 500
+            return self.respond_json(status_code, res)
 
         if path in ('/api/ports/close-process', '/api/processes/terminate'):
             pid = int(body.get('pid', 0))
@@ -1186,19 +1221,16 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
         if path in ('/api/ports/block-ip', '/api/security/block'):
             ip = str(body.get('ip', ''))
             res = PortIsolationService.block_ip(ip)
-            db_add_security_event('IP_BLOCKED', ip, f'حظر عنوان IP في جدار الحماية: {res}', 'ALERT')
+            if res.get('ok'):
+                db_add_security_event('IP_BLOCKED', ip, f'تم إنشاء والتحقق من قاعدة حظر IP: {res.get("rule")}', 'ALERT')
             return self.respond_json(200 if res.get('ok') else 400, res)
 
         if path == '/api/security/unblock':
             ip = str(body.get('ip', ''))
-            rule_name = f"ASAAS_Block_{ip.replace(':', '_')}"
-            cmd = ['netsh', 'advfirewall', 'firewall', 'delete', 'rule', f'name={rule_name}']
-            try:
-                subprocess.run(cmd, shell=False, creationflags=0x08000000, capture_output=True, timeout=5)
-            except Exception:
-                pass
-            db_add_security_event('IP_UNBLOCKED', ip, f'إلغاء حظر IP: {ip}', 'INFO')
-            return self.respond_json(200, {'ok': True, 'ip': ip, 'message': 'تم إلغاء الحظر بنجاح.'})
+            res = PortIsolationService.unblock_ip(ip)
+            if res.get('ok'):
+                db_add_security_event('IP_UNBLOCKED', ip, 'تم حذف قاعدة الحظر والتحقق من غيابها.', 'INFO')
+            return self.respond_json(200 if res.get('ok') else 400, res)
 
         if path in ('/api/ports/diagnose', '/api/assets/test'):
             host = body.get('address', body.get('host', '127.0.0.1'))
@@ -1224,25 +1256,42 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
 
         # --- Bastion Assets Management ---
         if path in ('/api/assets/add', '/api/bastion/assets/add'):
-            asset = ManagedAsset(
-                id=body.get('id', f"asset-{int(time.time())}"),
-                name=body.get('name', 'New Asset'),
-                host=body.get('host', body.get('address', '127.0.0.1')),
-                type=body.get('type', body.get('platform_display', 'Windows Server')),
-                port=int(body.get('port', 3389)),
-                protocol=body.get('protocol', 'RDP'),
-                category=body.get('category', 'Custom Server'),
-                is_local=False,
-            )
-            res = BastionService.add_asset(asset)
+            name = str(body.get('name', '')).strip()
+            host = str(body.get('host', body.get('address', ''))).strip()
+            if not name or not host:
+                return self.respond_json(422, {'ok': False, 'error': 'اسم الأصل وعنوان المضيف مطلوبان.'})
+            try:
+                asset = ManagedAsset(
+                    id=body.get('id', f"asset-{int(time.time())}-{secrets.token_hex(3)}"),
+                    name=name,
+                    host=host,
+                    type=body.get('type', body.get('platform_display', 'Windows Server')),
+                    port=int(body.get('port', 3389)),
+                    protocol=body.get('protocol', 'RDP'),
+                    category=body.get('category', 'Custom Server'),
+                    is_local=False,
+                )
+                res = BastionService.add_asset(asset)
+            except (TypeError, ValueError):
+                return self.respond_json(422, {'ok': False, 'error': 'بيانات الأصل أو المنفذ غير صالحة.'})
+            except Exception:
+                logger.exception("Failed to persist Bastion asset")
+                return self.respond_json(500, {'ok': False, 'error': 'تعذر حفظ الأصل في قاعدة البيانات.'})
             db_add_security_event('ASSET_ADDED', asset.host, f'إضافة خادم {asset.name} ({asset.protocol})', 'INFO')
-            return self.respond_json(200 if res.get('ok') else 400, res)
+            return self.respond_json(200, res)
 
         if path in ('/api/assets/remove', '/api/assets/delete'):
-            asset_id = body.get('id', '')
-            res = BastionService.remove_asset(asset_id)
-            db_add_security_event('ASSET_REMOVED', client_ip, f'حذف خادم {asset_id}', 'INFO')
-            return self.respond_json(200, res)
+            asset_id = str(body.get('id', '')).strip()
+            if not asset_id:
+                return self.respond_json(422, {'ok': False, 'error': 'معرف الأصل مطلوب.'})
+            try:
+                res = BastionService.remove_asset(asset_id)
+            except Exception:
+                logger.exception("Failed to delete Bastion asset")
+                return self.respond_json(500, {'ok': False, 'error': 'تعذر حذف الأصل من قاعدة البيانات.'})
+            if res.get('ok'):
+                db_add_security_event('ASSET_REMOVED', client_ip, f'حذف خادم {asset_id}', 'INFO')
+            return self.respond_json(200 if res.get('ok') else 404, res)
 
         # --- Command Risk Interceptor ---
         if path in ('/api/security/evaluate-command', '/api/security/command-check', '/api/bastion/check-command'):
@@ -1250,6 +1299,8 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             res = BastionService.evaluate_command_risk(cmd)
             if not res.get('safe'):
                 db_add_security_event('COMMAND_BLOCKED', client_ip, f'اعتراض أمر عالي الخطورة: {cmd}', 'CRITICAL')
+                if AlertService.is_rule_enabled('rule_command_risk'):
+                    AlertService.send_telegram_alert(f'تم رصد أمر عالي الخطورة: {res.get("reason", cmd[:200])}', 'command_risk')
             return self.respond_json(200, res)
 
         # --- Vault Management Actions (Domain 8: AES-256-GCM Encrypted Vault) ---
@@ -1277,14 +1328,19 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
 
         # --- Alerts Config & Test (Story 6) ---
         if path == '/api/alerts/config':
-            updated = AlertService.update_config(body)
-            db_add_security_event('ALERT_CONFIG_UPDATED', client_ip, f'تحديث إعدادات الإنذار وتيليجرام بواسطة {username}', 'INFO')
+            try:
+                updated = AlertService.update_config(body)
+                db_add_security_event('ALERT_CONFIG_UPDATED', client_ip, f'تحديث إعدادات الإنذار وتيليجرام بواسطة {username}', 'INFO')
+            except Exception:
+                logger.exception("Failed to persist alert configuration")
+                return self.respond_json(500, {'ok': False, 'error': 'تعذر حفظ إعدادات التنبيه في قاعدة البيانات.'})
             return self.respond_json(200, {'ok': True, 'config': updated})
 
         if path == '/api/alerts/test':
             msg = body.get('message', 'اختبار تنبيه تجريبي مباشر من أساس ASAAS v2.5')
-            res = AlertService.send_telegram_alert(msg, 'test_alert', force=True)
-            return self.respond_json(200, res)
+            res = AlertService.send_telegram_alert(msg, 'test_alert', force=True, wait_for_delivery=True)
+            status_code = 200 if res.get('ok') else 409 if res.get('skipped') else 502
+            return self.respond_json(status_code, res)
 
         # --- Real Windows Services Control ---
         if path == '/api/services/control':
@@ -1331,45 +1387,13 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
             except Exception as exc:
                 return self.respond_json(500, {'ok': False, 'error': str(exc)})
 
-        # --- JIT Elevation Actions (Domain 6: Sovereign Elevation & JIT PAM) ---
-        if path == '/api/jit/request':
-            requested_user = username
-            if user_role == 'admin' and body.get('username'):
-                requested_user = str(body.get('username')).strip() or username
-            is_admin_self_request = (
-                user_role == 'admin' and requested_user.lower() == username.lower()
-            )
-            grant_status = 'ACTIVE' if is_admin_self_request else 'PENDING'
-            approver = f"Admin Policy Engine ({username})" if is_admin_self_request else 'Pending Admin Approval'
-            try:
-                duration_mins = max(1, min(480, int(body.get('duration_mins', 30))))
-            except (TypeError, ValueError):
-                duration_mins = 30
-            res = db_create_jit_grant(
-                user=requested_user,
-                target_role=body.get('role', body.get('target_role', 'Local Administrator')),
-                reason=body.get('reason', 'Administrative Emergency Elevation'),
-                duration_mins=duration_mins,
-                approver=approver,
-                status=grant_status,
-            )
-            return self.respond_json(200 if res.get('ok') else 400, res)
-
-        if path == '/api/jit/approve':
-            grant_id = str(body.get('id', '')).strip()
-            if not grant_id:
-                return self.respond_json(400, {'ok': False, 'error': 'معرف طلب الصلاحية (id) مطلوب.'})
-            res = db_approve_jit_grant(
-                grant_id,
-                approver=username,
-                approve=bool(body.get('approve', True)),
-            )
-            return self.respond_json(200 if res.get('ok') else 400, res)
-
-        if path == '/api/jit/revoke':
-            grant_id = body.get('id', '')
-            res = db_revoke_jit_grant(grant_id, revoked_by=username)
-            return self.respond_json(200 if res.get('ok') else 400, res)
+        # Legacy JIT rows cannot prove a Windows permission change. Use the
+        # signed-agent lifecycle exposed by /api/v1/jit-grants instead.
+        if path in ('/api/jit/request', '/api/jit/approve', '/api/jit/revoke'):
+            return self.respond_json(410, {
+                'ok': False,
+                'error': 'مسار JIT القديم لا ينفذ تغيير صلاحيات حقيقياً. استخدم /api/v1/jit-grants مع agent_id.',
+            })
 
         if path == '/api/users/reset-password':
             uname = body.get('username', '').strip()
@@ -1550,7 +1574,7 @@ code{{direction:ltr;display:block;margin-top:12px;color:#d8b36f;word-break:break
 
         if path == '/api/workspaces/projects/delete':
             p_id = body.get('project_id', '')
-            res = db_delete_developer_project(p_id)
+            res = DeveloperWorkspaceManager.delete_project(p_id, username)
             return self.respond_json(200 if res.get('ok') else 400, res)
 
         if path == '/api/ports/allocate':

@@ -1,12 +1,34 @@
 """TEST-PORT-001 — Unit & Integration tests for AI Port Isolation Guard."""
+import sqlite3
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from backend.app.infrastructure import db
 from backend.app.services.port_isolation_service import PortIsolationService
 
 
 class TestPortIsolation(unittest.TestCase):
     def setUp(self):
-        # Reset claims before each test
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.db_path = patch.object(db, 'DB_PATH', Path(self.temp_dir.name) / 'ports.db')
+        self.db_path.start()
+        with db.get_db_connection() as conn:
+            conn.execute("""
+                CREATE TABLE port_reservations (
+                    port INTEGER PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    description TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
         PortIsolationService._claims.clear()
+
+    def tearDown(self):
+        PortIsolationService._claims.clear()
+        self.db_path.stop()
+        self.temp_dir.cleanup()
 
     def test_free_port_check(self):
         """Verify that an unoccupied port returns available=True and conflict=False."""
@@ -41,6 +63,33 @@ class TestPortIsolation(unittest.TestCase):
 
         chk = PortIsolationService.check_conflict(4200, requesting_user="UserY")
         self.assertTrue(chk['available'])
+
+    def test_claim_is_reloaded_from_database(self):
+        claim = PortIsolationService.claim_port(4600, username='PersistedUser', project_name='DurableApp')
+        self.assertTrue(claim['ok'])
+
+        PortIsolationService._claims.clear()
+        PortIsolationService.load_persisted_claims()
+
+        self.assertEqual(PortIsolationService._claims[4600]['username'], 'PersistedUser')
+        self.assertEqual(PortIsolationService._claims[4600]['project_name'], 'DurableApp')
+
+    def test_database_failure_does_not_create_memory_only_claim(self):
+        with patch.object(db, 'db_set_reservation', side_effect=sqlite3.OperationalError('database unavailable')):
+            result = PortIsolationService.claim_port(4601, username='UserA')
+
+        self.assertFalse(result['ok'])
+        self.assertNotIn(4601, PortIsolationService._claims)
+
+    def test_release_requires_the_claim_owner(self):
+        PortIsolationService.claim_port(4602, username='Owner')
+        denied = PortIsolationService.release_port(4602, username='OtherUser')
+        self.assertFalse(denied['ok'])
+        self.assertEqual(db.db_list_reservations()[0]['username'], 'Owner')
+
+        removed = PortIsolationService.release_port(4602, username='Owner')
+        self.assertTrue(removed['ok'])
+        self.assertEqual(db.db_list_reservations(), [])
 
     def test_ports_snapshot_schema(self):
         """Verify snapshot returns expected summary and guard keys."""

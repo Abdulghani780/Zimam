@@ -161,7 +161,7 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "network.info", "eventlog.tail", "software.list", "firewall.state", "agent.update",
         "windows.features", "scheduled.tasks", "local.users", "shares.list", "hotfix.list", "ports.list", "startup.programs", "hyperv.vms",
         "service.control", "process.kill", "task.control", "hyperv.power", "share.control", "feature.toggle",
-        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove", "local.user", "software.uninstall"
+        "firewall.rules", "firewall.rule", "docker.containers", "docker.container", "cert.list", "cert.remove", "disk.physical", "disk.state", "hotfix.install", "startup.program.remove", "local.user", "software.uninstall", "jit.grant", "jit.revoke"
     };
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -334,6 +334,8 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         "startup.program.remove" => StartupProgramRemove(payload),
         "local.user" => LocalUserControl(payload),
         "software.uninstall" => SoftwareUninstall(payload),
+        "jit.grant" => JitMembership(payload, true),
+        "jit.revoke" => JitMembership(payload, false),
         _ => throw new InvalidOperationException($"Unsupported job type: {type}")
     };
 
@@ -732,6 +734,39 @@ sealed class AgentWorker(IHttpClientFactory clients, ILogger<AgentWorker> logger
         }
         PsProbe.Run(ps);
         return new { username, action, executed = true };
+    }
+
+    private static object JitMembership(JsonElement payload, bool grant)
+    {
+        var grantId = payload.TryGetProperty("grant_id", out var g) ? g.GetString() : null;
+        var username = payload.TryGetProperty("username", out var u) ? u.GetString() : null;
+        var targetRole = payload.TryGetProperty("target_role", out var r) ? r.GetString() : null;
+        if (string.IsNullOrWhiteSpace(grantId) || !System.Text.RegularExpressions.Regex.IsMatch(grantId, "^[a-f0-9]{32}$"))
+            throw new InvalidOperationException("JIT job requires a valid grant_id");
+        if (string.IsNullOrWhiteSpace(username) || !System.Text.RegularExpressions.Regex.IsMatch(username, @"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?:\\[A-Za-z0-9][A-Za-z0-9._-]{0,63})?$"))
+            throw new InvalidOperationException("JIT job requires a valid local or domain username");
+        var group = targetRole switch
+        {
+            "Local Administrator" or "ServerAdmin" => "Administrators",
+            "Backup Operator" => "Backup Operators",
+            "Network Operator" => "Network Configuration Operators",
+            "Security Auditor" => "Event Log Readers",
+            _ => throw new InvalidOperationException("JIT target_role is not mapped to a reviewed Windows group")
+        };
+        if (!grant)
+        {
+            var added = payload.TryGetProperty("membership_added", out var m) && m.ValueKind == JsonValueKind.True;
+            if (!added) return new { grant_id = grantId, username, target_role = targetRole, removed = false, reason = "Membership was not added by this grant" };
+        }
+        var escUser = username.Replace("'", "''");
+        var escGroup = group.Replace("'", "''");
+        var membership = $"@(Get-LocalGroupMember -Group '{escGroup}' -ErrorAction Stop | Where-Object {{ $_.Name -ieq '{escUser}' -or ($_.Name -split '\\\\')[-1] -ieq '{escUser}' }})";
+        var ps = grant
+            ? $"$existing={membership}; $added=($existing.Count -eq 0); if($added){{ Add-LocalGroupMember -Group '{escGroup}' -Member '{escUser}' -ErrorAction Stop }}; $verify={membership}; if($verify.Count -eq 0){{ throw 'JIT membership verification failed' }}; [pscustomobject]@{{added=$added;group='{escGroup}'}} | ConvertTo-Json -Compress"
+            : $"$existing={membership}; if($existing.Count -gt 0){{ Remove-LocalGroupMember -Group '{escGroup}' -Member '{escUser}' -ErrorAction Stop }}; $verify={membership}; if($verify.Count -gt 0){{ throw 'JIT revocation verification failed' }}; [pscustomobject]@{{removed=$true;group='{escGroup}'}} | ConvertTo-Json -Compress";
+        var result = PsProbe.Run(ps);
+        var added = grant && result.ValueKind == JsonValueKind.Object && result.TryGetProperty("added", out var a) && a.ValueKind == JsonValueKind.True;
+        return new { grant_id = grantId, username, target_role = targetRole, added, verified = true };
     }
 
     // Signed write job: silently uninstall a program listed by software.list.

@@ -27,6 +27,7 @@ export function AuditPage() {
   const [filterText, setFilterText] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -38,6 +39,7 @@ export function AuditPage() {
       setLogs(Array.isArray(res) ? res : (res as any)?.logs || []);
       const v1List = Array.isArray(v1Res) ? v1Res : (v1Res as any)?.events || [];
       setV1Events(v1List);
+      if (v1Res === null) toast(t('تعذر تحميل سلسلة تدقيق طبقة التحكم؛ السجلات المعروضة قد تكون ناقصة.'), 'warn');
       if (v1List.length > 0) {
         setV1Verify((prev) => prev);
       }
@@ -52,10 +54,26 @@ export function AuditPage() {
     fetchLogs();
   }, []);
 
-  const handleExport = (format: 'json' | 'csv') => {
-    const url = `/api/audit/export?format=${format}`;
-    window.open(url, '_blank');
-    toast(`${t('تم تصدير ملف سجلات التدقيق بصيغة ')}${format.toUpperCase()}${t(' مع بصمة التشفير الرقمية.')}`, 'success');
+  const handleExport = async (format: 'json' | 'csv') => {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/audit/export?format=${format}`, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `asaas-audit-trail.${format}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast(`${t('تم تصدير ملف سجلات التدقيق بصيغة ')}${format.toUpperCase()}.`, 'success');
+    } catch (err: any) {
+      toast(err.message || t('فشل تصدير سجلات التدقيق'), 'error');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleVerifyChain = async () => {
@@ -84,9 +102,14 @@ export function AuditPage() {
     }
   };
 
-  const copyHash = (hash: string) => {
-    navigator.clipboard?.writeText(hash);
-    toast(t('تم نسخ البصمة إلى الحافظة.'), 'success');
+  const copyHash = async (hash: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error(t('الحافظة غير متاحة في هذا المتصفح.'));
+      await navigator.clipboard.writeText(hash);
+      toast(t('تم نسخ البصمة إلى الحافظة.'), 'success');
+    } catch (err: any) {
+      toast(err.message || t('تعذر النسخ إلى الحافظة.'), 'error');
+    }
   };
 
   // Real chain fingerprint: root signature from /api/v1/audit/verify, or the
@@ -183,7 +206,7 @@ export function AuditPage() {
               {chainFingerprint && (
                 <button
                   type="button"
-                  onClick={() => copyHash(chainFingerprint)}
+                  onClick={() => void copyHash(chainFingerprint)}
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0 }}
                   title={t('نسخ البصمة')}
                   aria-label={t('نسخ البصمة')}
@@ -209,16 +232,18 @@ export function AuditPage() {
             <Button
               size="sm"
               variant="glass"
-              onClick={() => handleExport('json')}
+              onClick={() => void handleExport('json')}
+              disabled={exporting}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <FileCode size={13} color="var(--accent)" />
-              <span>{t('تصدير JSON مشفّر .sig')}</span>
+              <span>{t('تصدير JSON')}</span>
             </Button>
             <Button
               size="sm"
               variant="primary"
-              onClick={() => handleExport('csv')}
+              onClick={() => void handleExport('csv')}
+              disabled={exporting}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <FileSpreadsheet size={13} />
@@ -352,7 +377,7 @@ export function AuditPage() {
                           {(log as any).hash && (
                             <button
                               type="button"
-                              onClick={() => copyHash((log as any).hash)}
+                              onClick={() => void copyHash((log as any).hash)}
                               className="text-muted hover:text-title p-1 transition-colors"
                               title={t('نسخ بصمة السطر')}
                             >

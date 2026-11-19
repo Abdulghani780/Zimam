@@ -1,4 +1,3 @@
-import { t } from './i18n';
 /**
  * ASAAS - Typed API Client & Real-time Live Telemetry.
  */
@@ -91,6 +90,9 @@ export interface JitGrant {
   approver: string;
   created_at: string;
   expires_at: string;
+  agent_id?: string | null;
+  last_error?: string | null;
+  membership_added?: boolean;
 }
 
 export interface UserSession {
@@ -423,9 +425,9 @@ export const api = {
       return {
         event_id: Number(e?.id ?? e?.event_id ?? idx),
         time: e?.timestamp || e?.time || '',
-        user: e?.user || 'System',
-        ip: e?.ip || e?.ip_address || '—',
-        action: e?.action || e?.event || e?.event_type || 'EVENT',
+        user: e?.user || '',
+        ip: e?.ip || e?.ip_address || '',
+        action: e?.action || e?.event || e?.event_type || '',
         severity,
       } as SecurityEvent;
     });
@@ -454,13 +456,13 @@ export const api = {
   getAssets: async (): Promise<AssetItem[]> => {
     const res = await request<any>('/api/assets');
     const list = Array.isArray(res) ? res : (res?.assets || []);
-    return list.map((a: any) => ({
-      id: a.id || String(a.port || Math.random()),
-      name: a.name || t('خادم غير مسمى'),
-      host: a.host || a.address || '127.0.0.1',
-      type: a.type || a.platform_display || a.platform || 'Windows Server',
-      port: Number(a.port || 3389),
-      protocol: a.protocol || (Number(a.port) === 22 ? 'SSH' : 'RDP'),
+    return list.filter((a: any) => a?.id && (a?.host || a?.address)).map((a: any) => ({
+      id: String(a.id),
+      name: String(a.name || ''),
+      host: String(a.host || a.address),
+      type: String(a.type || a.platform_display || a.platform || '—'),
+      port: Number(a.port ?? 0),
+      protocol: a.protocol ? String(a.protocol) : undefined,
       status: String(a.status || 'unknown').toLowerCase(),
       latency_ms: Number(a.latency_ms ?? 0),
       last_check: a.last_check || '',
@@ -518,7 +520,7 @@ export const api = {
   getStorageBreakdown: async (drive: string = 'C'): Promise<any> => {
     const res = await request<any>(`/api/storage/breakdown?drive=${drive}`);
     return {
-      ok: res?.ok ?? true,
+      ok: Boolean(res?.ok),
       drive: res?.drive || drive,
       total: res?.total_gb ?? res?.total ?? 0,
       used: res?.used_gb ?? res?.used ?? 0,
@@ -533,9 +535,9 @@ export const api = {
   getStorageUsers: async (): Promise<any[]> => {
     const res = await request<any>('/api/storage/users');
     const list = res?.profiles || res?.users || (Array.isArray(res) ? res : []);
-    return list.map((u: any) => ({
-      username: u.username || t('مستخدم'),
-      path: u.path || `C:\\Users\\${u.username}`,
+    return list.filter((u: any) => u?.username).map((u: any) => ({
+      username: u.username,
+      path: u.path || '',
       size_mb: u.total_mb ?? u.size_mb ?? 0,
       temp_size_mb: u.temp_mb ?? u.temp_size_mb ?? 0,
       downloads_mb: u.downloads_mb ?? 0,
@@ -558,10 +560,10 @@ export const api = {
   getUsers: async (): Promise<LocalUser[]> => {
     const res = await request<any>('/api/users');
     const rawList = Array.isArray(res) ? res : (res?.users || []);
-    return rawList.map((u: any) => ({
-      username: u.username || u.name || '',
-      full_name: u.full_name || u.fullName || u.name || '',
-      enabled: Boolean(u.enabled ?? true),
+    return rawList.filter((u: any) => u?.username || u?.name).map((u: any) => ({
+      username: u.username || u.name,
+      full_name: u.full_name || u.fullName || '',
+      enabled: Boolean(u.enabled),
       is_rdp: Boolean(u.is_rdp ?? u.isRdp ?? false),
       is_admin: Boolean(u.is_admin ?? u.isAdmin ?? false),
       password_age_days: Number(u.password_age_days ?? 0),

@@ -67,6 +67,7 @@ class AlertService:
     @classmethod
     def _load_config(cls) -> None:
         """Loads the persisted alert configuration from SQLite on first use."""
+        global _COOLDOWN_SECONDS
         if cls._config_loaded:
             return
         cls._config_loaded = True
@@ -82,6 +83,7 @@ class AlertService:
             for key, value in persisted.items():
                 if key in cls._config:
                     cls._config[key] = value
+        _COOLDOWN_SECONDS = int(cls._config.get('cooldown_minutes', 10)) * 60
 
     @classmethod
     def initialize(cls) -> None:
@@ -102,6 +104,11 @@ class AlertService:
         return cfg
 
     @classmethod
+    def is_rule_enabled(cls, rule: str) -> bool:
+        cls._load_config()
+        return bool(cls._config.get(rule, False))
+
+    @classmethod
     def update_config(cls, new_cfg: Dict[str, Any]) -> Dict[str, Any]:
         cls._load_config()
         # Preserve existing bot token if client passed masked version
@@ -111,13 +118,10 @@ class AlertService:
                 # Do not overwrite with mask
                 del new_cfg['bot_token']
         cls._config.update(new_cfg)
-        try:
-            db_set_system_metadata(
-                _ALERT_CONFIG_METADATA_KEY,
-                json.dumps(cls._config, ensure_ascii=False),
-            )
-        except Exception as exc:
-            logger.error("Failed to persist alert configuration: %s", exc)
+        db_set_system_metadata(
+            _ALERT_CONFIG_METADATA_KEY,
+            json.dumps(cls._config, ensure_ascii=False),
+        )
         global _COOLDOWN_SECONDS
         _COOLDOWN_SECONDS = int(cls._config.get('cooldown_minutes', 10)) * 60
         return cls.get_config()
@@ -134,7 +138,7 @@ class AlertService:
         _LAST_ALERT_TIMES[alert_category] = time.time()
 
     @classmethod
-    def send_telegram_alert(cls, message: str, alert_category: str = 'general', force: bool = False) -> Dict[str, Any]:
+    def send_telegram_alert(cls, message: str, alert_category: str = 'general', force: bool = False, wait_for_delivery: bool = False) -> Dict[str, Any]:
         """Sends an urgent notification to configured Telegram Chat ID with cooldown enforcement."""
         cls._load_config()
         if not cls._config.get('telegram_enabled') and not force:
@@ -150,7 +154,7 @@ class AlertService:
             remaining = int(_COOLDOWN_SECONDS - (time.time() - _LAST_ALERT_TIMES.get(alert_category, 0.0)))
             return {'ok': False, 'skipped': True, 'reason': f'Cooldown active for category "{alert_category}". Remaining: {remaining}s'}
 
-        def _async_send():
+        def _deliver() -> Dict[str, Any]:
             try:
                 url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
                 headers = {'User-Agent': 'ASAAS/2.5'}
@@ -163,16 +167,25 @@ class AlertService:
                 req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json', **headers})
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     resp_data = json.loads(resp.read().decode('utf-8'))
-                    if resp_data.get('ok'):
-                        cls.record_dispatched(alert_category)
-                        db_add_security_event('TELEGRAM_ALERT_SENT', '127.0.0.1', f'تم إرسال إشعار تيليجرام ({alert_category}) بنجاح', 'INFO')
-                    else:
-                        logger.error("Telegram API returned non-OK: %s", resp_data)
+                if not resp_data.get('ok'):
+                    reason = str(resp_data.get('description') or 'Telegram rejected the message.')
+                    logger.error("Telegram API rejected an alert: %s", reason)
+                    return {'ok': False, 'dispatched': False, 'reason': reason}
+                cls.record_dispatched(alert_category)
+                db_add_security_event('TELEGRAM_ALERT_SENT', '127.0.0.1', f'تم إرسال إشعار تيليجرام ({alert_category}) بنجاح', 'INFO')
+                return {'ok': True, 'dispatched': True, 'category': alert_category}
             except Exception as exc:
                 logger.error("Failed to send telegram alert: %s", exc)
+                return {'ok': False, 'dispatched': False, 'reason': 'تعذر تسليم الإشعار إلى Telegram. تحقق من الاتصال وبيانات البوت.'}
+
+        if wait_for_delivery:
+            return _deliver()
+
+        def _async_send():
+            _deliver()
 
         threading.Thread(target=_async_send, daemon=True).start()
-        return {'ok': True, 'dispatched': True, 'category': alert_category}
+        return {'ok': True, 'queued': True, 'dispatched': False, 'category': alert_category}
 
     @classmethod
     def evaluate_telemetry_thresholds(cls, cpu: float, ram: float, disk: float) -> None:
@@ -193,3 +206,29 @@ class AlertService:
         if disk >= disk_thresh and cls.can_dispatch('disk_spike'):
             msg = f"⚠️ <b>تحذير امتلاء القرص:</b>\nوصل استهلاك القرص C إلى <b>{disk}%</b> متجاوزاً العتبة المحددة ({disk_thresh}%)."
             cls.send_telegram_alert(msg, 'disk_spike')
+
+
+    @classmethod
+    def evaluate_port_flood(cls, connections_per_ip: Dict[str, int], threshold: int = 100) -> None:
+        """Alerts on hosts exceeding a measured concurrent-connection threshold."""
+        if not cls.is_rule_enabled('rule_port_flood'):
+            return
+        for ip, count in connections_per_ip.items():
+            if count >= threshold:
+                cls.send_telegram_alert(
+                    f'رُصدت {count} اتصالات متزامنة من عنوان IP {ip}؛ تجاوز الحد {threshold}.',
+                    f'port_flood:{ip}',
+                )
+
+    @classmethod
+    def evaluate_critical_services(cls, services: Dict[str, str]) -> None:
+        """Alerts when an installed critical Windows service is stopped."""
+        if not cls.is_rule_enabled('rule_service_crash'):
+            return
+        watched = {'termservice', 'mssqlserver', 'w3svc'}
+        for name, status in services.items():
+            if name.lower() in watched and status.lower() != 'running':
+                cls.send_telegram_alert(
+                    f'الخدمة الحرجة {name} ليست في حالة Running؛ الحالة الحالية: {status}.',
+                    f'service_stopped:{name.lower()}',
+                )

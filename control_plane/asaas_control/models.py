@@ -18,6 +18,7 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     mfa_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    mfa_pending_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     role: Mapped[str] = mapped_column(String(16), default="viewer")
     full_name: Mapped[str] = mapped_column(String(255), default="")
     # Legacy PBKDF2 credential ("salt_hex:hash_hex") kept only until the user
@@ -104,10 +105,13 @@ class JitGrantRow(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
     username: Mapped[str] = mapped_column(String(128))
+    agent_id: Mapped[str | None] = mapped_column(ForeignKey("agents.id"), nullable=True, index=True)
     target_role: Mapped[str] = mapped_column(String(128), default="")
+    membership_added: Mapped[bool] = mapped_column(Boolean, default=False)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str] = mapped_column(Text, default="")
     duration_mins: Mapped[int] = mapped_column(Integer, default=30)
-    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)  # pending|active|rejected|revoked
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)  # pending|activating|active|revoking|failed|rejected|revoked
     approver: Mapped[str] = mapped_column(String(128), default="")
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

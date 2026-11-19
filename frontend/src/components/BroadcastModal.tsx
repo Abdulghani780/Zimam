@@ -23,10 +23,8 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
 
   if (!open) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitMessage = async () => {
     if (!message.trim()) return;
-
     setLoading(true);
     setAccessDeniedError(null);
     try {
@@ -36,26 +34,24 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
         message,
         isBroadcast
       );
-      if (res.ok) {
-        toast(
-          isBroadcast
-            ? t('تم بث الإشعار بنجاح لجميع جلسات المستخدمين.')
-            : (res.message || (t('تم تسليم الرسالة للمستخدم: ') + (targetUser || targetSessionId))),
-          'success'
-        );
-        if (res.warning) {
-          toast(res.warning, 'info');
-        }
-        setMessage('');
-        setAccessDeniedError(null);
-        onClose();
-      } else {
+      if (!res.ok) {
         if (res.error?.includes('Access Denied') || res.error?.includes('5')) {
           setAccessDeniedError(res.error);
         } else {
           toast(res.error || t('حدث خطأ أثناء محاولة إرسال الرسالة.'), 'error');
         }
+        return;
       }
+      toast(
+        isBroadcast
+          ? t('تم بث الإشعار بنجاح لجميع جلسات المستخدمين.')
+          : (res.message || (t('تم تسليم الرسالة للمستخدم: ') + (targetUser || targetSessionId))),
+        'success'
+      );
+      if (res.warning) toast(res.warning, 'info');
+      setMessage('');
+      setAccessDeniedError(null);
+      onClose();
     } catch (err: any) {
       toast(err.message || t('خطأ في الإرسال'), 'error');
     } finally {
@@ -63,11 +59,34 @@ export function BroadcastModal({ open, onClose, targetSessionId, targetUser }: B
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitMessage();
+  };
+
   const handleElevateAndRetry = async () => {
     setElevating(true);
     try {
       const res = await api.requestElevation();
-      toast(res.message || t('تم إرسال طلب الترقية، يرجى الموافقة على نافذة UAC في شاشة السيرفر.'), 'success');
+      if (res.already_admin) {
+        await submitMessage();
+        return;
+      }
+      toast(res.message || t('تم إطلاق طلب الترقية، يرجى الموافقة على نافذة UAC في شاشة السيرفر.'), 'info');
+      const deadline = Date.now() + 90_000;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        try {
+          const health = await api.getHealth();
+          if (health.is_admin) {
+            await submitMessage();
+            return;
+          }
+        } catch {
+          // The service restarts during elevation; keep polling until the deadline.
+        }
+      }
+      toast(t('لم يتم تأكيد صلاحيات المسؤول خلال 90 ثانية؛ لم تُرسل الرسالة. تحقق من الخدمة ثم أعد المحاولة.'), 'error');
     } catch (err: any) {
       toast(err.message || t('فشلت الترقية'), 'error');
     } finally {

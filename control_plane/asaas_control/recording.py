@@ -126,6 +126,15 @@ def get_meta(recording_id: str) -> dict | None:
         return None
 
 
+def recording_file(recording_id: str) -> Path | None:
+    try:
+        rid = _safe_id(recording_id)
+    except ValueError:
+        return None
+    path = _recordings_dir() / f"{rid}.jsonl"
+    return path if path.is_file() else None
+
+
 def delete_recording(recording_id: str) -> bool:
     try:
         rid = _safe_id(recording_id)

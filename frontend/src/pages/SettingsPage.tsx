@@ -29,6 +29,8 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
 
   // Stitch _12 Alert Rules Matrix Toggles
   const [ruleBruteForce, setRuleBruteForce] = useState(true);
@@ -37,6 +39,7 @@ export function SettingsPage() {
   const [ruleServiceCrash, setRuleServiceCrash] = useState(true);
   
   const fetchSettings = async () => {
+    setSettingsError(null);
     try {
       const cfg = await api.getAlertsConfig();
       if (cfg && cfg.config) {
@@ -52,8 +55,10 @@ export function SettingsPage() {
         setRulePortFlood(cfg.config.rule_port_flood ?? true);
         setRuleServiceCrash(cfg.config.rule_service_crash ?? true);
       }
-    } catch {
-      // ignore
+      setSettingsLoaded(true);
+    } catch (err: any) {
+      setSettingsLoaded(false);
+      setSettingsError(err.message || t('تعذر تحميل إعدادات التنبيه.'));
     }
   };
 
@@ -78,7 +83,8 @@ export function SettingsPage() {
         rule_port_flood: rulePortFlood,
         rule_service_crash: ruleServiceCrash,
       } as any);
-      toast(t('تم حفظ وتطبيق إعدادات المنظومة ومصفوفة الإنذارات بنجاح.'), 'success');
+      await fetchSettings();
+      toast(t('تم حفظ إعدادات المنظومة ومصفوفة الإنذارات في قاعدة البيانات بنجاح.'), 'success');
     } catch (err: any) {
       toast(err.message || t('خطأ أثناء الحفظ'), 'error');
     } finally {
@@ -107,13 +113,19 @@ export function SettingsPage() {
     try {
       const res: any = await apiV1.backup();
       const sizeKb = res?.size_bytes ? Math.round(res.size_bytes / 1024) : 0;
-      toast(`${t('تم إنشاء النسخة الاحتياطية')}: ${res?.file || ''} (${sizeKb} KB)`, 'success');
+      if (res?.replication?.error) {
+        toast(`${t('تم إنشاء النسخة المحلية، لكن فشل النسخ الخارجي')}: ${res.replication.error}`, 'warn');
+      } else {
+        toast(`${t('تم إنشاء النسخة الاحتياطية')}: ${res?.file || ''} (${sizeKb} KB)`, 'success');
+      }
     } catch (err: any) {
       toast(err?.message || t('خطأ أثناء إنشاء النسخة الاحتياطية'), 'error');
     } finally {
       setBackingUp(false);
     }
   };
+
+  const telegramConfigured = settingsLoaded && Boolean(botToken.trim() && chatId.trim());
 
   return (
     <div className="page">
@@ -146,7 +158,7 @@ export function SettingsPage() {
                 }}
               >
                 <CheckCircle2 size={13} />
-                {t('قنوات التنبيه الفوري مشفرة وجاهزة 24/7')}
+                {settingsError ? t('حالة التنبيه غير متاحة') : telegramConfigured ? t('تم تكوين قناة Telegram؛ لم يُختبر التسليم بعد') : t('قناة Telegram غير مكتملة الإعداد')}
               </span>
               <span
                 style={{
@@ -194,6 +206,13 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {settingsError && (
+        <Glass style={{ padding: 16, color: 'var(--unpaid)' }} role="alert">
+          {settingsError}
+          <Button size="sm" variant="ghost" onClick={() => void fetchSettings()} style={{ marginInlineStart: 12 }}>{t('إعادة المحاولة')}</Button>
+        </Glass>
+      )}
 
       {/* 2. Top Grid: Telegram Config (7 cols) & Cooldown Window (5 cols) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(0, 1fr))', gap: 20 }}>
@@ -266,7 +285,7 @@ export function SettingsPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10, marginTop: 4 }}>
                 <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--status-info-surface)' }}>
                   <span style={{ fontSize: 10, color: 'var(--chart-out)', fontWeight: 700, display: 'block' }}>● Telegram Bot</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>{telegramEnabled ? t('جاهز ومتصل') : t('معطّل')}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-1)' }}>{telegramEnabled ? (telegramConfigured ? t('مفعّل؛ التسليم يتطلب اختباراً ناجحاً') : t('مفعّل لكن بيانات البوت ناقصة')) : t('معطّل')}</span>
                 </div>
                 <div style={{ padding: 10, borderRadius: 8, background: 'var(--shadow-soft)', border: '1px solid var(--glass-rim-low)' }}>
                   <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700, display: 'block' }}>● Windows Event Log</span>
@@ -397,7 +416,7 @@ export function SettingsPage() {
         icon="phone"
         actions={
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            {t('مراقبة سيبرانية نشطة 24/7')}
+            {t('تُنفَّذ القواعد المفعّلة أثناء المراقبة')}
           </span>
         }
       >

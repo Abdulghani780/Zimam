@@ -88,8 +88,9 @@ export function ContainersPage() {
       );
       setFleetVms(detailed);
       setFleetDocker(detailed);
-    } catch {
+    } catch (err: any) {
       setFleetVms([]);
+      toast(err.message || t('فشل تحميل بيانات الحاويات من الوكلاء.'), 'error');
     }
   };
 
@@ -101,8 +102,8 @@ export function ContainersPage() {
     setLoading(true);
     try {
       const [dockRes, hypRes] = await Promise.all([
-        api.getDocker().catch(() => null),
-        api.getHyperV().catch(() => null),
+        api.getDocker(),
+        api.getHyperV(),
       ]);
       setDockerData(dockRes);
       setHypervData(hypRes);

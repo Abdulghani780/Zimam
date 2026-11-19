@@ -339,8 +339,9 @@ export function PortsPage() {
         }),
       );
       setFleetPorts(detailed);
-    } catch {
+    } catch (err) {
       setFleetPorts([]);
+      setLoadError(err instanceof Error ? err.message : t('تعذر تحميل منافذ الوكلاء.'));
     }
   }, []);
 
@@ -376,8 +377,9 @@ export function PortsPage() {
     try {
       const res = await api.getServers();
       setServers(Array.isArray(res.servers) ? res.servers : []);
-    } catch {
+    } catch (err) {
       setServers([]);
+      setLoadError(err instanceof Error ? err.message : t('تعذر تحميل الخوادم.'));
     }
   }, []);
 

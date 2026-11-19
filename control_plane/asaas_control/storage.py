@@ -37,6 +37,7 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
     _ensure_user_columns()
     _ensure_asset_columns()
+    _ensure_jit_columns()
     sync_legacy_identities()
 
 
@@ -46,6 +47,7 @@ _USER_COLUMN_MIGRATIONS = {
     "role": "VARCHAR(16) DEFAULT 'viewer'",
     "full_name": "VARCHAR(255) DEFAULT ''",
     "legacy_password": "VARCHAR(512)",
+    "mfa_pending_secret": "VARCHAR(64)",
 }
 
 
@@ -76,6 +78,21 @@ def _ensure_asset_columns() -> None:
         for column, ddl_type in _ASSET_COLUMN_MIGRATIONS.items():
             if column not in existing:
                 conn.execute(text(f"ALTER TABLE assets ADD COLUMN {column} {ddl_type}"))
+
+
+def _ensure_jit_columns() -> None:
+    from sqlalchemy import inspect, text
+
+    migrations = {
+        "agent_id": "VARCHAR(64)",
+        "membership_added": "BOOLEAN DEFAULT 0",
+        "last_error": "TEXT",
+    }
+    with engine.begin() as conn:
+        existing = {c["name"] for c in inspect(conn).get_columns("jit_grants")}
+        for column, ddl_type in migrations.items():
+            if column not in existing:
+                conn.execute(text(f"ALTER TABLE jit_grants ADD COLUMN {column} {ddl_type}"))
 
 
 def _legacy_db_path() -> str | None:
@@ -158,9 +175,10 @@ def append_audit(session: Session, *, actor_id: str, action: str, target_id: str
     # SQLite drops timezone offsets; store a canonical UTC-naive timestamp so
     # the exact bytes used for hashing survive a restart and verification.
     occurred_at = datetime.now(UTC).replace(tzinfo=None)
-    record = AuditRecord(len([*session.scalars(select(AuditEvent))]), occurred_at, actor_id, action, target_id, payload or {}, previous)
+    record = AuditRecord(last.sequence + 1 if last else 0, occurred_at, actor_id, action, target_id, payload or {}, previous)
     import hashlib
     record.event_hash = hashlib.sha256(record.material()).hexdigest()
     event = AuditEvent(sequence=record.sequence, actor_id=actor_id, action=action, target_id=target_id, payload_json=json.dumps(record.payload, sort_keys=True), previous_hash=previous, event_hash=record.event_hash, created_at=record.occurred_at)
     session.add(event)
+    session.flush()
     return event

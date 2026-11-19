@@ -28,7 +28,7 @@ test.describe('ASAAS smoke', () => {
       console.log('[SMK-01] no /api/auth/login request observed');
     }
     await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30000 });
-    await expect(page.locator('h1, h2, .page-title').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.page h1, .page h2, .page .page-title').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('SMK-02: theme toggle flips to light and back', async ({ page }) => {

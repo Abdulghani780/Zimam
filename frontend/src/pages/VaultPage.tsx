@@ -135,9 +135,13 @@ export function VaultPage() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast(t('تم نسخ كلمة المرور إلى الحافظة بنجاح'), 'success');
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(t('تم نسخ كلمة المرور إلى الحافظة بنجاح'), 'success');
+    } catch {
+      toast(t('تعذر النسخ إلى الحافظة؛ تحقق من أذونات المتصفح.'), 'error');
+    }
   };
 
   return (
@@ -364,7 +368,7 @@ export function VaultPage() {
                   variant="primary"
                   iconNode={<Copy size={15} />}
                   label={t('نسخ')}
-                  onClick={() => copyToClipboard(revealedSecret.secret)}
+                  onClick={() => void copyToClipboard(revealedSecret.secret)}
                 />
               </div>
             </div>

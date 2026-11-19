@@ -11,17 +11,21 @@ dotnet publish agent\Asaas.Agent.csproj -c Release -r win-x64 --self-contained f
 
 ## Signed job channel
 
-The control plane can dispatch **read-only** jobs (`system.info`, `process.list`,
-`service.list`, `disk.list`, `inventory.collect`, `session.list`, `network.info`,
-`eventlog.tail`, `software.list`, `firewall.state`) plus the reviewed
-`session.logoff` write job and `agent.update` self-update. Every job carries an Ed25519
-signature over `asaas-job|<id>|<agent_id>|<type>|<canonical-payload-json>`; the
-agent verifies it against `signing_public_key` (returned at enrollment and on
-every poll) before executing, then posts the result to
+The control plane dispatches signed collector jobs and the reviewed write jobs
+listed in `ALLOWED_JOB_TYPES` in `control_plane/asaas_control/api.py`. The agent
+has a second, matching allowlist and validates each payload before execution.
+Every job carries an Ed25519 signature over
+`asaas-job|<id>|<agent_id>|<type>|<canonical-payload-json>`; the agent verifies it
+against `signing_public_key` before executing, then posts the result to
 `/api/v1/agents/{id}/jobs/{job_id}/result`.
 
 The signing seed persists at `ASAAS_JOB_SIGNING_KEY_FILE` (default
-`data/agent-signing.key`) or `ASAAS_JOB_SIGNING_KEY` (hex). All other write/destructive actions are intentionally not in the allowlist. `session.logoff` is the single reviewed write job: it requires `{"session_id": <positive int>}` in the signed payload and refuses invalid ids.
+`data/agent-signing.key`) or `ASAAS_JOB_SIGNING_KEY` (hex). JIT access uses
+`jit.grant` and `jit.revoke` jobs bound to a grant, target agent, Windows account,
+and reviewed local group. A grant becomes active only after the agent verifies
+membership. The result records whether this grant added the membership so a later
+revocation never removes a pre-existing permanent membership. Expired grants are
+queued for revocation by the control-plane reconciliation loop.
 
 ## Service installation
 

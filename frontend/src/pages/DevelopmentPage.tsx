@@ -54,9 +54,9 @@ export function DevelopmentPage() {
     setLoading(true);
     try {
       const [projRes, confRes, quotRes] = await Promise.all([
-        api.getDeveloperProjects().catch(() => ({ ok: false, projects: [] })),
-        api.getConflictsList().catch(() => ({ ok: false, conflicts: [] })),
-        api.getQuotasConfig().catch(() => null),
+        api.getDeveloperProjects(),
+        api.getConflictsList(),
+        api.getQuotasConfig(),
       ]);
 
       setProjects(projRes?.projects || []);

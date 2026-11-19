@@ -16,12 +16,14 @@ export function ZeroTrustLoginPage() {
   const lang = useLang();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [mfaRequired, setMfaRequired] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!username.trim() || !password) return;
+    if (!username.trim() || !password || (mfaRequired && !otp.trim())) return;
     setLoading(true);
     setError(null);
 
@@ -29,7 +31,7 @@ export function ZeroTrustLoginPage() {
       // Prefer the control-plane session (/api/v1) when it is reachable; the
       // proxy bridges it to legacy endpoints. Fall back to the legacy login.
       try {
-        await apiV1.login(username.trim(), password);
+        await apiV1.login(username.trim(), password, mfaRequired ? otp.trim() : undefined);
         // The console still reads the local directory profile through the
         // bridge — surface a clear error if no matching local user exists.
         try {
@@ -39,6 +41,10 @@ export function ZeroTrustLoginPage() {
         }
       } catch (v1Error) {
         if (v1Error instanceof ApiV1Error && v1Error.status === 401 && /mfa/i.test(v1Error.message)) {
+          if (/mfa required/i.test(v1Error.message)) setMfaRequired(true);
+          throw v1Error;
+        }
+        if (mfaRequired && v1Error instanceof ApiV1Error) {
           throw v1Error;
         }
         if (v1Error instanceof Error && v1Error.message.startsWith(t('تم التحقق'))) {
@@ -142,8 +148,24 @@ export function ZeroTrustLoginPage() {
               )}
             </Field>
 
+            {mfaRequired && (
+              <Field label={t('رمز المصادقة الثنائية (OTP)')} required hint={t('أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة.')}>
+                {(id, isError) => (
+                  <TextInput
+                    id={id}
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value)}
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    required
+                    error={isError}
+                    dir="ltr"
+                  />
+                )}
+              </Field>
+            )}
             <FormError error={error} />
-            <Button type="submit" variant="primary" loading={loading} disabled={!username.trim() || !password}>
+            <Button type="submit" variant="primary" loading={loading} disabled={!username.trim() || !password || (mfaRequired && !otp.trim())}>
               {t('دخول إلى لوحة التحكم')}
             </Button>
           </form>

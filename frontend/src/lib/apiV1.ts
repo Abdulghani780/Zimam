@@ -147,6 +147,18 @@ export interface V1Session {
   [key: string]: unknown;
 }
 
+export interface V1Recording {
+  recording_id: string;
+  protocol: string;
+  asset_id: string;
+  account_id: string;
+  user_id: string;
+  started_at: string;
+  finished_at?: string | null;
+  instructions: number;
+  bytes: number;
+}
+
 export interface V1AuditEvent {
   sequence?: number;
   actor_id?: string;
@@ -213,7 +225,7 @@ export const apiV1 = {
     }),
   logout: () => post<unknown>('/auth/logout'),
   me: () => request<V1User>('/auth/me'),
-  mfaSetup: () => post<{ secret?: string; otpauth_url?: string }>('/auth/mfa/setup'),
+  mfaSetup: () => post<{ enabled?: boolean; pending_verification?: boolean; secret?: string; otpauth_uri?: string }>('/auth/mfa/setup'),
   mfaVerify: (code: string) => post<unknown>('/auth/mfa/verify', { code }),
 
   // Directory & users
@@ -231,7 +243,7 @@ export const apiV1 = {
 
   // JIT elevation grants
   jitGrants: () => request<{ ok?: boolean; grants?: V1JitGrant[] }>('/jit-grants'),
-  requestJitGrant: (body: { target_role: string; reason: string; duration_mins: number; username?: string }) =>
+  requestJitGrant: (body: { target_role: string; reason: string; duration_mins: number; agent_id: string; username?: string }) =>
     post<{ ok?: boolean; grant?: V1JitGrant; message?: string }>('/jit-grants', body),
   decideJitGrant: (id: string, approve: boolean) =>
     post<{ ok?: boolean; grant?: V1JitGrant; message?: string }>(`/jit-grants/${encodeURIComponent(id)}/decision`, { approve }),
@@ -277,7 +289,21 @@ export const apiV1 = {
     post<{ job_id: string; status: string }>('/sessions/terminate', { agent_id: agentId, session_id: sessionId }),
   disconnectSession: (agentId: string, sessionId: number) =>
     post<{ job_id: string; status: string }>('/sessions/disconnect', { agent_id: agentId, session_id: sessionId }),
-  recordings: () => request<unknown>('/recordings'),
+  recordings: () => request<{ items?: V1Recording[]; count?: number; storage_status?: string }>('/recordings'),
+  downloadRecording: async (recordingId: string) => {
+    const res = await fetch(`${BASE}/recordings/${encodeURIComponent(recordingId)}/export`, { credentials: 'same-origin' });
+    if (!res.ok) {
+      let message = `HTTP ${res.status}`;
+      try {
+        const data = await res.json();
+        message = data?.detail || data?.error || message;
+      } catch {
+        // Keep the HTTP error when the server did not return JSON.
+      }
+      throw new ApiV1Error(res.status, message);
+    }
+    return res.blob();
+  },
 
   // Connection tokens (gateway consumption)
   createConnectionToken: (body: {

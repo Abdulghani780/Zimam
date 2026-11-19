@@ -1,5 +1,8 @@
 """TEST-PAM-003 — Security tests for JumpServer Bastion Command Risk ACL."""
+import sqlite3
 import unittest
+from unittest.mock import Mock, patch
+
 from backend.app.services.bastion_service import BastionService
 
 
@@ -36,6 +39,19 @@ class TestBastionSecurity(unittest.TestCase):
             res = BastionService.evaluate_command_risk(cmd)
             self.assertEqual(res['risk_level'], 'LOW', f"Safe command misclassified: {cmd}")
             self.assertTrue(res['safe'], f"Safe command should be marked safe: {cmd}")
+
+    def test_asset_add_does_not_succeed_when_database_write_fails(self):
+        asset = Mock()
+        asset.to_dict.return_value = {'id': 'asset-test', 'name': 'Test asset'}
+        with patch('backend.app.services.bastion_service.db_add_asset', side_effect=sqlite3.OperationalError('database unavailable')):
+            with self.assertRaises(sqlite3.OperationalError):
+                BastionService.add_asset(asset)
+
+    def test_missing_asset_delete_is_not_reported_as_success(self):
+        with patch('backend.app.services.bastion_service.db_remove_asset', return_value=False):
+            result = BastionService.remove_asset('missing')
+        self.assertFalse(result['ok'])
+        self.assertIn('error', result)
 
 
 if __name__ == '__main__':

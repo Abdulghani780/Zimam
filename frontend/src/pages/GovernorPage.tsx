@@ -102,8 +102,9 @@ export function GovernorPage() {
     try {
       await api.updateGovernor({ idle_threshold_mins: val });
       setGovernor((prev) => (prev ? { ...prev, idle_threshold_mins: val } : prev));
-    } catch {
-      // ignore
+    } catch (err: any) {
+      toast(err.message || t('تعذر حفظ عتبة الخمول'), 'error');
+      await fetchControlData(true);
     }
   };
 

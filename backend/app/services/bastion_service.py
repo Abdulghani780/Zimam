@@ -34,50 +34,37 @@ class BastionService:
         (re.compile(r'\b(shutdown\s+/[srt]|init\s+0|poweroff|halt)\b', re.IGNORECASE), 'محاولة إيقاف تشغيل السيرفر قسرياً (System Shutdown)'),
     ]
 
-    _assets_cache: List[ManagedAsset] = []
-
     @classmethod
     def list_assets(cls) -> List[ManagedAsset]:
         """Lists all managed assets registered in the Bastion from SQLite."""
-        try:
-            rows = db_list_assets()
-            if rows:
-                return [
-                    ManagedAsset(
-                        id=r['id'],
-                        name=r['name'],
-                        host=r['host'],
-                        type=r['type'],
-                        port=r['port'],
-                        protocol=r['protocol'],
-                        status=r['status'],
-                        latency_ms=r['latency_ms'],
-                        category=r['category'],
-                        is_local=r['is_local'],
-                        tags=r['tags'],
-                    ) for r in rows
-                ]
-        except Exception:
-            pass
-        return list(cls._assets_cache)
+        rows = db_list_assets()
+        return [
+            ManagedAsset(
+                id=r['id'],
+                name=r['name'],
+                host=r['host'],
+                type=r['type'],
+                port=r['port'],
+                protocol=r['protocol'],
+                status=r['status'],
+                latency_ms=r['latency_ms'],
+                category=r['category'],
+                is_local=r['is_local'],
+                tags=r['tags'],
+            ) for r in rows
+        ]
 
     @classmethod
     def add_asset(cls, asset: ManagedAsset) -> Dict[str, Any]:
         """Registers a new remote asset into the Bastion SQLite database."""
-        try:
-            db_add_asset(asset.to_dict())
-        except Exception:
-            cls._assets_cache.append(asset)
+        db_add_asset(asset.to_dict())
         return {'ok': True, 'asset': asset.to_dict(), 'message': 'تم تسجيل الخادم في حصن الوصول وحفظه في قاعدة البيانات.'}
 
     @classmethod
     def remove_asset(cls, asset_id: str) -> Dict[str, Any]:
         """Removes an asset from Bastion database."""
-        try:
-            db_remove_asset(asset_id)
-        except Exception:
-            pass
-        cls._assets_cache = [a for a in cls._assets_cache if a.id != asset_id]
+        if not db_remove_asset(asset_id):
+            return {'ok': False, 'id': asset_id, 'error': 'الأصل غير موجود في قاعدة البيانات.'}
         return {'ok': True, 'id': asset_id}
 
     @classmethod

@@ -217,18 +217,24 @@ class StorageService:
         }
 
     @staticmethod
-    def get_processes_locking_file(filepath: str) -> List[Dict[str, Any]]:
+    def get_processes_locking_file(filepath: str, strict: bool = False) -> List[Dict[str, Any]]:
         """Native Win32 Restart Manager diagnostic returning processes locking the given file."""
         if os.name != 'nt':
+            if strict:
+                raise RuntimeError('Restart Manager is available on Windows only.')
             return []
 
         try:
             rstrtmgr = ctypes.WinDLL('rstrtmgr', use_last_error=True)
-        except Exception:
+        except Exception as exc:
+            if strict:
+                raise RuntimeError('Windows Restart Manager could not be loaded.') from exc
             return []
 
         abs_path = os.path.abspath(filepath)
         if not os.path.exists(abs_path):
+            if strict:
+                raise FileNotFoundError(abs_path)
             return []
 
         session_handle = wintypes.DWORD()
@@ -236,6 +242,8 @@ class StorageService:
 
         res = rstrtmgr.RmStartSession(ctypes.byref(session_handle), 0, session_key)
         if res != 0:
+            if strict:
+                raise RuntimeError(f'Restart Manager session failed with code {res}.')
             return []
 
         lockers: List[Dict[str, Any]] = []
@@ -243,6 +251,8 @@ class StorageService:
             file_paths = (wintypes.LPCWSTR * 1)(abs_path)
             res = rstrtmgr.RmRegisterResources(session_handle, 1, file_paths, 0, None, 0, None)
             if res != 0:
+                if strict:
+                    raise RuntimeError(f'Restart Manager resource registration failed with code {res}.')
                 return []
 
             n_proc_info_needed = wintypes.UINT()
@@ -267,8 +277,11 @@ class StorageService:
                         'service': p.strServiceShortName or '',
                         'session_id': p.TSSessionId,
                     })
+            elif strict:
+                raise RuntimeError(f'Restart Manager query failed with code {res}.')
         except Exception:
-            pass
+            if strict:
+                raise
         finally:
             rstrtmgr.RmEndSession(session_handle)
 

@@ -115,8 +115,8 @@ export function AgentsPage() {
     setLoading(true);
     try {
       const [a, j, b, ast] = await Promise.all([
-        apiV1.agents(), apiV1.jobs(), apiV1.updateBundleStatus().catch(() => null),
-        apiV1.assets().catch(() => []),
+        apiV1.agents(), apiV1.jobs(), apiV1.updateBundleStatus(),
+        apiV1.assets(),
       ]);
       setAgents(asArray<V1Agent>(a));
       setAssets(asArray<V1Asset>(ast));

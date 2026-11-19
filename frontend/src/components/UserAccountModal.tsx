@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Button, Field, TextInput, PasswordInput, useToast } from '../asaas-ui';
 import { api, type AppUser } from '../lib/api';
+import { apiV1 } from '../lib/apiV1';
 import { User, LogIn, LogOut } from 'lucide-react';
 import { t } from '../lib/i18n';
 
@@ -16,6 +17,18 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaSecret, setMfaSecret] = useState('');
+  const [mfaUri, setMfaUri] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaBusy, setMfaBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open || !currentUser) return;
+    apiV1.me().then((user) => setMfaEnabled(Boolean(user.mfa_enabled))).catch((err) => {
+      toast(err.message || t('تعذر تحميل حالة المصادقة الثنائية'), 'error');
+    });
+  }, [open, currentUser, toast]);
 
   if (!open) return null;
 
@@ -40,9 +53,44 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
   };
 
   const handleLogout = async () => {
-    await api.logout();
-    toast(t('تم تسجيل الخروج بنجاح.'), 'success');
-    onUserChanged(null);
+    try {
+      await api.logout();
+      toast(t('تم تسجيل الخروج بنجاح.'), 'success');
+      onUserChanged(null);
+    } catch (err: any) {
+      toast(err.message || t('فشل تسجيل الخروج'), 'error');
+    }
+  };
+
+  const setupMfa = async () => {
+    setMfaBusy(true);
+    try {
+      const res = await apiV1.mfaSetup();
+      setMfaSecret(res.secret || '');
+      setMfaUri(res.otpauth_uri || '');
+      setMfaCode('');
+    } catch (err: any) {
+      toast(err.message || t('فشل بدء إعداد المصادقة الثنائية'), 'error');
+    } finally {
+      setMfaBusy(false);
+    }
+  };
+
+  const verifyMfa = async () => {
+    if (!mfaCode.trim()) return;
+    setMfaBusy(true);
+    try {
+      await apiV1.mfaVerify(mfaCode.trim());
+      setMfaEnabled(true);
+      setMfaSecret('');
+      setMfaUri('');
+      setMfaCode('');
+      toast(t('تم تفعيل المصادقة الثنائية بعد التحقق من الرمز.'), 'success');
+    } catch (err: any) {
+      toast(err.message || t('رمز المصادقة غير صالح'), 'error');
+    } finally {
+      setMfaBusy(false);
+    }
   };
 
   return (
@@ -100,6 +148,27 @@ export function UserAccountModal({ open, onClose, currentUser, onUserChanged }: 
             </Button>
           )}
         </div>
+
+        {currentUser && (
+          <div style={{ padding: 16, borderRadius: 'var(--radius-md)', background: 'var(--glass-inset)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <strong>{t('المصادقة الثنائية (MFA)')}</strong>
+            {mfaEnabled ? (
+              <span style={{ color: 'var(--paid)' }}>{t('المصادقة الثنائية مفعّلة لهذا الحساب.')}</span>
+            ) : mfaSecret ? (
+              <>
+                <p style={{ margin: 0, color: 'var(--text-2)' }}>{t('أضف الرمز التالي إلى تطبيق المصادقة، ثم أدخل رمز OTP لتأكيد التفعيل.')}</p>
+                <code dir="ltr" style={{ userSelect: 'all', wordBreak: 'break-all' }}>{mfaSecret}</code>
+                {mfaUri && <code dir="ltr" style={{ userSelect: 'all', wordBreak: 'break-all', fontSize: 11 }}>{mfaUri}</code>}
+                <Field label={t('رمز OTP')}>
+                  {(id) => <TextInput id={id} value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" dir="ltr" />}
+                </Field>
+                <Button variant="primary" onClick={() => void verifyMfa()} loading={mfaBusy} disabled={!mfaCode.trim()}>{t('تحقق وفعّل MFA')}</Button>
+              </>
+            ) : (
+              <Button variant="secondary" onClick={() => void setupMfa()} loading={mfaBusy}>{t('إعداد المصادقة الثنائية')}</Button>
+            )}
+          </div>
+        )}
 
         {/* Direct Login Form */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

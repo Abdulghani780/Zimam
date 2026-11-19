@@ -70,9 +70,9 @@ export function StoragePage() {
     try {
       const [bd, us, lf, fleetRes] = await Promise.all([
         api.getStorageBreakdown('C'),
-        api.getStorageUsers().catch(() => ({ users: [] })),
-        api.getLockedFiles().catch(() => ({ locked_files: [] })),
-        apiV1.fleetSummary().catch(() => null),
+        api.getStorageUsers(),
+        api.getLockedFiles(),
+        apiV1.fleetSummary(),
       ]);
       setBreakdown(bd);
       setUserProfiles(Array.isArray(us) ? us : (us as any)?.users || []);

@@ -85,10 +85,10 @@ export function ServersPage() {
     setLoading(true);
     try {
       const [localRes, srvRes, grpRes, fleetRes] = await Promise.all([
-        api.getLocalServerInfo().catch(() => null),
-        api.getServers().catch(() => ({ ok: false, servers: [] })),
-        api.getServerGroups().catch(() => ({ ok: false, groups: [] })),
-        apiV1.fleetSummary().catch(() => null),
+        api.getLocalServerInfo(),
+        api.getServers(),
+        api.getServerGroups(),
+        apiV1.fleetSummary(),
       ]);
 
       if (localRes?.local_server) {
@@ -363,10 +363,10 @@ export function ServersPage() {
                 <span>{t('جاهزية المنظومة والتشغيل')}</span>
               </div>
               <div style={{ fontSize: 17, fontWeight: 800, marginTop: 4, color: 'var(--text)' }}>
-                {localServer.uptime_str || t('مستمر ومستقر')}
+                {localServer.uptime_str || '—'}
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                {t('وضع السيادة: نشط')}
+                {localServer.is_admin ? t('صلاحيات المسؤول: مفعّلة') : t('صلاحيات المسؤول: غير مفعّلة')}
               </div>
             </div>
           </div>
@@ -503,8 +503,8 @@ title={t('فحص TCP حقيقي لكل خادم وتحديث الحالة وزم
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 120 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-3)' }}>
-                          <span>CPU: {Number(s.cpu ?? 0).toFixed(0)}%</span>
-                          <span>RAM: {Number(s.ram ?? 0).toFixed(0)}%</span>
+                          <span>CPU: {s.is_local ? `${Number(s.cpu ?? 0).toFixed(0)}%` : '—'}</span>
+                          <span>RAM: {s.is_local ? `${Number(s.ram ?? 0).toFixed(0)}%` : '—'}</span>
                         </div>
                         <div style={{ height: 4, background: 'var(--hairline)', borderRadius: 2, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, Number(s.cpu ?? 0)))}%`, background: 'var(--accent)' }} />

@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from .api import router
+from .api import revoke_expired_jit_grants, router
 from .backup import create_backup, prune_backups
 from .config import settings
 from .entitlements import license_guard
@@ -42,14 +42,24 @@ async def _backup_loop() -> None:
             log.exception("scheduled backup failed")
 
 
+async def _jit_expiry_loop() -> None:
+    while True:
+        await asyncio.sleep(30)
+        try:
+            await asyncio.to_thread(revoke_expired_jit_grants)
+        except Exception:
+            log.exception("JIT expiry reconciliation failed")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    task = asyncio.create_task(_backup_loop())
+    tasks = [asyncio.create_task(_backup_loop()), asyncio.create_task(_jit_expiry_loop())]
     try:
         yield
     finally:
-        task.cancel()
+        for task in tasks:
+            task.cancel()
 
 
 app = FastAPI(title="ASAAS Control Plane", version="1.0.0", lifespan=lifespan)

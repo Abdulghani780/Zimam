@@ -12,14 +12,17 @@ interface AiDiagModalProps {
 export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const runDiagnosis = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await api.getAiDiagnosis();
       setData(res);
-    } catch {
-      // ignore
+    } catch (err: any) {
+      setData(null);
+      setError(err.message || t('تعذر الاتصال بخدمة التشخيص.'));
     } finally {
       setLoading(false);
     }
@@ -123,8 +126,8 @@ export function AiDiagModal({ open, onClose }: AiDiagModalProps) {
             )}
           </>
         ) : (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)' }}>
-            {t('تعذر جلب تقرير التشخيص.')}
+          <div role="alert" style={{ padding: 24, textAlign: 'center', color: 'var(--unpaid)' }}>
+            {error || t('تعذر جلب تقرير التشخيص.')}
           </div>
         )}
 

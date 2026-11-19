@@ -543,6 +543,17 @@ def init_db() -> None:
                     DEMO_VAULT_IDS,
                 )
 
+            cur.execute("""
+                DELETE FROM resource_quotas
+                WHERE id NOT IN (
+                    SELECT id FROM resource_quotas AS newer
+                    WHERE newer.scope_type = resource_quotas.scope_type
+                      AND newer.scope_id = resource_quotas.scope_id
+                    ORDER BY newer.updated_at DESC, newer.rowid DESC
+                    LIMIT 1
+                )
+            """)
+            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_resource_quotas_scope ON resource_quotas(scope_type, scope_id)")
             conn.commit()
             logger.info("Database initialized successfully at %s", DB_PATH)
     except Exception as exc:
@@ -593,7 +604,17 @@ def db_record_login_attempt(username: str, ip: str, success: bool) -> None:
 def db_authenticate_user(username: str, password: str, ip: str) -> Optional[Dict[str, Any]]:
     """Authenticates username & password against app_users table with salt & PBKDF2."""
     if db_is_ip_rate_limited(ip):
-        db_add_security_event('BRUTE_FORCE_BLOCKED', ip, f'تم حظر محاولة دخول من {ip} لتجاوز حد المحاولات', 'CRITICAL')
+        db_add_security_event('BRUTE_FORCE_BLOCKED', ip, f'تم تقييد محاولة دخول من {ip} لتجاوز حد المحاولات', 'CRITICAL')
+        from ..services.alert_service import AlertService
+        if AlertService.is_rule_enabled('rule_brute_force'):
+            from ..services.port_isolation_service import PortIsolationService
+            block_result = PortIsolationService.block_ip(ip)
+            if block_result.get('ok'):
+                db_add_security_event('IP_BLOCKED', ip, 'تم حظر IP تلقائياً بعد محاولات الدخول الفاشلة والتحقق من قاعدة الجدار الناري.', 'CRITICAL')
+                AlertService.send_telegram_alert(f'تم حظر {ip} تلقائياً بعد تجاوز حد محاولات الدخول.', f'brute_force:{ip}')
+            else:
+                db_add_security_event('BRUTE_FORCE_BLOCK_FAILED', ip, f'تم تقييد الدخول لكن فشل حظر الجدار الناري: {block_result.get("error", "خطأ غير معروف")}', 'CRITICAL')
+                AlertService.send_telegram_alert(f'تم تقييد دخول {ip} لكن فشل إنشاء حظر الجدار الناري.', f'brute_force_failed:{ip}')
         return None
 
     try:
@@ -1606,15 +1627,18 @@ def db_create_developer_project(name: str, owner: str, runtime: str, source_path
     return {'ok': True, 'id': proj_id, 'name': name, 'port': port, 'route': route}
 
 
-def db_update_project_status(project_id: str, status: str, pid: Optional[int] = None) -> None:
+def db_update_project_status(project_id: str, status: str, pid: Optional[int] = None, port: Optional[int] = None, env_vars: Optional[Dict[str, str]] = None) -> None:
     now_str = datetime.now(timezone.utc).isoformat()
     with get_db_connection() as conn:
         cur = conn.cursor()
         cur.execute("""
             UPDATE developer_projects
-            SET status = ?, pid = ?, last_started = CASE WHEN ? = 'running' THEN ? ELSE last_started END
+            SET status = ?, pid = ?, port = COALESCE(?, port), env_vars = COALESCE(?, env_vars),
+                last_started = CASE WHEN ? = 'running' THEN ? ELSE last_started END
             WHERE id = ?
-        """, (status, pid, status, now_str, project_id))
+        """, (status, pid, port, json.dumps(env_vars) if env_vars is not None else None, status, now_str, project_id))
+        if cur.rowcount != 1:
+            raise ValueError('Project not found')
         conn.commit()
 
 
@@ -1697,7 +1721,7 @@ def db_save_resource_quota(scope_type: str, scope_id: str, cpu_limit: float, ram
         cur.execute("""
             INSERT INTO resource_quotas (id, scope_type, scope_id, cpu_limit, ram_limit_mb, disk_limit_gb, max_containers, max_projects, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
+            ON CONFLICT(scope_type, scope_id) DO UPDATE SET
                 cpu_limit = excluded.cpu_limit,
                 ram_limit_mb = excluded.ram_limit_mb,
                 disk_limit_gb = excluded.disk_limit_gb,

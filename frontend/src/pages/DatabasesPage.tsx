@@ -82,8 +82,9 @@ export function DatabasesPage() {
         }),
       );
       setFleetDbs(detailed);
-    } catch {
+    } catch (err: any) {
       setFleetDbs([]);
+      toast(err.message || t('فشل تحميل بيانات قواعد البيانات من الوكلاء.'), 'error');
     }
   };
 
@@ -95,10 +96,10 @@ export function DatabasesPage() {
     setLoading(true);
     try {
       const [statsRes, engRes, tablesRes, backupsRes] = await Promise.all([
-        api.getDatabaseStats().catch(() => null),
-        api.getDatabaseEngines().catch(() => ({ ok: false, engines: [] })),
-        api.getDatabaseTables().catch(() => ({ ok: false, tables: [] })),
-        api.getDatabaseBackups().catch(() => ({ ok: false, backups: [] })),
+        api.getDatabaseStats(),
+        api.getDatabaseEngines(),
+        api.getDatabaseTables(),
+        api.getDatabaseBackups(),
       ]);
 
       if (statsRes?.ok) setStats(statsRes);

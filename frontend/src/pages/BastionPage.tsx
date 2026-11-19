@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Segmented, useToast } from '../asaas-ui';
 import { api, type AssetItem, type JitGrant, type LocalUser } from '../lib/api';
-import { apiV1 } from '../lib/apiV1';
+import { apiV1, type V1Agent } from '../lib/apiV1';
 import {
   Activity,
   AlertCircle,
@@ -46,6 +46,7 @@ interface RequestFormState {
   role: string;
   duration: string;
   reason: string;
+  agent_id: string;
 }
 
 interface AssetFormState {
@@ -63,6 +64,7 @@ const INITIAL_REQUEST_FORM: RequestFormState = {
   role: 'ServerAdmin',
   duration: '15',
   reason: '',
+  agent_id: '',
 };
 
 const INITIAL_ASSET_FORM: AssetFormState = {
@@ -78,7 +80,7 @@ const ROLE_OPTIONS = [
   { value: 'Local Administrator', label: t('مسؤول محلي') },
   { value: 'Network Operator', label: t('مشغل شبكة') },
   { value: 'Security Auditor', label: t('مدقق أمني') },
-  { value: 'Database Operator', label: t('مشغل قواعد بيانات') },
+  { value: 'Backup Operator', label: t('مشغل نسخ احتياطي') },
 ];
 
 const DURATION_OPTIONS = [5, 15, 30, 60, 120, 240, 480];
@@ -97,11 +99,16 @@ const ROLE_LABELS: Record<string, string> = {
   'Local Administrator': t('مسؤول محلي'),
   'Network Operator': t('مشغل شبكة'),
   'Security Auditor': t('مدقق أمني'),
+  'Backup Operator': t('مشغل نسخ احتياطي'),
   'Database Operator': t('مشغل قواعد بيانات'),
 };
 
 const GRANT_STATUS_META: Record<string, { label: string; className: string }> = {
   PENDING: { label: t('قيد المراجعة'), className: 'pill-status--idle' },
+  ACTIVATING: { label: t('جارٍ التفعيل على الوكيل'), className: 'pill-status--idle' },
+  REVOKING: { label: t('جارٍ السحب على الوكيل'), className: 'pill-status--idle' },
+  FAILED: { label: t('فشل التنفيذ'), className: 'pill-status--off' },
+  EXPIRED_UNREVOKED: { label: t('انتهت والسحب معلق'), className: 'pill-status--off' },
   ACTIVE: { label: t('نشط'), className: 'pill-status--on' },
   REJECTED: { label: t('مرفوض'), className: 'pill-status--off' },
   REVOKED: { label: t('ملغى'), className: 'pill-status--off' },
@@ -234,6 +241,7 @@ export function BastionPage() {
   const [requestForm, setRequestForm] = useState<RequestFormState>(INITIAL_REQUEST_FORM);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [agents, setAgents] = useState<V1Agent[]>([]);
 
   const [assetProtocolFilter, setAssetProtocolFilter] = useState('all');
   const [assetQuery, setAssetQuery] = useState('');
@@ -291,6 +299,9 @@ export function BastionPage() {
 
   useEffect(() => {
     void loadAssets();
+    apiV1.agents().then((res) => {
+      setAgents(Array.isArray(res) ? res : res.agents || []);
+    }).catch((err) => toast(err instanceof Error ? err.message : t('تعذر تحميل الوكلاء المستهدفين.'), 'error'));
   }, [loadAssets]);
 
   useEffect(() => {
@@ -399,7 +410,9 @@ export function BastionPage() {
         const isActive = status === 'ACTIVE';
         const isRevoked = status === 'REVOKED';
         const isExpired = status === 'EXPIRED';
-        const approved = !isPending && !isRejected;
+        const isActivating = status === 'ACTIVATING';
+        const isFailed = status === 'FAILED' || status === 'EXPIRED_UNREVOKED';
+        const approved = isActive || isRevoked || isExpired;
         return [
           {
             label: t('إنشاء الطلب'),
@@ -427,10 +440,14 @@ export function BastionPage() {
             label: t('تفعيل الصلاحية'),
             meta: isActive
               ? `${t('سارية حتى ')}${formatDateTime(selectedGrant.expires_at)}`
-              : approved
-                ? t('تم التفعيل بعد الاعتماد')
-                : t('تبدأ بعد الاعتماد'),
-            state: isActive ? 'current' : approved ? 'done' : 'pending',
+              : isActivating
+                ? t('أُرسلت مهمة موقعة وتنتظر تأكيد الوكيل')
+                : isFailed
+                  ? selectedGrant.last_error || t('فشل تنفيذ الصلاحية على الوكيل')
+                  : approved
+                    ? t('تم تأكيد التفعيل بواسطة الوكيل')
+                    : t('تبدأ بعد الاعتماد'),
+            state: isActive ? 'current' : isFailed ? 'failed' : isActivating ? 'current' : approved ? 'done' : 'pending',
             icon: <KeyRound size={15} />,
           },
           {
@@ -466,8 +483,9 @@ export function BastionPage() {
             role: grant.target_role,
             duration: String(grant.duration_mins),
             reason: grant.reason,
+            agent_id: grant.agent_id || '',
           }
-        : INITIAL_REQUEST_FORM,
+        : { ...INITIAL_REQUEST_FORM, agent_id: agents.find((agent) => agent.status === 'online')?.id || agents[0]?.id || '' },
     );
     setRequestError(null);
     setRequestOpen(true);
@@ -480,6 +498,10 @@ export function BastionPage() {
       setRequestError(t('يرجى كتابة سبب واضح للطلب (5 أحرف على الأقل).'));
       return;
     }
+    if (!requestForm.agent_id) {
+      setRequestError(t('اختر وكيلاً مستهدفاً قبل إرسال الطلب.'));
+      return;
+    }
 
     setRequestSubmitting(true);
     setRequestError(null);
@@ -488,6 +510,7 @@ export function BastionPage() {
         target_role: requestForm.role,
         reason,
         duration_mins: Number(requestForm.duration),
+        agent_id: requestForm.agent_id,
         ...(requestForm.user.trim() ? { username: requestForm.user.trim() } : {}),
       });
       toast(res.message || t('تم تسجيل طلب الصلاحية بنجاح.'), 'success');
@@ -957,7 +980,7 @@ options={[
                       </div>
                     )}
 
-                    {(selectedGrant.status || '').toUpperCase() === 'ACTIVE' && (
+                    {['ACTIVE', 'FAILED'].includes((selectedGrant.status || '').toUpperCase()) && (
                       <div className="three">
                         <button
                           type="button"
@@ -1424,6 +1447,19 @@ options={[
               {requestError && <div className="form-error">{requestError}</div>}
 
               <div className="form-grid">
+                <label className="ui-label">
+                  {t('الخادم المستهدف عبر الوكيل')}
+                  <span className="ui-select ui-select--block">
+                    <select
+                      value={requestForm.agent_id}
+                      onChange={(event) => setRequestForm((current) => ({ ...current, agent_id: event.target.value }))}
+                      required
+                    >
+                      <option value="">{t('اختر وكيلاً')}</option>
+                      {agents.map((agent) => <option key={agent.id} value={agent.id}>{agent.name || agent.id} ({agent.status || 'unknown'})</option>)}
+                    </select>
+                  </span>
+                </label>
                 <label className="ui-label">
                   {t('المستخدم')}
                   <input

@@ -3,9 +3,11 @@ Trims working set memory of idle RDP sessions and background apps to free RAM,
 backed by persistent SQLite configuration.
 """
 from __future__ import annotations
+import logging
 import sys
 import threading
 import time
+from datetime import datetime
 import psutil
 from typing import Dict, Any, Optional
 
@@ -14,6 +16,8 @@ from ..infrastructure.db import (
     db_get_governor_settings,
     db_save_governor_settings,
 )
+
+logger = logging.getLogger('asaas.governor')
 
 IS_WINDOWS = sys.platform == 'win32'
 if IS_WINDOWS:
@@ -228,16 +232,80 @@ class GovernorService:
 
         return self.quick_trim_all()
 
+    @staticmethod
+    def _idle_minutes(value: Optional[str]) -> Optional[float]:
+        if not value:
+            return None
+        raw = value.strip().split()[0]
+        if raw in {'.', 'none'}:
+            return 0.0
+        try:
+            days = 0
+            clock = raw
+            if '+' in raw:
+                day_part, clock = raw.split('+', 1)
+                days = int(day_part)
+            if ':' in clock:
+                hours, minutes = clock.split(':', 1)
+                return days * 1440 + int(hours) * 60 + int(minutes)
+            return days * 1440 + int(clock)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _session_age_hours(value: Optional[str]) -> Optional[float]:
+        if not value:
+            return None
+        raw = value.strip()
+        for fmt in ('%m/%d/%Y %I:%M %p', '%d/%m/%Y %H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M'):
+            try:
+                return max(0.0, (datetime.now() - datetime.strptime(raw, fmt)).total_seconds() / 3600)
+            except ValueError:
+                continue
+        return None
+
+    def _enforce_session_policies(self) -> None:
+        if not IS_WINDOWS or not (self.auto_disconnect_enabled or self.auto_logoff_enabled):
+            return
+        from ..infrastructure.db import db_add_security_event
+        from ..infrastructure.win32_wts import Win32WtsService
+        for session in Win32WtsService.list_active_sessions():
+            if session.is_current:
+                continue
+            age_hours = self._session_age_hours(session.login_time)
+            if self.auto_logoff_enabled and age_hours is not None and age_hours >= self.auto_logoff_hours:
+                result = Win32WtsService.logoff_session(session.id)
+                db_add_security_event(
+                    'AUTO_SESSION_LOGOFF' if result.get('ok') else 'AUTO_SESSION_LOGOFF_FAILED',
+                    '127.0.0.1',
+                    f'الجلسة {session.id}: {result.get("message", result.get("error", "نتيجة غير معروفة"))}',
+                    'WARNING' if result.get('ok') else 'CRITICAL',
+                )
+                continue
+            idle_minutes = self._idle_minutes(session.idle_time)
+            if (
+                self.auto_disconnect_enabled
+                and session.state == 'Active'
+                and idle_minutes is not None
+                and idle_minutes >= self.auto_disconnect_mins
+            ):
+                result = Win32WtsService.disconnect_session(session.id)
+                db_add_security_event(
+                    'AUTO_SESSION_DISCONNECT' if result.get('ok') else 'AUTO_SESSION_DISCONNECT_FAILED',
+                    '127.0.0.1',
+                    f'الجلسة {session.id}: {result.get("message", result.get("error", "نتيجة غير معروفة"))}',
+                    'WARNING' if result.get('ok') else 'CRITICAL',
+                )
+
     def _governor_loop(self):
         """Automated background enforcement loop running every 60 seconds."""
         while self._running:
             time.sleep(60)
-            if not self.auto_trim:
-                continue
             try:
-                # If host RAM > 70%, perform background working set trim
-                vm = psutil.virtual_memory()
-                if vm.percent > 70:
-                    self.quick_trim_all()
+                if self.auto_trim:
+                    vm = psutil.virtual_memory()
+                    if vm.percent > 70:
+                        self.quick_trim_all()
+                self._enforce_session_policies()
             except Exception:
-                pass
+                logger.exception("Governor enforcement pass failed")

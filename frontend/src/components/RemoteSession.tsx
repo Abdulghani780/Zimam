@@ -5,7 +5,8 @@ import { t } from '../lib/i18n';
 
 interface RemoteSessionProps {
   protocol: string;
-  token: string;
+  token?: string;
+  recordingId?: string;
   onClose: () => void;
 }
 
@@ -17,7 +18,7 @@ type Phase = 'connecting' | 'connected' | 'closed' | 'error';
  * the guacd handshake — this side only renders the display and forwards
  * input events.
  */
-export function RemoteSession({ protocol, token, onClose }: RemoteSessionProps) {
+export function RemoteSession({ protocol, token = '', recordingId, onClose }: RemoteSessionProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [phase, setPhase] = useState<Phase>('connecting');
   const [message, setMessage] = useState('');
@@ -27,7 +28,10 @@ export function RemoteSession({ protocol, token, onClose }: RemoteSessionProps) 
     if (!host) return;
 
     const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const url = `${scheme}://${window.location.host}/api/v1/gateway/${protocol}`;
+    const path = recordingId
+      ? `/api/v1/recordings/${encodeURIComponent(recordingId)}/replay`
+      : `/api/v1/gateway/${protocol}`;
+    const url = `${scheme}://${window.location.host}${path}`;
     const client = new Guacamole.Client(new Guacamole.WebSocketTunnel(url));
     const display = client.getDisplay();
     const displayEl = display.getElement() as HTMLElement;
@@ -37,14 +41,16 @@ export function RemoteSession({ protocol, token, onClose }: RemoteSessionProps) 
     displayEl.tabIndex = 0;
     host.appendChild(displayEl);
 
-    const mouse = new Guacamole.Mouse(displayEl);
-    mouse.onEach(['mousedown', 'mousemove', 'mouseup'], (event) => {
-      client.sendMouseState((event as Guacamole.Mouse.Event).state, true);
-    });
+    if (!recordingId) {
+      const mouse = new Guacamole.Mouse(displayEl);
+      mouse.onEach(['mousedown', 'mousemove', 'mouseup'], (event) => {
+        client.sendMouseState((event as Guacamole.Mouse.Event).state, true);
+      });
 
-    const keyboard = new Guacamole.Keyboard(displayEl);
-    keyboard.onkeydown = (keysym) => { client.sendKeyEvent(1, keysym); };
-    keyboard.onkeyup = (keysym) => { client.sendKeyEvent(0, keysym); };
+      const keyboard = new Guacamole.Keyboard(displayEl);
+      keyboard.onkeydown = (keysym) => { client.sendKeyEvent(1, keysym); };
+      keyboard.onkeyup = (keysym) => { client.sendKeyEvent(0, keysym); };
+    }
 
     client.onstatechange = (state) => {
       if (state === Guacamole.Client.State.CONNECTED) setPhase('connected');
@@ -56,7 +62,7 @@ export function RemoteSession({ protocol, token, onClose }: RemoteSessionProps) 
     };
 
     try {
-      client.connect(`token=${encodeURIComponent(token)}`);
+      client.connect(recordingId ? '' : `token=${encodeURIComponent(token)}`);
     } catch {
       setPhase('error');
       setMessage(t('تعذّر فتح نفق الجلسة.'));
@@ -66,7 +72,7 @@ export function RemoteSession({ protocol, token, onClose }: RemoteSessionProps) 
       try { client.disconnect(); } catch { /* already closed */ }
       host.innerHTML = '';
     };
-  }, [protocol, token]);
+  }, [protocol, token, recordingId]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%' }}>

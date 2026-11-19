@@ -72,7 +72,7 @@ export function UsersPage() {
     try {
       const [list, dom] = await Promise.all([
         api.getUsers(),
-        api.getDomainProfile().catch(() => null),
+        api.getDomainProfile(),
       ]);
       setUsers(Array.isArray(list) ? list : (list as any)?.users || []);
       if (dom && dom.domain) {
@@ -89,9 +89,8 @@ export function UsersPage() {
       const res = await apiV1.users();
       const list = Array.isArray(res) ? res : (res as { users?: V1User[] })?.users || [];
       setAppUsers(list);
-    } catch {
-      // The endpoint requires an authenticated session; non-admin operators
-      // simply see the read-only notice instead of a noisy toast.
+    } catch (err: any) {
+      if (err.status !== 403) toast(err.message || t('فشل تحميل حسابات المنصة'), 'error');
     } finally {
       setAppUsersLoading(false);
     }
@@ -107,8 +106,8 @@ export function UsersPage() {
           full_name: res.full_name || '',
         } as AppUser);
       }
-    } catch {
-      // ignore; role-based controls remain hidden until identity resolves
+    } catch (err: any) {
+      toast(err.message || t('تعذر تحميل هوية المستخدم الحالية'), 'error');
     }
   };
 
@@ -128,8 +127,9 @@ export function UsersPage() {
         }),
       );
       setFleetUsers(detailed);
-    } catch {
+    } catch (err: any) {
       setFleetUsers([]);
+      toast(err.message || t('فشل تحميل حسابات الوكلاء'), 'error');
     }
   };
 

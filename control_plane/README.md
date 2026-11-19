@@ -24,7 +24,11 @@ From the repository root, `powershell -ExecutionPolicy Bypass -File .\run_asaas.
 - `ASAAS_TLS_CERT` + `ASAAS_TLS_KEY` — PEM paths for direct HTTPS; generate a self-signed pair with `python tools/gen-server-cert.py --host <lan-ip-or-name>`
 - `ASAAS_BACKUP_INTERVAL_HOURS` (default `24`, `0` disables) and `ASAAS_BACKUP_KEEP` (default `14`) — scheduled SQLite backups into `data/backups/` with SHA-256 manifests; manual trigger stays at `POST /api/v1/system/backup`
 - `ASAAS_LICENSE_FILE`, `ASAAS_JOB_SIGNING_KEY_FILE` — license token and Ed25519 job-signing seed locations
+- `ASAAS_GUACD_HOST`, `ASAAS_GUACD_PORT` — external guacd endpoint; an empty host disables live sessions with an explicit error
+- `ASAAS_GW_RECORD`, `ASAAS_RECORDINGS_DIR` — real Guacamole instruction-stream recording and storage location
+- `ASAAS_BACKUP_DEST` — optional file/UNC, SFTP, or S3 replication destination; SFTP credentials use `ASAAS_BACKUP_SFTP_PASSWORD` or `ASAAS_BACKUP_SFTP_KEY_PATH`
+- `ASAAS_REDIS_URL` — shared one-time-token replay protection for multi-worker deployments
 
 Licensing is offline Ed25519: `GET /api/v1/license`, `POST /api/v1/license/activate`, `POST /api/v1/license/deactivate`; sign customer licenses with `python tools/sign-license.py`. Expired licenses flip the console to read-only while auth/agent/heartbeat paths stay up.
 
-The current foundation includes local authentication, optional TOTP verification for users with an MFA secret, assets, accounts, policy binding, one-time connection tokens, agent enrollment/heartbeat, scheduled + manual backups, license entitlements, and hash-chain audit verification. It does **not** yet claim a production RDP/SSH gateway, AD/LDAP synchronization, or recording storage; those integrations remain explicit release gates.
+The current foundation includes local authentication, verified TOTP enrollment and login, assets, accounts, policy binding, one-time connection tokens, agent enrollment/heartbeat, signed JIT membership jobs with expiry reconciliation, scheduled + manual backups, optional off-box replication, hash-chain audit verification, and real guacd session recording/replay. External dependencies such as guacd, LDAP, Redis, and backup transports must be configured and tested in the target environment; their absence is reported rather than simulated.

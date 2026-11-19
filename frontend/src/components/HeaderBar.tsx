@@ -73,7 +73,7 @@ export function HeaderBar({
     setElevating(true);
     try {
       const res = await api.requestElevation();
-      toast(res.message || t('تم إرسال طلب الترقية، يرجى الموافقة في شاشة السيرفر.'), 'success');
+      toast(res.message || t('تم إرسال طلب الترقية، يرجى الموافقة في شاشة السيرفر.'), res.already_admin ? 'success' : 'info');
     } catch (err: any) {
       toast(err.message || t('فشل الترقية'), 'error');
     } finally {

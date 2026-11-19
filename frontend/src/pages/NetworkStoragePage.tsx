@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Button, Modal, TextInput, Segmented, useToast } from '../asaas-ui';
+import { Card, Button, Glass, Modal, TextInput, Segmented, useToast } from '../asaas-ui';
 import { api } from '../lib/api';
 import { apiV1 } from '../lib/apiV1';
 import {
@@ -109,6 +109,7 @@ export function NetworkStoragePage() {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'disks' | 'volumes' | 'shares' | 'explorer' | 'adapters' | 'firewall' | 'diagnostics'>('disks');
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // 1. Disks & Volumes
   const [disks, setDisks] = useState<any[]>([]);
@@ -245,8 +246,9 @@ export function NetworkStoragePage() {
         }),
       );
       setFleetAgents(detailed);
-    } catch {
+    } catch (err: any) {
       setFleetAgents([]);
+      setLoadError(err.message || t('فشل تحميل بيانات وكلاء التخزين والشبكة.'));
     }
   };
 
@@ -271,14 +273,18 @@ export function NetworkStoragePage() {
     try {
       const res = await api.getDisks();
       setDisks(res?.disks || []);
-    } catch {}
+    } catch (err: any) {
+      setLoadError(err.message || t('فشل تحميل الأقراص.'));
+    }
   };
 
   const fetchShares = async () => {
     try {
       const res = await api.getSmbShares();
       setShares(res?.shares || []);
-    } catch {}
+    } catch (err: any) {
+      setLoadError(err.message || t('فشل تحميل مشاركات SMB.'));
+    }
   };
 
   const fetchExplorer = async (targetPath = currentPath) => {
@@ -297,28 +303,36 @@ export function NetworkStoragePage() {
     try {
       const res = await api.getNetworkAdapters();
       setAdapters(res?.adapters || []);
-    } catch {}
+    } catch (err: any) {
+      setLoadError(err.message || t('فشل تحميل محولات الشبكة.'));
+    }
   };
 
   const fetchFirewall = async () => {
     try {
       const [st, rl] = await Promise.all([
-        api.getFirewallStatus().catch(() => null),
-        api.getFirewallRulesList().catch(() => ({ rules: [] })),
+        api.getFirewallStatus(),
+        api.getFirewallRulesList(),
       ]);
       setFirewallStatus(st);
       setFirewallRules(rl?.rules || []);
-    } catch {}
+    } catch (err: any) {
+      setLoadError(err.message || t('فشل تحميل جدار الحماية.'));
+    }
   };
 
   const loadTabData = async () => {
     setLoading(true);
-    if (activeTab === 'disks') await fetchDisks();
-    else if (activeTab === 'shares') await fetchShares();
-    else if (activeTab === 'explorer') await fetchExplorer();
-    else if (activeTab === 'adapters') await fetchAdapters();
-    else if (activeTab === 'firewall') await fetchFirewall();
-    setLoading(false);
+    setLoadError(null);
+    try {
+      if (activeTab === 'disks') await fetchDisks();
+      else if (activeTab === 'shares') await fetchShares();
+      else if (activeTab === 'explorer') await fetchExplorer();
+      else if (activeTab === 'adapters') await fetchAdapters();
+      else if (activeTab === 'firewall') await fetchFirewall();
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -447,6 +461,13 @@ export function NetworkStoragePage() {
           <span>{t('تحديث')}</span>
         </Button>
       </div>
+
+      {loadError && (
+        <Glass style={{ padding: 16, color: 'var(--unpaid)' }} role="alert">
+          {loadError}
+          <Button size="sm" variant="ghost" onClick={() => { void fetchFleetAgents(); void loadTabData(); }} style={{ marginInlineStart: 12 }}>{t('إعادة المحاولة')}</Button>
+        </Glass>
+      )}
 
       {/* ASAAS remote agent shares — read-only shares.list collector data */}
       {fleetShares.length > 0 && (
@@ -940,19 +961,19 @@ options={[
             <Card style={{ padding: 14 }}>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('ملف النطاق (Domain Profile)')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-safe)', marginTop: 4 }}>
-                {firewallStatus?.domain_profile?.enabled ? t('مفعّل ونشط') : t('مفعّل')}
+                {firewallStatus?.domain_profile?.enabled == null ? t('غير متاح') : firewallStatus.domain_profile.enabled ? t('مفعّل ونشط') : t('معطّل')}
               </div>
             </Card>
             <Card style={{ padding: 14 }}>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('الملف الخاص (Private Profile)')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-safe)', marginTop: 4 }}>
-                {firewallStatus?.private_profile?.enabled ? t('مفعّل ونشط') : t('مفعّل')}
+                {firewallStatus?.private_profile?.enabled == null ? t('غير متاح') : firewallStatus.private_profile.enabled ? t('مفعّل ونشط') : t('معطّل')}
               </div>
             </Card>
             <Card style={{ padding: 14 }}>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{t('الملف العام (Public Profile)')}</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-safe)', marginTop: 4 }}>
-                {firewallStatus?.public_profile?.enabled ? t('مفعّل ونشط') : t('مفعّل')}
+                {firewallStatus?.public_profile?.enabled == null ? t('غير متاح') : firewallStatus.public_profile.enabled ? t('مفعّل ونشط') : t('معطّل')}
               </div>
             </Card>
           </div>

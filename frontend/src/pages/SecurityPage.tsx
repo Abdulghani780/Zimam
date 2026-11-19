@@ -138,9 +138,9 @@ export function SecurityPage() {
     try {
       const [st, ev, blk, fleetRes] = await Promise.all([
         api.getSecurityStats(),
-        api.getSecurityEvents().catch(() => []),
-        api.getBlockedIps().catch(() => []),
-        apiV1.fleetSummary().catch(() => null),
+        api.getSecurityEvents(),
+        api.getBlockedIps(),
+        apiV1.fleetSummary(),
       ]);
       setStats(st);
       setEvents(Array.isArray(ev) ? ev : []);

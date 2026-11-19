@@ -108,6 +108,21 @@ class PortIsolationService:
     _SNAPSHOT_TTL = 1.5
 
     @classmethod
+    def load_persisted_claims(cls) -> None:
+        from ..infrastructure.db import db_list_reservations
+        claims = {}
+        for row in db_list_reservations():
+            port = int(row['port'])
+            claims[port] = {
+                'port': port,
+                'username': row['username'],
+                'session_id': None,
+                'project_name': row.get('description') or f'Project on {port}',
+                'claimed_at': row.get('created_at') or '',
+            }
+        cls._claims = claims
+
+    @classmethod
     def _get_process_session_map(cls, unique_pids: Set[int]) -> Dict[int, tuple[int, str]]:
         """Resolves Windows session and username for each PID using Win32 API."""
         res: Dict[int, tuple[int, str]] = {}
@@ -373,6 +388,12 @@ class PortIsolationService:
         if not chk['available']:
             assigned = chk['suggested_port']
 
+        try:
+            from ..infrastructure.db import db_set_reservation
+            db_set_reservation(assigned, username, project_name or '')
+        except Exception as exc:
+            logger.error("Failed to persist port reservation: %s", exc)
+            return {'ok': False, 'error': 'تعذر حفظ حجز المنفذ في قاعدة البيانات.'}
         cls._claims[assigned] = {
             'port': assigned,
             'username': username,
@@ -380,11 +401,6 @@ class PortIsolationService:
             'project_name': project_name or f'Project on {assigned}',
             'claimed_at': time.time(),
         }
-        try:
-            from ..infrastructure.db import db_set_reservation
-            db_set_reservation(assigned, username, project_name or '')
-        except Exception:
-            pass
 
         return {
             'ok': True,
@@ -398,16 +414,19 @@ class PortIsolationService:
     @classmethod
     def release_port(cls, port: int, username: str = '') -> Dict[str, Any]:
         """Releases an explicit port reservation."""
+        claim = cls._claims.get(port)
+        if username and claim and str(claim.get('username')).lower() != username.lower():
+            return {'ok': False, 'port': port, 'error': 'لا يمكنك إلغاء حجز منفذ مملوك لمستخدم آخر.'}
         try:
             from ..infrastructure.db import db_remove_reservation
-            db_remove_reservation(port)
-        except Exception:
-            pass
-
-        if port in cls._claims:
-            del cls._claims[port]
-            return {'ok': True, 'port': port, 'message': f'تم إلغاء حجز المنفذ {port} وإتاحته للجميع.'}
-        return {'ok': True, 'port': port, 'message': f'المنفذ {port} غير محجوز بالفعل.'}
+            removed = db_remove_reservation(port)
+        except Exception as exc:
+            logger.error("Failed to remove port reservation: %s", exc)
+            return {'ok': False, 'error': 'تعذر حذف حجز المنفذ من قاعدة البيانات.'}
+        if not removed and port not in cls._claims:
+            return {'ok': False, 'port': port, 'error': f'المنفذ {port} غير محجوز.'}
+        cls._claims.pop(port, None)
+        return {'ok': True, 'port': port, 'message': f'تم إلغاء حجز المنفذ {port} وإتاحته للجميع.'}
 
     @classmethod
     def close_process(cls, pid: int) -> Dict[str, Any]:
@@ -465,15 +484,56 @@ class PortIsolationService:
                 text=True,
                 timeout=5
             )
-            if res.returncode == 0:
-                return {'ok': True, 'ip': clean_ip, 'rule': rule_name}
-            err_text = (res.stderr or res.stdout or '').strip()
-            is_elevation = 'elevation' in err_text.lower() or 'administrator' in err_text.lower()
+            if res.returncode != 0:
+                err_text = (res.stderr or res.stdout or '').strip()
+                return {'ok': False, 'ip': clean_ip, 'error': err_text or 'فشل إنشاء قاعدة جدار الحماية.'}
+            verify = subprocess.run(
+                ['powershell', '-NoProfile', '-NonInteractive', '-Command', f"if (Get-NetFirewallRule -Name '{rule_name}' -ErrorAction SilentlyContinue) {{ exit 0 }} else {{ exit 1 }}"],
+                shell=False,
+                creationflags=0x08000000,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if verify.returncode != 0:
+                return {'ok': False, 'ip': clean_ip, 'error': 'لم يتم العثور على قاعدة الحظر بعد إنشائها.'}
+            return {'ok': True, 'ip': clean_ip, 'rule': rule_name, 'verified': True}
+        except Exception as exc:
+            return {'ok': False, 'error': str(exc)}
+
+    @classmethod
+    def unblock_ip(cls, ip: str) -> Dict[str, Any]:
+        import ipaddress
+        try:
+            clean_ip = str(ipaddress.ip_address(str(ip).strip()))
+        except ValueError:
+            return {'ok': False, 'error': 'عنوان IP غير صالح.'}
+        rule_name = f"ASAAS_Block_{clean_ip.replace(':', '_')}"
+        try:
+            res = subprocess.run(
+                ['netsh', 'advfirewall', 'firewall', 'delete', 'rule', f'name={rule_name}'],
+                shell=False,
+                creationflags=0x08000000,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            verify = subprocess.run(
+                ['powershell', '-NoProfile', '-NonInteractive', '-Command', f"if (Get-NetFirewallRule -Name '{rule_name}' -ErrorAction SilentlyContinue) {{ exit 0 }} else {{ exit 1 }}"],
+                shell=False,
+                creationflags=0x08000000,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if verify.returncode == 0:
+                return {'ok': False, 'ip': clean_ip, 'error': 'قاعدة الحظر ما زالت موجودة بعد محاولة الحذف.'}
             return {
                 'ok': True,
                 'ip': clean_ip,
-                'rule': rule_name,
-                'warning': 'يتطلب تطبيق الحظر الفعلي في جدار الحماية تشغيل التطبيق كمسؤول (Run as Administrator).' if is_elevation else err_text
+                'verified': True,
+                'already_absent': res.returncode != 0,
+                'message': 'تم إلغاء الحظر والتحقق من غياب القاعدة.' if res.returncode == 0 else 'قاعدة الحظر غير موجودة بالفعل.',
             }
         except Exception as exc:
             return {'ok': False, 'error': str(exc)}

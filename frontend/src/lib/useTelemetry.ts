@@ -15,9 +15,9 @@ export function useTelemetry(pollIntervalMs = 2500) {
   const fetchFullSnapshot = useCallback(async () => {
     try {
       const [h, s, g] = await Promise.all([
-        api.getHealth().catch(() => null),
+        api.getHealth(),
         api.getSnapshot(),
-        api.getGovernorStatus().catch(() => null),
+        api.getGovernorStatus(),
       ]);
       if (h) setHealth(h);
       if (s) setSnapshot(s);
@@ -67,7 +67,7 @@ export function useTelemetry(pollIntervalMs = 2500) {
           setLastUpdated(new Date());
           setIsConnected(true);
         } catch {
-          // ignore parse errors
+          setError('Invalid telemetry payload');
         }
       });
 
@@ -79,7 +79,7 @@ export function useTelemetry(pollIntervalMs = 2500) {
         }
       };
     } catch {
-      // EventSource failed or unsupported
+      setError('Live telemetry stream unavailable; polling remains active');
     }
 
     // Polling fallback

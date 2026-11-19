@@ -273,8 +273,8 @@ export function ControlPage() {
     setElevating(true);
     try {
       const res = await api.requestElevation();
-      toast(res.message || t('تم إرسال طلب رفع الصلاحيات، يرجى الموافقة على نافذة UAC في شاشة السيرفر.'), 'success');
-      setAccessDenied(null);
+      toast(res.message || t('تم إرسال طلب رفع الصلاحيات، يرجى الموافقة على نافذة UAC في شاشة السيرفر.'), res.already_admin ? 'success' : 'info');
+      if (res.already_admin) setAccessDenied(null);
     } catch (err: any) {
       toast(err.message || t('تعذر طلب ترقية الصلاحيات'), 'error');
     } finally {
