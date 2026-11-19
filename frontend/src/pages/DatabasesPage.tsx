@@ -218,7 +218,7 @@ export function DatabasesPage() {
   ];
 
   return (
-    <div className="page-container" style={{ padding: '20px 24px' }}>
+    <div className="page">
       {/* Page Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
