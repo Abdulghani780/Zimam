@@ -713,7 +713,6 @@ button, input, select, textarea, .btn, .badge {
   height: 100%;
   background: var(--accent-fill);
   transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: width;
 }
 
 /* Tables & Lists */
@@ -1190,7 +1189,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
     var(--glass-sheen) 50%,
     transparent 100%
   );
-  animation: luxury-shimmer 2s infinite ease-in-out;
+  animation: luxury-shimmer 2s linear infinite;
   pointer-events: none;
 }
 
@@ -1284,7 +1283,7 @@ button:active:not(:disabled), .btn:active:not(:disabled), [role="button"]:active
   cursor: pointer;
   background: transparent;
   color: var(--text-3);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tab-pill-cluster button[data-active='true'] {

@@ -650,14 +650,31 @@ select.input option {
 .empty__icon svg { width: 28px; height: 28px; }
 
 .skeleton {
+  position: relative;
+  overflow: hidden;
   border-radius: var(--radius-md);
-  background: linear-gradient(90deg, var(--glass-inset) 25%, var(--glass-tint-strong) 50%, var(--glass-inset) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
+  background: var(--glass-inset);
 }
 
-@keyframes shimmer {
-  to { background-position: -200% 0; }
+/* Compositor-only shimmer: translateX on an overlay instead of animating
+   background-position (which repaints every frame). */
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--glass-tint-strong) 50%,
+    transparent 100%
+  );
+  transform: translateX(calc(-100% * var(--dir-x, -1)));
+  animation: skeleton-slide 1.4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes skeleton-slide {
+  to { transform: translateX(calc(100% * var(--dir-x, -1))); }
 }
 
 /* ───────── Modal / sheet ───────── */
@@ -845,7 +862,7 @@ select.input option {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-2);
-  transition: all 0.25s var(--ease-out);
+  transition: color 0.25s var(--ease-out), background-color 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
 }
 
 /* Phones: filter chips scroll sideways on one line instead of stacking. */
